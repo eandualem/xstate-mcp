@@ -33,7 +33,7 @@ describe("WebSocket Server", () => {
     wss = createWsServer({ port: TEST_PORT, store, logger });
     await wait(100);
 
-    const client = new WebSocket(`ws://localhost:${TEST_PORT}`);
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT}`);
     await waitForOpen(client);
 
     client.send(
@@ -66,7 +66,7 @@ describe("WebSocket Server", () => {
     wss = createWsServer({ port: TEST_PORT + 1, store, logger });
     await wait(100);
 
-    const client = new WebSocket(`ws://localhost:${TEST_PORT + 1}`);
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 1}`);
     await waitForOpen(client);
 
     // Register actor first
@@ -117,7 +117,7 @@ describe("WebSocket Server", () => {
     wss = createWsServer({ port: TEST_PORT + 2, store, logger });
     await wait(100);
 
-    const client = new WebSocket(`ws://localhost:${TEST_PORT + 2}`);
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 2}`);
     await waitForOpen(client);
 
     // Register actor
@@ -165,7 +165,7 @@ describe("WebSocket Server", () => {
     wss = createWsServer({ port: TEST_PORT + 3, store, logger });
     await wait(100);
 
-    const client = new WebSocket(`ws://localhost:${TEST_PORT + 3}`);
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 3}`);
     await waitForOpen(client);
 
     client.send("not json at all");
@@ -201,7 +201,7 @@ describe("WebSocket Server", () => {
     wss = createWsServer({ port: TEST_PORT + 5, store, logger });
     await wait(100);
 
-    const client = new WebSocket(`ws://localhost:${TEST_PORT + 5}`);
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 5}`);
     await waitForOpen(client);
 
     // Native XState 5 format — actorRef object, no sessionId/createdAt/id/_version
@@ -229,7 +229,7 @@ describe("WebSocket Server", () => {
     wss = createWsServer({ port: TEST_PORT + 6, store, logger });
     await wait(100);
 
-    const client = new WebSocket(`ws://localhost:${TEST_PORT + 6}`);
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 6}`);
     await waitForOpen(client);
 
     // Register actor first (native format)
@@ -273,7 +273,7 @@ describe("WebSocket Server", () => {
     wss = createWsServer({ port: TEST_PORT + 7, store, logger });
     await wait(100);
 
-    const client = new WebSocket(`ws://localhost:${TEST_PORT + 7}`);
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 7}`);
     await waitForOpen(client);
 
     // Register actor (native format)
@@ -315,7 +315,7 @@ describe("WebSocket Server", () => {
     wss = createWsServer({ port: TEST_PORT + 8, store, logger });
     await wait(100);
 
-    const client = new WebSocket(`ws://localhost:${TEST_PORT + 8}`);
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 8}`);
     await waitForOpen(client);
 
     // Real XState 5 serialization: { xstate$$type: 1, id: "x:5" }
@@ -359,7 +359,7 @@ describe("WebSocket Server", () => {
     wss = createWsServer({ port: TEST_PORT + 4, store, logger });
     await wait(100);
 
-    const client = new WebSocket(`ws://localhost:${TEST_PORT + 4}`);
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 4}`);
     await waitForOpen(client);
 
     client.send(
@@ -390,7 +390,7 @@ describe("WebSocket Server", () => {
     });
     await wait(100);
 
-    const client = new WebSocket(`ws://localhost:${TEST_PORT + 9}`, {
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 9}`, {
       origin: "http://evil.example.com",
     });
 
@@ -415,7 +415,7 @@ describe("WebSocket Server", () => {
     });
     await wait(100);
 
-    const client = new WebSocket(`ws://localhost:${TEST_PORT + 10}`, {
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 10}`, {
       origin: "http://localhost:3000",
     });
     await waitForOpen(client);
@@ -450,7 +450,7 @@ describe("WebSocket Server", () => {
     await wait(100);
 
     // Default WebSocket client does not send Origin header
-    const client = new WebSocket(`ws://localhost:${TEST_PORT + 11}`);
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 11}`);
     await waitForOpen(client);
 
     client.send(
@@ -468,6 +468,30 @@ describe("WebSocket Server", () => {
     await wait(50);
     expect(store.size).toBe(1);
 
+    client.close();
+  });
+
+  it("rejects no-origin connection when requireOrigin is true", async () => {
+    store = new ActorStore(100, logger);
+    wss = createWsServer({
+      port: TEST_PORT + 12,
+      store,
+      logger,
+      allowedOrigins: ["http://localhost:*"],
+      requireOrigin: true,
+    });
+    await wait(100);
+
+    const client = new WebSocket(`ws://127.0.0.1:${TEST_PORT + 12}`);
+
+    const error = await new Promise<Error>((resolve) => {
+      client.on("error", resolve);
+      client.on("unexpected-response", (_req, res) => {
+        resolve(new Error(`HTTP ${res.statusCode}`));
+      });
+    });
+
+    expect(error.message).toContain("403");
     client.close();
   });
 });

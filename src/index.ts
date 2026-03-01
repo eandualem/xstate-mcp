@@ -13,6 +13,7 @@ async function main() {
   const logger = new Logger(config.logLevel);
 
   logger.info("xstate-mcp starting", {
+    wsHost: config.wsHost,
     wsPort: config.wsPort,
     bufferSize: config.bufferSize,
     logLevel: config.logLevel,
@@ -22,10 +23,12 @@ async function main() {
   const clientRegistry = new ClientRegistry(SEND_EVENT_TIMEOUT_MS, logger);
   const wss = createWsServer({
     port: config.wsPort,
+    host: config.wsHost,
     store,
     clientRegistry,
     logger,
     allowedOrigins: config.allowedOrigins,
+    requireOrigin: config.requireOrigin,
   });
   const mcpServer = createMcpServer(store, clientRegistry, logger);
 

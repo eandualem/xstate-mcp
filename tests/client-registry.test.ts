@@ -37,6 +37,54 @@ describe("ClientRegistry", () => {
       expect(registry.getConnectedClientCount()).toBe(1);
     });
 
+    it("moves session from old client to new client on re-register", () => {
+      const ws1 = makeMockWs();
+      const ws2 = makeMockWs();
+      registry.registerSession(ws1 as never, "x:0");
+      registry.registerSession(ws1 as never, "x:1");
+
+      // Session x:0 moves to ws2 (e.g. browser refresh reconnect)
+      registry.registerSession(ws2 as never, "x:0");
+
+      // ws1 should no longer own x:0
+      // When ws1 disconnects, only x:1 should be affected
+      const store = new ActorStore(100, logger);
+      store.registerActor({
+        type: "@xstate.actor",
+        sessionId: "x:0",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+      store.registerActor({
+        type: "@xstate.actor",
+        sessionId: "x:1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+
+      registry.removeClient(ws1 as never, store);
+
+      // x:0 should survive because ws2 now owns it
+      expect(store.getActor("x:0")).toBeDefined();
+      // x:1 was still on ws1, so it gets removed
+      expect(store.getActor("x:1")).toBeUndefined();
+      // ws2 still has its session
+      expect(registry.getConnectedSessionCount()).toBe(1);
+    });
+
+    it("removes empty client entry when all sessions reassigned", () => {
+      const ws1 = makeMockWs();
+      const ws2 = makeMockWs();
+      // ws1 owns only x:0
+      registry.registerSession(ws1 as never, "x:0");
+      expect(registry.getConnectedClientCount()).toBe(1);
+
+      // x:0 moves to ws2 — ws1 now has 0 sessions
+      registry.registerSession(ws2 as never, "x:0");
+
+      // ws1 should no longer appear as a connected client
+      expect(registry.getConnectedClientCount()).toBe(1); // only ws2
+      expect(registry.getConnectedSessionCount()).toBe(1);
+    });
+
     it("removes all sessions when client disconnects", () => {
       const ws = makeMockWs();
       registry.registerSession(ws as never, "x:0");
@@ -173,6 +221,24 @@ describe("ClientRegistry", () => {
 
       expect(store.size).toBe(1);
       expect(store.getActor("x:1")).toBeDefined();
+    });
+  });
+
+  describe("clear", () => {
+    it("clears all mappings and rejects pending requests", async () => {
+      const ws = makeMockWs();
+      registry.registerSession(ws as never, "x:0");
+      registry.registerSession(ws as never, "x:1");
+
+      const promise = registry.sendEvent("x:0", { type: "TEST" });
+
+      registry.clear();
+
+      const result = await promise;
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Registry cleared");
+      expect(registry.getConnectedSessionCount()).toBe(0);
+      expect(registry.getConnectedClientCount()).toBe(0);
     });
   });
 

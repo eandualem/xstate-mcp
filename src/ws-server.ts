@@ -13,10 +13,13 @@ import type { Logger } from "./logger.js";
 
 export interface WsServerOptions {
   port: number;
+  host?: string;
   store: ActorStore;
   clientRegistry?: ClientRegistry;
   logger: Logger;
   allowedOrigins?: string[];
+  requireOrigin?: boolean;
+  maxPayload?: number;
 }
 
 /**
@@ -39,17 +42,35 @@ export function matchesAllowedOrigin(
   return false;
 }
 
+const DEFAULT_MAX_PAYLOAD = 10 * 1024 * 1024; // 10 MB
+
 export function createWsServer(options: WsServerOptions): WebSocketServer {
-  const { port, store, clientRegistry, logger, allowedOrigins } = options;
+  const {
+    port,
+    host,
+    store,
+    clientRegistry,
+    logger,
+    allowedOrigins,
+    requireOrigin,
+  } = options;
 
   const wss = new WebSocketServer({
     port,
+    host: host ?? "127.0.0.1",
+    maxPayload: options.maxPayload ?? DEFAULT_MAX_PAYLOAD,
     verifyClient: allowedOrigins
       ? (info, callback) => {
           const origin = info.origin;
-          // No origin header (CLI tools, native clients) → allow
           if (!origin) {
-            callback(true);
+            if (requireOrigin) {
+              logger.warn(
+                "Rejected WebSocket connection: missing Origin header",
+              );
+              callback(false, 403, "Origin header required");
+            } else {
+              callback(true);
+            }
             return;
           }
           if (matchesAllowedOrigin(origin, allowedOrigins)) {
@@ -63,7 +84,7 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
   });
 
   wss.on("listening", () => {
-    logger.info(`WebSocket server listening on port ${port}`);
+    logger.info(`WebSocket server listening on ${host ?? "127.0.0.1"}:${port}`);
   });
 
   wss.on("connection", (ws: WebSocket) => {

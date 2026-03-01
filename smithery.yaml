@@ -7,6 +7,10 @@ startCommand:
         type: number
         default: 7357
         description: WebSocket server port for receiving XState inspection events
+      wsHost:
+        type: string
+        default: "127.0.0.1"
+        description: WebSocket server bind address (localhost only by default)
       bufferSize:
         type: number
         default: 100
@@ -16,6 +20,14 @@ startCommand:
         default: info
         enum: [debug, info, warn, error]
         description: Logging verbosity
+      allowedOrigins:
+        type: string
+        default: "http://localhost:*,http://127.0.0.1:*"
+        description: Comma-separated list of allowed WebSocket origins (supports * port wildcard)
+      requireOrigin:
+        type: boolean
+        default: false
+        description: When true, reject WebSocket connections without an Origin header
   commandFunction:
     |-
     (config) => ({
@@ -23,7 +35,10 @@ startCommand:
       args: ['dist/index.js'],
       env: {
         XSTATE_MCP_WS_PORT: String(config.wsPort ?? 7357),
+        XSTATE_MCP_WS_HOST: config.wsHost ?? '127.0.0.1',
         XSTATE_MCP_BUFFER_SIZE: String(config.bufferSize ?? 100),
         XSTATE_MCP_LOG_LEVEL: config.logLevel ?? 'info',
+        XSTATE_MCP_ALLOWED_ORIGINS: config.allowedOrigins ?? 'http://localhost:*,http://127.0.0.1:*',
+        XSTATE_MCP_REQUIRE_ORIGIN: String(config.requireOrigin ?? false),
       },
     })

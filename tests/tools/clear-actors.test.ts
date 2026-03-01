@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ActorStore } from "../../src/actor-store.js";
+import { ClientRegistry } from "../../src/client-registry.js";
 import { Logger } from "../../src/logger.js";
 import { clearActors } from "../../src/tools/clear-actors.js";
 import type { ActorEvent } from "../../src/types.js";
@@ -39,5 +40,24 @@ describe("clear_actors tool", () => {
     const data = JSON.parse(result.content[0].text);
     expect(data.cleared).toBe(2);
     expect(store.size).toBe(0);
+  });
+
+  it("clears ClientRegistry when provided", () => {
+    const registry = new ClientRegistry(1000, logger);
+    const ws = {
+      readyState: 1,
+      OPEN: 1,
+      send: vi.fn((_msg: string, cb?: (err?: Error) => void) => {
+        if (cb) cb();
+      }),
+    };
+    registry.registerSession(ws as never, "x:0");
+    store.registerActor(makeActorEvent());
+
+    clearActors(store, registry);
+
+    expect(store.size).toBe(0);
+    expect(registry.getConnectedSessionCount()).toBe(0);
+    expect(registry.getConnectedClientCount()).toBe(0);
   });
 });

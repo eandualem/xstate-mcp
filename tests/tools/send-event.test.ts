@@ -84,6 +84,24 @@ describe("send_event tool", () => {
     expect(data.sessionId).toBe("x:99");
   });
 
+  it("returns error when multiple actors match by name", async () => {
+    store.registerActor(
+      makeActorEvent({ sessionId: "x:1", name: "agentsMachine" }),
+    );
+    store.registerActor(
+      makeActorEvent({ sessionId: "x:2", name: "agentsMachine" }),
+    );
+
+    const result = await sendEvent(store, registry, "agentsMachine", {
+      type: "TEST",
+    });
+    expect(result.isError).toBe(true);
+    const data = JSON.parse(result.content[0].text);
+    expect(data.error).toContain("Ambiguous");
+    expect(data.matches).toHaveLength(2);
+    expect(data.suggestion).toContain("sessionId");
+  });
+
   it("returns error when client is disconnected", async () => {
     store.registerActor(makeActorEvent());
     // No ws registered — no client owns this actor

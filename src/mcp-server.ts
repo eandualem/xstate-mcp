@@ -173,7 +173,7 @@ export function createMcpServer(
     },
     () => {
       logger.debug("Tool called: clear_actors");
-      return clearActors(store);
+      return clearActors(store, clientRegistry);
     },
   );
 

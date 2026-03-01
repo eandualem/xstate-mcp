@@ -22,6 +22,12 @@
           "default": "7357"
         },
         {
+          "name": "XSTATE_MCP_WS_HOST",
+          "description": "WebSocket server bind address (localhost only by default)",
+          "required": false,
+          "default": "127.0.0.1"
+        },
+        {
           "name": "XSTATE_MCP_BUFFER_SIZE",
           "description": "Max events per actor in ring buffer",
           "required": false,
@@ -32,6 +38,18 @@
           "description": "Logging verbosity (debug, info, warn, error)",
           "required": false,
           "default": "info"
+        },
+        {
+          "name": "XSTATE_MCP_ALLOWED_ORIGINS",
+          "description": "Comma-separated list of allowed WebSocket origins (supports * port wildcard)",
+          "required": false,
+          "default": "http://localhost:*,http://127.0.0.1:*"
+        },
+        {
+          "name": "XSTATE_MCP_REQUIRE_ORIGIN",
+          "description": "When true, reject WebSocket connections without an Origin header",
+          "required": false,
+          "default": "false"
         }
       ]
     }

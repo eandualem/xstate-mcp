@@ -20,9 +20,27 @@ export async function sendEvent(
   // Resolve target: try as sessionId first, then as actor name
   let sessionId = target;
   if (!store.getActor(target)) {
-    const byName = store.listActors().find((a) => a.name === target);
-    if (byName) {
-      sessionId = byName.sessionId;
+    const matches = store.listActors().filter((a) => a.name === target);
+    if (matches.length === 1) {
+      sessionId = matches[0].sessionId;
+    } else if (matches.length > 1) {
+      const ambiguousContent = {
+        error: `Ambiguous actor name: "${target}" matches ${matches.length} actors`,
+        matches: matches.map((a) => ({
+          sessionId: a.sessionId,
+          name: a.name,
+        })),
+        suggestion: "Use a specific sessionId instead of the actor name.",
+      };
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: safeStringify(ambiguousContent, 2),
+          },
+        ],
+        isError: true,
+      };
     } else {
       return actorNotFoundResult(target, store);
     }

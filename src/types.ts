@@ -4,9 +4,11 @@ import { z } from "zod";
 
 export interface Config {
   wsPort: number;
+  wsHost: string;
   bufferSize: number;
   logLevel: LogLevel;
   allowedOrigins: string[];
+  requireOrigin: boolean;
 }
 
 export type LogLevel = "debug" | "info" | "warn" | "error";

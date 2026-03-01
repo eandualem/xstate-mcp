@@ -33,6 +33,18 @@ export class ClientRegistry {
    * Called when we receive an @xstate.actor event from a client.
    */
   registerSession(ws: WebSocket, sessionId: string): void {
+    // If this session was previously owned by a different client, clean up the stale mapping
+    const previousOwner = this.sessionToClient.get(sessionId);
+    if (previousOwner && previousOwner !== ws) {
+      const previousSessions = this.clientToSessions.get(previousOwner);
+      if (previousSessions) {
+        previousSessions.delete(sessionId);
+        if (previousSessions.size === 0) {
+          this.clientToSessions.delete(previousOwner);
+        }
+      }
+    }
+
     this.sessionToClient.set(sessionId, ws);
     if (!this.clientToSessions.has(ws)) {
       this.clientToSessions.set(ws, new Set());
@@ -153,6 +165,21 @@ export class ClientRegistry {
    * Find the sessionId of an actor by its name.
    * Returns the first match, or undefined if not found.
    */
+  /**
+   * Clear all session/client mappings and reject pending requests.
+   * Called when the actor store is cleared to keep registry in sync.
+   */
+  clear(): void {
+    for (const [, pending] of this.pending) {
+      clearTimeout(pending.timer);
+      pending.resolve({ success: false, error: "Registry cleared" });
+    }
+    this.pending.clear();
+    this.requestToSession.clear();
+    this.sessionToClient.clear();
+    this.clientToSessions.clear();
+  }
+
   getConnectedSessionCount(): number {
     return this.sessionToClient.size;
   }

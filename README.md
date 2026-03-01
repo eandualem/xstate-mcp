@@ -2,8 +2,6 @@
 
 An MCP server that gives AI coding agents live read/write access to XState v5 state machines. See every running actor, query state and context, inspect event history, check transition eligibility, and send events — without console.log or React DevTools.
 
-No XState MCP server exists anywhere else. This is the first one.
-
 ## Quick Start
 
 ### 1. Install and build
@@ -56,11 +54,14 @@ This opens a web UI at `http://localhost:6274`. You should see 9 tools, 3 resour
 
 ## Configuration
 
-| Environment Variable | Default | Description |
-|---------------------|---------|-------------|
-| `XSTATE_MCP_WS_PORT` | `7357` | WebSocket server port |
-| `XSTATE_MCP_BUFFER_SIZE` | `100` | Max events per actor in ring buffer |
-| `XSTATE_MCP_LOG_LEVEL` | `info` | Logging verbosity (`debug`, `info`, `warn`, `error`) |
+| Environment Variable         | Default                                 | Description                                                                    |
+| ---------------------------- | --------------------------------------- | ------------------------------------------------------------------------------ |
+| `XSTATE_MCP_WS_PORT`         | `7357`                                  | WebSocket server port                                                          |
+| `XSTATE_MCP_WS_HOST`         | `127.0.0.1`                             | WebSocket server bind address (localhost only by default)                      |
+| `XSTATE_MCP_BUFFER_SIZE`     | `100`                                   | Max events per actor in ring buffer                                            |
+| `XSTATE_MCP_LOG_LEVEL`       | `info`                                  | Logging verbosity (`debug`, `info`, `warn`, `error`)                           |
+| `XSTATE_MCP_ALLOWED_ORIGINS` | `http://localhost:*,http://127.0.0.1:*` | Comma-separated list of allowed WebSocket origins (supports `*` port wildcard) |
+| `XSTATE_MCP_REQUIRE_ORIGIN`  | `false`                                 | When `true`, reject WebSocket connections without an Origin header             |
 
 ## Browser Adapter
 
@@ -69,10 +70,10 @@ Your XState 5 app needs to send inspection events to the WebSocket server. Two o
 ### Option A: Using `@statelyai/inspect` (recommended)
 
 ```typescript
-import { createWebSocketInspector } from '@statelyai/inspect';
+import { createWebSocketInspector } from "@statelyai/inspect";
 
 const inspector = createWebSocketInspector({
-  url: 'ws://localhost:7357',
+  url: "ws://127.0.0.1:7357",
 });
 
 const actor = createActor(yourMachine, {
@@ -84,7 +85,7 @@ actor.start();
 ### Option B: Custom adapter (minimal)
 
 ```typescript
-const ws = new WebSocket('ws://localhost:7357');
+const ws = new WebSocket("ws://127.0.0.1:7357");
 
 const actor = createActor(yourMachine, {
   inspect: (event) => {
@@ -103,28 +104,32 @@ Both approaches work. Actors register automatically when they start — you'll s
 The `send_event` tool sends events from the AI agent to your running actors. This requires the browser to handle incoming messages and respond:
 
 ```typescript
-const ws = new WebSocket('ws://localhost:7357');
+const ws = new WebSocket("ws://127.0.0.1:7357");
 
-ws.addEventListener('message', (msg) => {
+ws.addEventListener("message", (msg) => {
   const data = JSON.parse(msg.data);
 
-  if (data.type === 'xstate-mcp.send') {
+  if (data.type === "xstate-mcp.send") {
     try {
       // Find the actor and send the event
       const actor = getActorBySessionId(data.sessionId); // your lookup logic
       actor.send(data.event);
-      ws.send(JSON.stringify({
-        type: 'xstate-mcp.send.response',
-        requestId: data.requestId,
-        success: true,
-      }));
+      ws.send(
+        JSON.stringify({
+          type: "xstate-mcp.send.response",
+          requestId: data.requestId,
+          success: true,
+        }),
+      );
     } catch (err) {
-      ws.send(JSON.stringify({
-        type: 'xstate-mcp.send.response',
-        requestId: data.requestId,
-        success: false,
-        error: err.message,
-      }));
+      ws.send(
+        JSON.stringify({
+          type: "xstate-mcp.send.response",
+          requestId: data.requestId,
+          success: false,
+          error: err.message,
+        }),
+      );
     }
   }
 });
@@ -196,6 +201,7 @@ See the parent-child hierarchy. Useful when your app has nested or parallel acto
 Drill into one actor — full state value, context, and status.
 
 **Parameters:**
+
 - `sessionId` (string) — actor's session ID from `list_actors`
 
 ```json
@@ -215,6 +221,7 @@ Drill into one actor — full state value, context, and status.
 Full state chart structure — states, transitions, guards, actions, invoked services.
 
 **Parameters:**
+
 - `sessionId` (string)
 
 ```json
@@ -239,6 +246,7 @@ Full state chart structure — states, transitions, guards, actions, invoked ser
 Raw events that flowed through an actor (from the ring buffer). Includes full event payloads.
 
 **Parameters:**
+
 - `sessionId` (string)
 - `limit` (number, optional, default: 20)
 
@@ -262,6 +270,7 @@ Raw events that flowed through an actor (from the ring buffer). Includes full ev
 State transition history — from/to values, triggering event, and timestamps. Higher level than event history.
 
 **Parameters:**
+
 - `sessionId` (string)
 - `limit` (number, optional, default: 50)
 
@@ -293,6 +302,7 @@ State transition history — from/to values, triggering event, and timestamps. H
 Static check: can this actor handle a given event type in its current state? Analyzes the machine definition without executing anything.
 
 **Parameters:**
+
 - `sessionId` (string)
 - `eventType` (string) — e.g. `"sys.refresh"`, `"SUBMIT"`
 
@@ -313,6 +323,7 @@ Static check: can this actor handle a given event type in its current state? Ana
 Send an event to a running actor. Target can be a sessionId or actor name. Requires the [browser-side response handler](#enabling-send_event-bidirectional).
 
 **Parameters:**
+
 - `target` (string) — sessionId or actor name
 - `event` (object) — must have a `type` field, e.g. `{ "type": "sys.refresh" }`
 
@@ -405,6 +416,7 @@ The highest-value pattern combines xstate-mcp with a browser automation tool:
 6. **Verify visual** — screenshot (Playwright) — does the UI match the state?
 
 This catches the two most common XState integration bugs:
+
 - UI shows the right thing but the machine didn't transition (local state bypass)
 - Machine transitioned correctly but the UI doesn't reflect it (render bug)
 
@@ -412,11 +424,11 @@ This catches the two most common XState integration bugs:
 
 MCP resources provide direct access to actor data without tool calls. Clients that support resource subscriptions get real-time updates when actors register, snapshots change, or the store clears.
 
-| Resource | URI | Description |
-|----------|-----|-------------|
-| Actor list | `xstate://actors` | All registered actors with current state and status |
-| Actor snapshot | `xstate://actor/{sessionId}/snapshot` | Current state snapshot of a specific actor |
-| Machine definition | `xstate://actor/{sessionId}/definition` | Machine JSON definition for a specific actor |
+| Resource           | URI                                     | Description                                         |
+| ------------------ | --------------------------------------- | --------------------------------------------------- |
+| Actor list         | `xstate://actors`                       | All registered actors with current state and status |
+| Actor snapshot     | `xstate://actor/{sessionId}/snapshot`   | Current state snapshot of a specific actor          |
+| Machine definition | `xstate://actor/{sessionId}/definition` | Machine JSON definition for a specific actor        |
 
 Template resources support autocomplete — type a partial sessionId or actor name and the server suggests matches.
 
@@ -532,7 +544,7 @@ xstate-mcp runs entirely on your local machine. It does not:
 - Store any data to disk (all state is in-memory and cleared on restart)
 - Make any outbound network requests
 
-The WebSocket server listens only on localhost. The MCP transport uses stdio. All data stays between your browser and your AI coding tool.
+The WebSocket server binds to `127.0.0.1` by default (localhost only, not reachable from other machines). The MCP transport uses stdio. All data stays between your browser and your AI coding tool.
 
 ## License
 
