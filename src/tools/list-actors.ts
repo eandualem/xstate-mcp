@@ -1,4 +1,18 @@
+import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
+
+export const listActorsOutputSchema = {
+  actors: z.array(
+    z.object({
+      sessionId: z.string(),
+      name: z.string(),
+      currentState: z.unknown(),
+      status: z.string(),
+      childCount: z.number(),
+    }),
+  ),
+  totalActors: z.number(),
+};
 
 export function listActors(store: ActorStore) {
   const actors = store.listActors().map((actor) => ({
@@ -9,12 +23,15 @@ export function listActors(store: ActorStore) {
     childCount: store.getChildCount(actor.sessionId),
   }));
 
+  const structuredContent = { actors, totalActors: actors.length };
+
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify({ actors, totalActors: actors.length }, null, 2),
+        text: JSON.stringify(structuredContent, null, 2),
       },
     ],
+    structuredContent,
   };
 }

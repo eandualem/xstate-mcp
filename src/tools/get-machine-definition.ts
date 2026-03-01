@@ -1,52 +1,52 @@
+import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
+import { actorNotFoundResult } from "../errors.js";
+
+export const getMachineDefinitionOutputSchema = {
+  sessionId: z.string(),
+  name: z.string(),
+  definition: z.unknown(),
+  note: z.string().optional(),
+};
 
 export function getMachineDefinition(store: ActorStore, sessionId: string) {
   const actor = store.getActor(sessionId);
 
   if (!actor) {
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: JSON.stringify({
-            error: `Actor not found: ${sessionId}`,
-          }),
-        },
-      ],
-      isError: true,
-    };
+    return actorNotFoundResult(sessionId, store);
   }
 
   if (actor.definition === null || actor.definition === undefined) {
+    const structuredContent = {
+      sessionId: actor.sessionId,
+      name: actor.name,
+      definition: null,
+      note: "No machine definition available for this actor",
+    };
     return {
       content: [
         {
           type: "text" as const,
-          text: JSON.stringify({
-            sessionId: actor.sessionId,
-            name: actor.name,
-            definition: null,
-            note: "No machine definition available for this actor",
-          }),
+          text: JSON.stringify(structuredContent),
         },
       ],
+      structuredContent,
     };
   }
+
+  const structuredContent = {
+    sessionId: actor.sessionId,
+    name: actor.name,
+    definition: actor.definition,
+  };
 
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            sessionId: actor.sessionId,
-            name: actor.name,
-            definition: actor.definition,
-          },
-          null,
-          2,
-        ),
+        text: JSON.stringify(structuredContent, null, 2),
       },
     ],
+    structuredContent,
   };
 }

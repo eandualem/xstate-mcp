@@ -1,17 +1,46 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { ActorStore } from "./actor-store.js";
 import type { ClientRegistry } from "./client-registry.js";
 import type { Logger } from "./logger.js";
-import { listActors } from "./tools/list-actors.js";
-import { getActorState } from "./tools/get-actor-state.js";
-import { getEventHistory } from "./tools/get-event-history.js";
-import { getMachineDefinition } from "./tools/get-machine-definition.js";
-import { clearActors } from "./tools/clear-actors.js";
-import { getActorTree } from "./tools/get-actor-tree.js";
-import { canHandleEvent } from "./tools/can-handle-event.js";
-import { getStateTimeline } from "./tools/get-state-timeline.js";
-import { sendEvent } from "./tools/send-event.js";
+import { listActors, listActorsOutputSchema } from "./tools/list-actors.js";
+import {
+  getActorState,
+  getActorStateOutputSchema,
+} from "./tools/get-actor-state.js";
+import {
+  getEventHistory,
+  getEventHistoryOutputSchema,
+} from "./tools/get-event-history.js";
+import {
+  getMachineDefinition,
+  getMachineDefinitionOutputSchema,
+} from "./tools/get-machine-definition.js";
+import { clearActors, clearActorsOutputSchema } from "./tools/clear-actors.js";
+import {
+  getActorTree,
+  getActorTreeOutputSchema,
+} from "./tools/get-actor-tree.js";
+import {
+  canHandleEvent,
+  canHandleEventOutputSchema,
+} from "./tools/can-handle-event.js";
+import {
+  getStateTimeline,
+  getStateTimelineOutputSchema,
+} from "./tools/get-state-timeline.js";
+import { sendEvent, sendEventOutputSchema } from "./tools/send-event.js";
+import { debugActor } from "./prompts/debug-actor.js";
+import { explainMachine } from "./prompts/explain-machine.js";
+import { traceEventFlow } from "./prompts/trace-event-flow.js";
+
+const READ_ONLY_ANNOTATIONS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const;
 
 export function createMcpServer(
   store: ActorStore,
@@ -23,12 +52,16 @@ export function createMcpServer(
     version: "1.0.0",
   });
 
+  // --- Tools ---
+
   server.registerTool(
     "list_actors",
     {
       title: "List Actors",
       description:
         "List all registered XState actors with summary information including current state, status, and child count.",
+      outputSchema: listActorsOutputSchema,
+      annotations: READ_ONLY_ANNOTATIONS,
     },
     () => {
       logger.debug("Tool called: list_actors");
@@ -47,6 +80,8 @@ export function createMcpServer(
           .string()
           .describe("The actor's session ID (from list_actors)"),
       },
+      outputSchema: getActorStateOutputSchema,
+      annotations: READ_ONLY_ANNOTATIONS,
     },
     ({ sessionId }) => {
       logger.debug(`Tool called: get_actor_state(${sessionId})`);
@@ -69,6 +104,8 @@ export function createMcpServer(
           .optional()
           .describe("Max events to return (default: 20)"),
       },
+      outputSchema: getEventHistoryOutputSchema,
+      annotations: READ_ONLY_ANNOTATIONS,
     },
     ({ sessionId, limit }) => {
       logger.debug(`Tool called: get_event_history(${sessionId}, ${limit})`);
@@ -87,6 +124,8 @@ export function createMcpServer(
           .string()
           .describe("The actor's session ID (from list_actors)"),
       },
+      outputSchema: getMachineDefinitionOutputSchema,
+      annotations: READ_ONLY_ANNOTATIONS,
     },
     ({ sessionId }) => {
       logger.debug(`Tool called: get_machine_definition(${sessionId})`);
@@ -102,6 +141,13 @@ export function createMcpServer(
       title: "Clear Actors",
       description:
         "Remove all actors from the registry. Useful for resetting state between debugging sessions.",
+      outputSchema: clearActorsOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
     },
     () => {
       logger.debug("Tool called: clear_actors");
@@ -115,6 +161,8 @@ export function createMcpServer(
       title: "Get Actor Tree",
       description:
         "Get the hierarchical tree of all actors showing parent-child relationships, current states, and statuses.",
+      outputSchema: getActorTreeOutputSchema,
+      annotations: READ_ONLY_ANNOTATIONS,
     },
     () => {
       logger.debug("Tool called: get_actor_tree");
@@ -136,6 +184,8 @@ export function createMcpServer(
           .string()
           .describe("The event type to check (e.g. 'SUBMIT', 'user.click')"),
       },
+      outputSchema: canHandleEventOutputSchema,
+      annotations: READ_ONLY_ANNOTATIONS,
     },
     ({ sessionId, eventType }) => {
       logger.debug(`Tool called: can_handle_event(${sessionId}, ${eventType})`);
@@ -160,6 +210,8 @@ export function createMcpServer(
           .optional()
           .describe("Max transitions to return (default: 50)"),
       },
+      outputSchema: getStateTimelineOutputSchema,
+      annotations: READ_ONLY_ANNOTATIONS,
     },
     ({ sessionId, limit }) => {
       logger.debug(`Tool called: get_state_timeline(${sessionId}, ${limit})`);
@@ -188,6 +240,13 @@ export function createMcpServer(
             "The event to send (must have a 'type' field, e.g. { type: 'SUBMIT', data: ... })",
           ),
       },
+      outputSchema: sendEventOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     async ({ target, event }) => {
       logger.debug(`Tool called: send_event(${target}, ${event.type})`);
@@ -195,6 +254,245 @@ export function createMcpServer(
     },
   );
 
-  logger.info("MCP server created with 9 tools registered");
+  // --- Resources ---
+
+  server.registerResource(
+    "actors",
+    "xstate://actors",
+    {
+      description: "List of all registered XState actors",
+      mimeType: "application/json",
+    },
+    () => {
+      const actors = store.listActors().map((actor) => ({
+        sessionId: actor.sessionId,
+        name: actor.name,
+        currentState: actor.currentSnapshot?.value ?? null,
+        status: actor.currentSnapshot?.status ?? "unknown",
+      }));
+
+      return {
+        contents: [
+          {
+            uri: "xstate://actors",
+            mimeType: "application/json",
+            text: JSON.stringify(actors, null, 2),
+          },
+        ],
+      };
+    },
+  );
+
+  const snapshotTemplate = new ResourceTemplate(
+    "xstate://actor/{sessionId}/snapshot",
+    {
+      list: () => {
+        return {
+          resources: store.listActors().map((actor) => ({
+            uri: `xstate://actor/${actor.sessionId}/snapshot`,
+            name: `${actor.name} snapshot`,
+            description: `Current state of ${actor.name} (${actor.sessionId})`,
+            mimeType: "application/json",
+          })),
+        };
+      },
+      complete: {
+        sessionId: (value: string) => {
+          const actors = store.listActors();
+          return actors
+            .filter(
+              (a) => a.sessionId.startsWith(value) || a.name.startsWith(value),
+            )
+            .map((a) => a.sessionId);
+        },
+      },
+    },
+  );
+
+  server.registerResource(
+    "actor_snapshot",
+    snapshotTemplate,
+    {
+      description: "Current state snapshot of a specific XState actor",
+      mimeType: "application/json",
+    },
+    (_uri, variables) => {
+      const sessionId = String(variables.sessionId);
+      const actor = store.getActor(sessionId);
+      if (!actor) {
+        return {
+          contents: [
+            {
+              uri: `xstate://actor/${sessionId}/snapshot`,
+              mimeType: "application/json",
+              text: JSON.stringify({ error: `Actor not found: ${sessionId}` }),
+            },
+          ],
+        };
+      }
+
+      return {
+        contents: [
+          {
+            uri: `xstate://actor/${sessionId}/snapshot`,
+            mimeType: "application/json",
+            text: JSON.stringify(
+              {
+                sessionId: actor.sessionId,
+                name: actor.name,
+                status: actor.currentSnapshot?.status ?? "unknown",
+                value: actor.currentSnapshot?.value ?? null,
+                context: actor.currentSnapshot?.context ?? null,
+                updatedAt: actor.updatedAt,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  const definitionTemplate = new ResourceTemplate(
+    "xstate://actor/{sessionId}/definition",
+    {
+      list: () => {
+        return {
+          resources: store
+            .listActors()
+            .filter((a) => a.definition !== null)
+            .map((actor) => ({
+              uri: `xstate://actor/${actor.sessionId}/definition`,
+              name: `${actor.name} definition`,
+              description: `Machine definition for ${actor.name} (${actor.sessionId})`,
+              mimeType: "application/json",
+            })),
+        };
+      },
+      complete: {
+        sessionId: (value: string) => {
+          const actors = store.listActors();
+          return actors
+            .filter(
+              (a) => a.sessionId.startsWith(value) || a.name.startsWith(value),
+            )
+            .map((a) => a.sessionId);
+        },
+      },
+    },
+  );
+
+  server.registerResource(
+    "actor_definition",
+    definitionTemplate,
+    {
+      description: "Machine definition of a specific XState actor",
+      mimeType: "application/json",
+    },
+    (_uri, variables) => {
+      const sessionId = String(variables.sessionId);
+      const actor = store.getActor(sessionId);
+      if (!actor) {
+        return {
+          contents: [
+            {
+              uri: `xstate://actor/${sessionId}/definition`,
+              mimeType: "application/json",
+              text: JSON.stringify({ error: `Actor not found: ${sessionId}` }),
+            },
+          ],
+        };
+      }
+
+      return {
+        contents: [
+          {
+            uri: `xstate://actor/${sessionId}/definition`,
+            mimeType: "application/json",
+            text: JSON.stringify(
+              {
+                sessionId: actor.sessionId,
+                name: actor.name,
+                definition: actor.definition,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    },
+  );
+
+  // --- Resource subscription notifications ---
+
+  store.onActorRegistered((sessionId) => {
+    server.sendResourceListChanged();
+    void server.server.sendResourceUpdated({
+      uri: `xstate://actor/${sessionId}/snapshot`,
+    });
+  });
+
+  store.onSnapshotUpdated((sessionId) => {
+    void server.server.sendResourceUpdated({
+      uri: `xstate://actor/${sessionId}/snapshot`,
+    });
+  });
+
+  store.onCleared(() => {
+    server.sendResourceListChanged();
+  });
+
+  // --- Prompts ---
+
+  server.registerPrompt(
+    "debug_actor",
+    {
+      title: "Debug Actor",
+      description:
+        "Analyze an XState actor for state consistency issues, missed transitions, and context validity.",
+      argsSchema: {
+        sessionId: z.string().describe("The actor's session ID to debug"),
+      },
+    },
+    ({ sessionId }) => {
+      return debugActor(store, sessionId);
+    },
+  );
+
+  server.registerPrompt(
+    "explain_machine",
+    {
+      title: "Explain Machine",
+      description:
+        "Explain an XState machine's states, transitions, guards, and current position in plain language.",
+      argsSchema: {
+        sessionId: z.string().describe("The actor's session ID to explain"),
+      },
+    },
+    ({ sessionId }) => {
+      return explainMachine(store, sessionId);
+    },
+  );
+
+  server.registerPrompt(
+    "trace_event_flow",
+    {
+      title: "Trace Event Flow",
+      description:
+        "Trace the sequence of events and state transitions for an XState actor, explaining each step.",
+      argsSchema: {
+        sessionId: z.string().describe("The actor's session ID to trace"),
+      },
+    },
+    ({ sessionId }) => {
+      return traceEventFlow(store, sessionId);
+    },
+  );
+
+  logger.info(
+    "MCP server created with 9 tools, 3 resources, and 3 prompts registered",
+  );
   return server;
 }

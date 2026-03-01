@@ -10,13 +10,32 @@ import type {
 import { RingBuffer } from "./types.js";
 import type { Logger } from "./logger.js";
 
+export type ActorRegisteredCallback = (sessionId: string) => void;
+export type SnapshotUpdatedCallback = (sessionId: string) => void;
+export type StoreCleared = () => void;
+
 export class ActorStore {
   private actors = new Map<string, ActorRecord>();
+  private onRegisterCallbacks: ActorRegisteredCallback[] = [];
+  private onSnapshotCallbacks: SnapshotUpdatedCallback[] = [];
+  private onClearCallbacks: StoreCleared[] = [];
 
   constructor(
     private bufferSize: number,
     private logger: Logger,
   ) {}
+
+  onActorRegistered(cb: ActorRegisteredCallback): void {
+    this.onRegisterCallbacks.push(cb);
+  }
+
+  onSnapshotUpdated(cb: SnapshotUpdatedCallback): void {
+    this.onSnapshotCallbacks.push(cb);
+  }
+
+  onCleared(cb: StoreCleared): void {
+    this.onClearCallbacks.push(cb);
+  }
 
   registerActor(event: ActorEvent): void {
     const {
@@ -69,6 +88,7 @@ export class ActorStore {
 
     this.actors.set(sessionId, record);
     this.logger.debug(`Registered actor: ${sessionId} (${record.name})`);
+    for (const cb of this.onRegisterCallbacks) cb(sessionId);
   }
 
   updateSnapshot(event: SnapshotEvent): void {
@@ -108,6 +128,7 @@ export class ActorStore {
     }
 
     actor.updatedAt = event.createdAt;
+    for (const cb of this.onSnapshotCallbacks) cb(event.sessionId);
   }
 
   addEvent(event: XStateEvent): void {
@@ -148,6 +169,7 @@ export class ActorStore {
   clear(): void {
     this.actors.clear();
     this.logger.info("Actor store cleared");
+    for (const cb of this.onClearCallbacks) cb();
   }
 
   get size(): number {

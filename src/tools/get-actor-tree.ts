@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 
 interface TreeNode {
@@ -7,6 +8,22 @@ interface TreeNode {
   status: string;
   children: TreeNode[];
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const treeNodeSchema: z.ZodType<any> = z.lazy(() =>
+  z.object({
+    sessionId: z.string(),
+    name: z.string(),
+    state: z.any(),
+    status: z.string(),
+    children: z.array(treeNodeSchema),
+  }),
+);
+
+export const getActorTreeOutputSchema = {
+  tree: z.array(treeNodeSchema),
+  totalActors: z.number(),
+};
 
 export function getActorTree(store: ActorStore) {
   const actors = store.listActors();
@@ -39,13 +56,15 @@ export function getActorTree(store: ActorStore) {
   );
 
   const tree = roots.map(buildNode);
+  const structuredContent = { tree, totalActors: actors.length };
 
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify({ tree, totalActors: actors.length }, null, 2),
+        text: JSON.stringify(structuredContent, null, 2),
       },
     ],
+    structuredContent,
   };
 }

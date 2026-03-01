@@ -1,4 +1,21 @@
+import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
+import { actorNotFoundResult } from "../errors.js";
+
+export const getStateTimelineOutputSchema = {
+  sessionId: z.string(),
+  name: z.string(),
+  currentState: z.unknown(),
+  totalTransitions: z.number(),
+  transitions: z.array(
+    z.object({
+      fromValue: z.unknown(),
+      toValue: z.unknown(),
+      event: z.string(),
+      timestamp: z.string(),
+    }),
+  ),
+};
 
 export function getStateTimeline(
   store: ActorStore,
@@ -8,36 +25,27 @@ export function getStateTimeline(
   const actor = store.getActor(sessionId);
 
   if (!actor) {
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: JSON.stringify({ error: `Actor not found: ${sessionId}` }),
-        },
-      ],
-      isError: true,
-    };
+    return actorNotFoundResult(sessionId, store);
   }
 
   const effectiveLimit = limit ?? 50;
   const transitions = actor.transitionHistory.getRecent(effectiveLimit);
 
+  const structuredContent = {
+    sessionId,
+    name: actor.name,
+    currentState: actor.currentSnapshot?.value ?? null,
+    totalTransitions: actor.transitionHistory.total,
+    transitions,
+  };
+
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            sessionId,
-            name: actor.name,
-            currentState: actor.currentSnapshot?.value ?? null,
-            totalTransitions: actor.transitionHistory.total,
-            transitions,
-          },
-          null,
-          2,
-        ),
+        text: JSON.stringify(structuredContent, null, 2),
       },
     ],
+    structuredContent,
   };
 }

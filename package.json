@@ -7,9 +7,34 @@
   "bin": {
     "xstate-mcp": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "mcp",
+    "xstate",
+    "state-machine",
+    "model-context-protocol",
+    "claude",
+    "ai",
+    "debugging",
+    "inspection",
+    "devtools",
+    "statechart"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eandualem/xstate-mcp.git"
+  },
+  "homepage": "https://github.com/eandualem/xstate-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/eandualem/xstate-mcp/issues"
+  },
+  "author": "Elias Andualem",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsup",
+    "prepare": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/ tests/",

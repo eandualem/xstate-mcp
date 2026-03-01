@@ -1,0 +1,39 @@
+{
+  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/registry/main/schemas/server.schema.json",
+  "name": "io.github.eandualem/xstate-mcp",
+  "description": "MCP server that bridges XState v5 inspection API to AI coding agents — live state, events, machine definitions, and bidirectional event sending.",
+  "repository": "https://github.com/eandualem/xstate-mcp",
+  "packages": [
+    {
+      "registry_name": "npm",
+      "name": "xstate-mcp",
+      "version": "1.0.0",
+      "runtime": "node",
+      "transport": [
+        {
+          "type": "stdio"
+        }
+      ],
+      "environment_variables": [
+        {
+          "name": "XSTATE_MCP_WS_PORT",
+          "description": "WebSocket server port for receiving XState inspection events",
+          "required": false,
+          "default": "7357"
+        },
+        {
+          "name": "XSTATE_MCP_BUFFER_SIZE",
+          "description": "Max events per actor in ring buffer",
+          "required": false,
+          "default": "100"
+        },
+        {
+          "name": "XSTATE_MCP_LOG_LEVEL",
+          "description": "Logging verbosity (debug, info, warn, error)",
+          "required": false,
+          "default": "info"
+        }
+      ]
+    }
+  ]
+}

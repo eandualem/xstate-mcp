@@ -1,5 +1,14 @@
+import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import type { ClientRegistry } from "../client-registry.js";
+import { actorNotFoundResult } from "../errors.js";
+
+export const sendEventOutputSchema = {
+  sessionId: z.string(),
+  event: z.record(z.unknown()),
+  success: z.boolean(),
+  error: z.string().optional(),
+};
 
 export async function sendEvent(
   store: ActorStore,
@@ -14,37 +23,26 @@ export async function sendEvent(
     if (byName) {
       sessionId = byName.sessionId;
     } else {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({
-              error: `Actor not found by sessionId or name: ${target}`,
-            }),
-          },
-        ],
-        isError: true,
-      };
+      return actorNotFoundResult(target, store);
     }
   }
 
   const result = await clientRegistry.sendEvent(sessionId, event);
 
+  const structuredContent = {
+    sessionId,
+    event,
+    ...result,
+  };
+
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            sessionId,
-            event,
-            ...result,
-          },
-          null,
-          2,
-        ),
+        text: JSON.stringify(structuredContent, null, 2),
       },
     ],
+    structuredContent,
     isError: !result.success,
   };
 }

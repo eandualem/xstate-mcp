@@ -1,4 +1,14 @@
+import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
+import { actorNotFoundResult } from "../errors.js";
+
+export const canHandleEventOutputSchema = {
+  sessionId: z.string(),
+  canHandle: z.boolean(),
+  currentState: z.unknown(),
+  matchedTransitions: z.array(z.string()),
+  note: z.string().optional(),
+};
 
 export function canHandleEvent(
   store: ActorStore,
@@ -8,31 +18,25 @@ export function canHandleEvent(
   const actor = store.getActor(sessionId);
 
   if (!actor) {
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: JSON.stringify({ error: `Actor not found: ${sessionId}` }),
-        },
-      ],
-      isError: true,
-    };
+    return actorNotFoundResult(sessionId, store);
   }
 
   if (!actor.definition || typeof actor.definition !== "object") {
+    const structuredContent = {
+      sessionId,
+      canHandle: false,
+      currentState: actor.currentSnapshot?.value ?? null,
+      matchedTransitions: [] as string[],
+      note: "No machine definition available — cannot check transitions",
+    };
     return {
       content: [
         {
           type: "text" as const,
-          text: JSON.stringify({
-            sessionId,
-            canHandle: false,
-            currentState: actor.currentSnapshot?.value ?? null,
-            matchedTransitions: [],
-            note: "No machine definition available — cannot check transitions",
-          }),
+          text: JSON.stringify(structuredContent),
         },
       ],
+      structuredContent,
     };
   }
 
@@ -43,26 +47,25 @@ export function canHandleEvent(
     eventType,
   );
 
+  const structuredContent = {
+    sessionId,
+    canHandle: matchedTransitions.length > 0,
+    currentState,
+    matchedTransitions,
+    note:
+      matchedTransitions.length > 0
+        ? "Guards are not evaluated — transition may still be rejected at runtime"
+        : undefined,
+  };
+
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            sessionId,
-            canHandle: matchedTransitions.length > 0,
-            currentState,
-            matchedTransitions,
-            note:
-              matchedTransitions.length > 0
-                ? "Guards are not evaluated — transition may still be rejected at runtime"
-                : undefined,
-          },
-          null,
-          2,
-        ),
+        text: JSON.stringify(structuredContent, null, 2),
       },
     ],
+    structuredContent,
   };
 }
 
