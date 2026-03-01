@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import { actorNotFoundResult, type ToolResult } from "../errors.js";
+import { safeStringify } from "../safe-stringify.js";
 
 export const canHandleEventOutputSchema = {
   sessionId: z.string(),
@@ -33,7 +34,7 @@ export function canHandleEvent(
       content: [
         {
           type: "text" as const,
-          text: JSON.stringify(structuredContent),
+          text: safeStringify(structuredContent),
         },
       ],
       structuredContent,
@@ -62,7 +63,7 @@ export function canHandleEvent(
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(structuredContent, null, 2),
+        text: safeStringify(structuredContent, 2),
       },
     ],
     structuredContent,
@@ -94,11 +95,17 @@ function findTransitions(
   // Resolve which states to check based on currentState
   const activeStates = resolveActiveStates(currentState);
 
-  for (const stateName of activeStates) {
-    const stateNode = states[stateName];
+  for (const activeState of activeStates) {
+    const stateNode = states[activeState.name];
     if (!stateNode) continue;
 
-    checkStateNode(stateNode, stateName, eventType, matched);
+    checkStateNode(
+      stateNode,
+      activeState.name,
+      eventType,
+      matched,
+      activeState.childValue,
+    );
   }
 
   // Also check wildcard "*" transitions
@@ -109,13 +116,23 @@ function findTransitions(
   return matched;
 }
 
-function resolveActiveStates(currentState: unknown): string[] {
+interface ActiveState {
+  name: string;
+  childValue: unknown;
+}
+
+function resolveActiveStates(currentState: unknown): ActiveState[] {
   if (typeof currentState === "string") {
-    return [currentState];
+    return [{ name: currentState, childValue: undefined }];
   }
   if (typeof currentState === "object" && currentState !== null) {
-    // Parallel/nested state: { panel: "open", data: "loaded" }
-    return Object.keys(currentState);
+    // Parallel/compound state: { panel: "closed", data: "loaded" }
+    return Object.entries(currentState as Record<string, unknown>).map(
+      ([key, value]) => ({
+        name: key,
+        childValue: value,
+      }),
+    );
   }
   return [];
 }
@@ -125,6 +142,7 @@ function checkStateNode(
   path: string,
   eventType: string,
   matched: string[],
+  activeChildValue?: unknown,
 ): void {
   const on = stateNode.on as Record<string, unknown> | undefined;
   if (on) {
@@ -146,15 +164,46 @@ function checkStateNode(
     | Record<string, Record<string, unknown>>
     | undefined;
   if (nestedStates) {
-    // Check initial state of nested machine
-    const initial = stateNode.initial as string | undefined;
-    if (initial && nestedStates[initial]) {
-      checkStateNode(
-        nestedStates[initial],
-        `${path}.${initial}`,
-        eventType,
-        matched,
-      );
+    if (typeof activeChildValue === "string") {
+      // Simple child: e.g. value = { panel: "closed" } → activeChildValue = "closed"
+      if (nestedStates[activeChildValue]) {
+        checkStateNode(
+          nestedStates[activeChildValue],
+          `${path}.${activeChildValue}`,
+          eventType,
+          matched,
+        );
+      }
+    } else if (
+      typeof activeChildValue === "object" &&
+      activeChildValue !== null
+    ) {
+      // Deep nesting: e.g. value = { panel: { view: "detail" } }
+      // → activeChildValue = { view: "detail" }, iterate entries
+      for (const [childName, nextChildValue] of Object.entries(
+        activeChildValue as Record<string, unknown>,
+      )) {
+        if (nestedStates[childName]) {
+          checkStateNode(
+            nestedStates[childName],
+            `${path}.${childName}`,
+            eventType,
+            matched,
+            nextChildValue,
+          );
+        }
+      }
+    } else {
+      // No info — fall back to initial
+      const childName = stateNode.initial as string | undefined;
+      if (childName && nestedStates[childName]) {
+        checkStateNode(
+          nestedStates[childName],
+          `${path}.${childName}`,
+          eventType,
+          matched,
+        );
+      }
     }
   }
 }

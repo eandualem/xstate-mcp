@@ -1,4 +1,5 @@
 import type { ActorStore } from "../actor-store.js";
+import { safeStringify } from "../safe-stringify.js";
 
 export function explainMachine(store: ActorStore, sessionId: string) {
   const actor = store.getActor(sessionId);
@@ -22,7 +23,7 @@ export function explainMachine(store: ActorStore, sessionId: string) {
     `Explain this XState v5 state machine in plain language. Make it understandable to someone who hasn't seen the code.`,
     ``,
     `## Actor: ${actor.name} (${actor.sessionId})`,
-    `- Current state: ${JSON.stringify(state?.value ?? null)}`,
+    `- Current state: ${safeStringify(state?.value ?? null)}`,
     `- Status: ${state?.status ?? "unknown"}`,
   ];
 
@@ -31,7 +32,7 @@ export function explainMachine(store: ActorStore, sessionId: string) {
       ``,
       `## Machine Definition`,
       `\`\`\`json`,
-      JSON.stringify(actor.definition, null, 2),
+      safeStringify(actor.definition, 2),
       `\`\`\``,
     );
   } else {
@@ -46,7 +47,7 @@ export function explainMachine(store: ActorStore, sessionId: string) {
       ``,
       `## Current Context`,
       `\`\`\`json`,
-      JSON.stringify(state.context, null, 2),
+      safeStringify(state.context, 2),
       `\`\`\``,
     );
   }
@@ -58,7 +59,7 @@ export function explainMachine(store: ActorStore, sessionId: string) {
     `2. **States** — List each state and what it represents. Note which is the initial state and any final states.`,
     `3. **Transitions** — For each state, what events cause transitions and where do they go?`,
     `4. **Guards** — What conditions gate transitions? What do they check?`,
-    `5. **Current position** — Where is the machine right now (state: ${JSON.stringify(state?.value ?? null)})? What can happen next from here?`,
+    `5. **Current position** — Where is the machine right now (state: ${safeStringify(state?.value ?? null)})? What can happen next from here?`,
   );
 
   return {

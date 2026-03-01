@@ -93,10 +93,10 @@ describe("get_state_timeline tool", () => {
     });
   });
 
-  it("does not record transition when value stays the same", () => {
+  it("records self-transition when context changes but value stays the same", () => {
     store.registerActor(makeActorEvent());
 
-    // Same value, different context — should NOT create a transition
+    // Same value, different context — records a self-transition
     store.updateSnapshot(
       makeSnapshotEvent({
         snapshot: {
@@ -110,7 +110,10 @@ describe("get_state_timeline tool", () => {
 
     const result = getStateTimeline(store, "x:0");
     const data = JSON.parse(result.content[0].text);
-    expect(data.totalTransitions).toBe(0);
+    expect(data.totalTransitions).toBe(1);
+    expect(data.transitions[0].fromValue).toBe("idle");
+    expect(data.transitions[0].toValue).toBe("idle");
+    expect(data.transitions[0].event).toBe("CONTEXT_UPDATE");
   });
 
   it("respects limit parameter", () => {

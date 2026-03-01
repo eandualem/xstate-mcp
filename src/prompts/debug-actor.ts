@@ -1,4 +1,5 @@
 import type { ActorStore } from "../actor-store.js";
+import { safeStringify } from "../safe-stringify.js";
 
 export function debugActor(store: ActorStore, sessionId: string) {
   const actor = store.getActor(sessionId);
@@ -26,8 +27,8 @@ export function debugActor(store: ActorStore, sessionId: string) {
     ``,
     `## Actor: ${actor.name} (${actor.sessionId})`,
     `- Status: ${state?.status ?? "unknown"}`,
-    `- Current state value: ${JSON.stringify(state?.value ?? null)}`,
-    `- Context: ${JSON.stringify(state?.context ?? null, null, 2)}`,
+    `- Current state value: ${safeStringify(state?.value ?? null)}`,
+    `- Context: ${safeStringify(state?.context ?? null, 2)}`,
     `- Parent: ${actor.parentId ?? "none (root actor)"}`,
     `- Created: ${actor.createdAt}`,
     `- Last updated: ${actor.updatedAt}`,
@@ -38,7 +39,7 @@ export function debugActor(store: ActorStore, sessionId: string) {
       ``,
       `## Machine Definition`,
       `\`\`\`json`,
-      JSON.stringify(actor.definition, null, 2),
+      safeStringify(actor.definition, 2),
       `\`\`\``,
     );
   }
@@ -48,7 +49,7 @@ export function debugActor(store: ActorStore, sessionId: string) {
       ``,
       `## Recent State Transitions (${transitions.length} of ${actor.transitionHistory.total} total)`,
       `\`\`\`json`,
-      JSON.stringify(transitions, null, 2),
+      safeStringify(transitions, 2),
       `\`\`\``,
     );
   }
@@ -58,7 +59,7 @@ export function debugActor(store: ActorStore, sessionId: string) {
       ``,
       `## Recent Events (${events.length} of ${actor.eventHistory.size} in buffer)`,
       `\`\`\`json`,
-      JSON.stringify(events, null, 2),
+      safeStringify(events, 2),
       `\`\`\``,
     );
   }

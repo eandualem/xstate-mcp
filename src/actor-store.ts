@@ -9,14 +9,17 @@ import type {
 } from "./types.js";
 import { RingBuffer } from "./types.js";
 import type { Logger } from "./logger.js";
+import { safeStringify } from "./safe-stringify.js";
 
 export type ActorRegisteredCallback = (sessionId: string) => void;
+export type ActorRemovedCallback = (sessionId: string) => void;
 export type SnapshotUpdatedCallback = (sessionId: string) => void;
 export type StoreCleared = () => void;
 
 export class ActorStore {
   private actors = new Map<string, ActorRecord>();
   private onRegisterCallbacks: ActorRegisteredCallback[] = [];
+  private onRemovedCallbacks: ActorRemovedCallback[] = [];
   private onSnapshotCallbacks: SnapshotUpdatedCallback[] = [];
   private onClearCallbacks: StoreCleared[] = [];
 
@@ -27,6 +30,10 @@ export class ActorStore {
 
   onActorRegistered(cb: ActorRegisteredCallback): void {
     this.onRegisterCallbacks.push(cb);
+  }
+
+  onActorRemoved(cb: ActorRemovedCallback): void {
+    this.onRemovedCallbacks.push(cb);
   }
 
   onSnapshotUpdated(cb: SnapshotUpdatedCallback): void {
@@ -101,21 +108,24 @@ export class ActorStore {
     if (event.snapshot && typeof event.snapshot === "object") {
       const s = event.snapshot as Record<string, unknown>;
       const previousValue = actor.currentSnapshot?.value ?? null;
+      const previousContext = actor.currentSnapshot?.context ?? null;
       const newValue = s.value ?? actor.currentSnapshot?.value ?? null;
+      const newContext = s.context ?? actor.currentSnapshot?.context ?? null;
 
       actor.currentSnapshot = {
         status:
           (s.status as string) ?? actor.currentSnapshot?.status ?? "active",
         value: newValue,
-        context: s.context ?? actor.currentSnapshot?.context ?? null,
+        context: newContext,
         output: s.output,
       };
 
-      // Track state transition when value changes
-      if (
-        newValue !== null &&
-        JSON.stringify(previousValue) !== JSON.stringify(newValue)
-      ) {
+      // Track transition when value OR context changes
+      const valueChanged =
+        safeStringify(previousValue) !== safeStringify(newValue);
+      const contextChanged =
+        safeStringify(previousContext) !== safeStringify(newContext);
+      if (newValue !== null && (valueChanged || contextChanged)) {
         const eventType = (event.event as Record<string, unknown> | undefined)
           ?.type;
         actor.transitionHistory.push({
@@ -146,6 +156,15 @@ export class ActorStore {
 
     actor.eventHistory.push(record);
     actor.updatedAt = event.createdAt;
+  }
+
+  removeActor(sessionId: string): boolean {
+    const deleted = this.actors.delete(sessionId);
+    if (deleted) {
+      this.logger.debug(`Removed actor: ${sessionId}`);
+      for (const cb of this.onRemovedCallbacks) cb(sessionId);
+    }
+    return deleted;
   }
 
   getActor(sessionId: string): ActorRecord | undefined {

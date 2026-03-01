@@ -24,5 +24,13 @@ export function loadConfig(): Config {
     );
   }
 
-  return { wsPort, bufferSize, logLevel };
+  const allowedOriginsRaw = process.env.XSTATE_MCP_ALLOWED_ORIGINS;
+  const allowedOrigins = allowedOriginsRaw
+    ? allowedOriginsRaw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : ["http://localhost:*", "http://127.0.0.1:*"];
+
+  return { wsPort, bufferSize, logLevel, allowedOrigins };
 }

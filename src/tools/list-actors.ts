@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import type { ToolResult } from "../errors.js";
+import { safeStringify } from "../safe-stringify.js";
 
 export const listActorsOutputSchema = {
   actors: z.array(
@@ -15,8 +16,14 @@ export const listActorsOutputSchema = {
   totalActors: z.number(),
 };
 
-export function listActors(store: ActorStore): ToolResult {
-  const actors = store.listActors().map((actor) => ({
+export function listActors(store: ActorStore, status?: string): ToolResult {
+  let allActors = store.listActors();
+  if (status) {
+    allActors = allActors.filter(
+      (a) => (a.currentSnapshot?.status ?? "unknown") === status,
+    );
+  }
+  const actors = allActors.map((actor) => ({
     sessionId: actor.sessionId,
     name: actor.name,
     currentState: actor.currentSnapshot?.value ?? null,
@@ -30,7 +37,7 @@ export function listActors(store: ActorStore): ToolResult {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(structuredContent, null, 2),
+        text: safeStringify(structuredContent, 2),
       },
     ],
     structuredContent,

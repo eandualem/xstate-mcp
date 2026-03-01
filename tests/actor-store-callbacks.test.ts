@@ -61,6 +61,33 @@ describe("ActorStore callbacks", () => {
     });
   });
 
+  describe("onActorRemoved", () => {
+    it("fires callback when an actor is removed", () => {
+      const cb = vi.fn();
+      store.onActorRemoved(cb);
+
+      store.registerActor({
+        type: "@xstate.actor",
+        sessionId: "x:0",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+
+      store.removeActor("x:0");
+
+      expect(cb).toHaveBeenCalledOnce();
+      expect(cb).toHaveBeenCalledWith("x:0");
+    });
+
+    it("does not fire when removing non-existent actor", () => {
+      const cb = vi.fn();
+      store.onActorRemoved(cb);
+
+      store.removeActor("nonexistent");
+
+      expect(cb).not.toHaveBeenCalled();
+    });
+  });
+
   describe("onSnapshotUpdated", () => {
     it("fires callback when a snapshot is updated", () => {
       const cb = vi.fn();

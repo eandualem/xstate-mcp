@@ -32,6 +32,57 @@ describe("list_actors tool", () => {
     expect(data.totalActors).toBe(0);
   });
 
+  it("filters actors by status", () => {
+    store.registerActor(makeActorEvent());
+    store.registerActor(
+      makeActorEvent({
+        sessionId: "x:1",
+        name: "stopped-actor",
+        snapshot: { status: "stopped", value: "final", context: {} },
+      }),
+    );
+    store.registerActor(
+      makeActorEvent({
+        sessionId: "x:2",
+        name: "done-actor",
+        snapshot: { status: "done", value: "complete", context: {} },
+      }),
+    );
+
+    const activeResult = listActors(store, "active");
+    const activeData = JSON.parse(activeResult.content[0].text);
+    expect(activeData.totalActors).toBe(1);
+    expect(activeData.actors[0].sessionId).toBe("x:0");
+
+    const stoppedResult = listActors(store, "stopped");
+    const stoppedData = JSON.parse(stoppedResult.content[0].text);
+    expect(stoppedData.totalActors).toBe(1);
+    expect(stoppedData.actors[0].sessionId).toBe("x:1");
+  });
+
+  it("returns empty when no actors match status filter", () => {
+    store.registerActor(makeActorEvent());
+    const result = listActors(store, "error");
+    const data = JSON.parse(result.content[0].text);
+    expect(data.totalActors).toBe(0);
+    expect(data.actors).toEqual([]);
+  });
+
+  it("returns all actors when no status filter", () => {
+    store.registerActor(makeActorEvent());
+    store.registerActor(
+      makeActorEvent({
+        sessionId: "x:1",
+        name: "done-actor",
+        snapshot: { status: "done", value: "final", context: {} },
+      }),
+    );
+
+    const result = listActors(store);
+    const data = JSON.parse(result.content[0].text);
+    expect(data.totalActors).toBe(2);
+  });
+
   it("returns actor summaries", () => {
     store.registerActor(makeActorEvent());
     store.registerActor(

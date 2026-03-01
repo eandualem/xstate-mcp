@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import type { ToolResult } from "../errors.js";
+import { safeStringify } from "../safe-stringify.js";
 
 interface TreeNode {
   sessionId: string;
@@ -39,14 +40,22 @@ export function getActorTree(store: ActorStore): ToolResult {
     childrenMap.get(parentId)!.push(actor);
   }
 
-  function buildNode(actor: (typeof actors)[0]): TreeNode {
+  function buildNode(
+    actor: (typeof actors)[0],
+    visited: Set<string>,
+  ): TreeNode {
     const children = childrenMap.get(actor.sessionId) ?? [];
     return {
       sessionId: actor.sessionId,
       name: actor.name,
       state: actor.currentSnapshot?.value ?? null,
       status: actor.currentSnapshot?.status ?? "unknown",
-      children: children.map(buildNode),
+      children: children
+        .filter((child) => !visited.has(child.sessionId))
+        .map((child) => {
+          visited.add(child.sessionId);
+          return buildNode(child, visited);
+        }),
     };
   }
 
@@ -56,14 +65,15 @@ export function getActorTree(store: ActorStore): ToolResult {
     (a) => a.parentId === null || !knownIds.has(a.parentId),
   );
 
-  const tree = roots.map(buildNode);
+  const visited = new Set<string>(roots.map((r) => r.sessionId));
+  const tree = roots.map((root) => buildNode(root, visited));
   const structuredContent = { tree, totalActors: actors.length };
 
   return {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(structuredContent, null, 2),
+        text: safeStringify(structuredContent, 2),
       },
     ],
     structuredContent,

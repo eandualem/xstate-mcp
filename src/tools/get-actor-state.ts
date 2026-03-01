@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import { actorNotFoundResult, type ToolResult } from "../errors.js";
+import { safeStringify } from "../safe-stringify.js";
 
 export const getActorStateOutputSchema = {
   sessionId: z.string(),
@@ -12,9 +13,15 @@ export const getActorStateOutputSchema = {
   updatedAt: z.string(),
 };
 
+export interface GetActorStateOptions {
+  excludeContext?: boolean;
+  contextMaxChars?: number;
+}
+
 export function getActorState(
   store: ActorStore,
   sessionId: string,
+  opts?: GetActorStateOptions,
 ): ToolResult {
   const actor = store.getActor(sessionId);
 
@@ -22,12 +29,22 @@ export function getActorState(
     return actorNotFoundResult(sessionId, store);
   }
 
+  let context: unknown = actor.currentSnapshot?.context ?? null;
+  if (opts?.excludeContext) {
+    context = "[excluded]";
+  } else if (opts?.contextMaxChars != null && context !== null) {
+    const serialized = safeStringify(context);
+    if (serialized.length > opts.contextMaxChars) {
+      context = `${serialized.slice(0, opts.contextMaxChars)}[truncated, full size: ${serialized.length}]`;
+    }
+  }
+
   const structuredContent = {
     sessionId: actor.sessionId,
     name: actor.name,
     status: actor.currentSnapshot?.status ?? "unknown",
     value: actor.currentSnapshot?.value ?? null,
-    context: actor.currentSnapshot?.context ?? null,
+    context,
     parentId: actor.parentId,
     updatedAt: actor.updatedAt,
   };
@@ -36,7 +53,7 @@ export function getActorState(
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(structuredContent, null, 2),
+        text: safeStringify(structuredContent, 2),
       },
     ],
     structuredContent,

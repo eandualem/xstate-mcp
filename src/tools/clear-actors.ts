@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import type { ToolResult } from "../errors.js";
+import { safeStringify } from "../safe-stringify.js";
 
 export const clearActorsOutputSchema = {
   cleared: z.number(),
@@ -16,7 +17,7 @@ export function clearActors(store: ActorStore): ToolResult {
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(structuredContent),
+        text: safeStringify(structuredContent),
       },
     ],
     structuredContent,

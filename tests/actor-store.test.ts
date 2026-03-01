@@ -213,6 +213,92 @@ describe("ActorStore", () => {
     });
   });
 
+  describe("transition tracking", () => {
+    it("records transition when value changes", () => {
+      store.registerActor(makeActorEvent());
+
+      store.updateSnapshot(
+        makeSnapshotEvent({
+          snapshot: { status: "active", value: "loading", context: {} },
+          event: { type: "LOAD" },
+        }),
+      );
+
+      const actor = store.getActor("x:0:testMachine");
+      const transitions = actor!.transitionHistory.toArray();
+      expect(transitions).toHaveLength(1);
+      expect(transitions[0].fromValue).toBe("idle");
+      expect(transitions[0].toValue).toBe("loading");
+      expect(transitions[0].event).toBe("LOAD");
+    });
+
+    it("records transition when context changes but value stays the same", () => {
+      store.registerActor(makeActorEvent());
+
+      // First snapshot establishes value="idle", context={}
+      // Now send a snapshot where value is still "idle" but context changed
+      store.updateSnapshot(
+        makeSnapshotEvent({
+          snapshot: {
+            status: "active",
+            value: "idle",
+            context: { count: 1 },
+          },
+          event: { type: "INCREMENT" },
+          createdAt: "2026-02-28T12:00:01.000Z",
+        }),
+      );
+
+      const actor = store.getActor("x:0:testMachine");
+      const transitions = actor!.transitionHistory.toArray();
+      expect(transitions).toHaveLength(1);
+      expect(transitions[0].fromValue).toBe("idle");
+      expect(transitions[0].toValue).toBe("idle");
+      expect(transitions[0].event).toBe("INCREMENT");
+    });
+
+    it("does not record transition when neither value nor context changes", () => {
+      store.registerActor(makeActorEvent());
+
+      // Send snapshot with same value and context as initial
+      store.updateSnapshot(
+        makeSnapshotEvent({
+          snapshot: { status: "active", value: "idle", context: {} },
+          event: { type: "NOOP" },
+        }),
+      );
+
+      const actor = store.getActor("x:0:testMachine");
+      expect(actor!.transitionHistory.toArray()).toHaveLength(0);
+    });
+  });
+
+  describe("removeActor", () => {
+    it("removes an actor by sessionId", () => {
+      store.registerActor(makeActorEvent());
+      expect(store.size).toBe(1);
+
+      const result = store.removeActor("x:0:testMachine");
+      expect(result).toBe(true);
+      expect(store.size).toBe(0);
+      expect(store.getActor("x:0:testMachine")).toBeUndefined();
+    });
+
+    it("returns false for non-existent actor", () => {
+      const result = store.removeActor("nonexistent");
+      expect(result).toBe(false);
+    });
+
+    it("does not affect other actors", () => {
+      store.registerActor(makeActorEvent({ sessionId: "x:0", name: "app" }));
+      store.registerActor(makeActorEvent({ sessionId: "x:1", name: "agents" }));
+
+      store.removeActor("x:0");
+      expect(store.size).toBe(1);
+      expect(store.getActor("x:1")).toBeDefined();
+    });
+  });
+
   describe("listActors", () => {
     it("returns empty array when no actors", () => {
       expect(store.listActors()).toEqual([]);

@@ -34,6 +34,7 @@ import { sendEvent, sendEventOutputSchema } from "./tools/send-event.js";
 import { debugActor } from "./prompts/debug-actor.js";
 import { explainMachine } from "./prompts/explain-machine.js";
 import { traceEventFlow } from "./prompts/trace-event-flow.js";
+import { safeStringify } from "./safe-stringify.js";
 
 const READ_ONLY_ANNOTATIONS = {
   readOnlyHint: true,
@@ -60,12 +61,18 @@ export function createMcpServer(
       title: "List Actors",
       description:
         "List all registered XState actors with summary information including current state, status, and child count.",
+      inputSchema: {
+        status: z
+          .enum(["active", "done", "stopped", "error"])
+          .optional()
+          .describe("Filter actors by status. Omit to return all actors."),
+      },
       outputSchema: listActorsOutputSchema,
       annotations: READ_ONLY_ANNOTATIONS,
     },
-    () => {
-      logger.debug("Tool called: list_actors");
-      return listActors(store);
+    ({ status }) => {
+      logger.debug(`Tool called: list_actors(status=${status ?? "all"})`);
+      return listActors(store, status);
     },
   );
 
@@ -79,13 +86,28 @@ export function createMcpServer(
         sessionId: z
           .string()
           .describe("The actor's session ID (from list_actors)"),
+        excludeContext: z
+          .boolean()
+          .optional()
+          .describe(
+            "If true, replaces context with '[excluded]' to reduce output size",
+          ),
+        contextMaxChars: z
+          .number()
+          .optional()
+          .describe(
+            "Truncate serialized context to this many characters. Adds '[truncated, full size: N]' suffix.",
+          ),
       },
       outputSchema: getActorStateOutputSchema,
       annotations: READ_ONLY_ANNOTATIONS,
     },
-    ({ sessionId }) => {
+    ({ sessionId, excludeContext, contextMaxChars }) => {
       logger.debug(`Tool called: get_actor_state(${sessionId})`);
-      return getActorState(store, sessionId);
+      return getActorState(store, sessionId, {
+        excludeContext,
+        contextMaxChars,
+      });
     },
   );
 
@@ -276,7 +298,7 @@ export function createMcpServer(
           {
             uri: "xstate://actors",
             mimeType: "application/json",
-            text: JSON.stringify(actors, null, 2),
+            text: safeStringify(actors, 2),
           },
         ],
       };
@@ -336,7 +358,7 @@ export function createMcpServer(
           {
             uri: `xstate://actor/${sessionId}/snapshot`,
             mimeType: "application/json",
-            text: JSON.stringify(
+            text: safeStringify(
               {
                 sessionId: actor.sessionId,
                 name: actor.name,
@@ -345,7 +367,6 @@ export function createMcpServer(
                 context: actor.currentSnapshot?.context ?? null,
                 updatedAt: actor.updatedAt,
               },
-              null,
               2,
             ),
           },
@@ -410,13 +431,12 @@ export function createMcpServer(
           {
             uri: `xstate://actor/${sessionId}/definition`,
             mimeType: "application/json",
-            text: JSON.stringify(
+            text: safeStringify(
               {
                 sessionId: actor.sessionId,
                 name: actor.name,
                 definition: actor.definition,
               },
-              null,
               2,
             ),
           },
@@ -438,6 +458,10 @@ export function createMcpServer(
     void server.server.sendResourceUpdated({
       uri: `xstate://actor/${sessionId}/snapshot`,
     });
+  });
+
+  store.onActorRemoved(() => {
+    server.sendResourceListChanged();
   });
 
   store.onCleared(() => {

@@ -1,4 +1,5 @@
 import type { LogLevel } from "./types.js";
+import { safeStringify } from "./safe-stringify.js";
 
 const LEVEL_ORDER: Record<LogLevel, number> = {
   debug: 0,
@@ -21,7 +22,7 @@ export class Logger {
     const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
 
     if (data !== undefined) {
-      process.stderr.write(`${prefix} ${message} ${JSON.stringify(data)}\n`);
+      process.stderr.write(`${prefix} ${message} ${safeStringify(data)}\n`);
     } else {
       process.stderr.write(`${prefix} ${message}\n`);
     }

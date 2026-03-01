@@ -25,6 +25,7 @@ async function main() {
     store,
     clientRegistry,
     logger,
+    allowedOrigins: config.allowedOrigins,
   });
   const mcpServer = createMcpServer(store, clientRegistry, logger);
 

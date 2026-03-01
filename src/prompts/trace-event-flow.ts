@@ -1,4 +1,5 @@
 import type { ActorStore } from "../actor-store.js";
+import { safeStringify } from "../safe-stringify.js";
 
 export function traceEventFlow(store: ActorStore, sessionId: string) {
   const actor = store.getActor(sessionId);
@@ -25,7 +26,7 @@ export function traceEventFlow(store: ActorStore, sessionId: string) {
     `Trace the event flow for this XState v5 actor. Walk through each event and transition chronologically, explaining what happened and why.`,
     ``,
     `## Actor: ${actor.name} (${actor.sessionId})`,
-    `- Current state: ${JSON.stringify(state?.value ?? null)}`,
+    `- Current state: ${safeStringify(state?.value ?? null)}`,
     `- Status: ${state?.status ?? "unknown"}`,
     `- Total transitions recorded: ${actor.transitionHistory.total}`,
     `- Total events in buffer: ${actor.eventHistory.size}`,
@@ -36,7 +37,7 @@ export function traceEventFlow(store: ActorStore, sessionId: string) {
       ``,
       `## State Transitions (chronological)`,
       `\`\`\`json`,
-      JSON.stringify(transitions, null, 2),
+      safeStringify(transitions, 2),
       `\`\`\``,
     );
   } else {
@@ -48,7 +49,7 @@ export function traceEventFlow(store: ActorStore, sessionId: string) {
       ``,
       `## Events (chronological)`,
       `\`\`\`json`,
-      JSON.stringify(events, null, 2),
+      safeStringify(events, 2),
       `\`\`\``,
     );
   } else {
@@ -60,7 +61,7 @@ export function traceEventFlow(store: ActorStore, sessionId: string) {
       ``,
       `## Machine Definition (for reference)`,
       `\`\`\`json`,
-      JSON.stringify(actor.definition, null, 2),
+      safeStringify(actor.definition, 2),
       `\`\`\``,
     );
   }
@@ -71,7 +72,7 @@ export function traceEventFlow(store: ActorStore, sessionId: string) {
     `1. **Chronological walkthrough** — For each transition, explain: what event triggered it, what state it moved from/to, and why that transition exists.`,
     `2. **Events without transitions** — Identify any events that did NOT cause a state transition. Why? Were they handled silently, or ignored?`,
     `3. **Timing patterns** — Are there unusual gaps or bursts in the event flow? What do they suggest?`,
-    `4. **Current state reasoning** — Given the full event history, explain why the machine ended up in its current state (${JSON.stringify(state?.value ?? null)}).`,
+    `4. **Current state reasoning** — Given the full event history, explain why the machine ended up in its current state (${safeStringify(state?.value ?? null)}).`,
   );
 
   return {

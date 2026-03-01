@@ -6,6 +6,7 @@ export interface Config {
   wsPort: number;
   bufferSize: number;
   logLevel: LogLevel;
+  allowedOrigins: string[];
 }
 
 export type LogLevel = "debug" | "info" | "warn" | "error";

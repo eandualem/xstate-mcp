@@ -377,4 +377,97 @@ describe("WebSocket Server", () => {
 
     client.close();
   });
+
+  // --- Origin verification tests ---
+
+  it("rejects WebSocket connection from disallowed origin", async () => {
+    store = new ActorStore(100, logger);
+    wss = createWsServer({
+      port: TEST_PORT + 9,
+      store,
+      logger,
+      allowedOrigins: ["http://localhost:*"],
+    });
+    await wait(100);
+
+    const client = new WebSocket(`ws://localhost:${TEST_PORT + 9}`, {
+      origin: "http://evil.example.com",
+    });
+
+    const error = await new Promise<Error>((resolve) => {
+      client.on("error", resolve);
+      client.on("unexpected-response", (_req, res) => {
+        resolve(new Error(`HTTP ${res.statusCode}`));
+      });
+    });
+
+    expect(error.message).toContain("403");
+    client.close();
+  });
+
+  it("allows WebSocket connection from matching origin", async () => {
+    store = new ActorStore(100, logger);
+    wss = createWsServer({
+      port: TEST_PORT + 10,
+      store,
+      logger,
+      allowedOrigins: ["http://localhost:*"],
+    });
+    await wait(100);
+
+    const client = new WebSocket(`ws://localhost:${TEST_PORT + 10}`, {
+      origin: "http://localhost:3000",
+    });
+    await waitForOpen(client);
+
+    // Connection succeeded — send a valid event to prove it works
+    client.send(
+      JSON.stringify({
+        type: "@xstate.actor",
+        sessionId: "x:0:origin-test",
+        rootId: "x:0",
+        name: "test",
+        snapshot: { status: "active", value: "idle", context: {} },
+        createdAt: "2026-02-28T12:00:00.000Z",
+        id: "evt-1",
+        _version: 1,
+      }),
+    );
+    await wait(50);
+    expect(store.size).toBe(1);
+
+    client.close();
+  });
+
+  it("allows WebSocket connection with no origin header", async () => {
+    store = new ActorStore(100, logger);
+    wss = createWsServer({
+      port: TEST_PORT + 11,
+      store,
+      logger,
+      allowedOrigins: ["http://localhost:*"],
+    });
+    await wait(100);
+
+    // Default WebSocket client does not send Origin header
+    const client = new WebSocket(`ws://localhost:${TEST_PORT + 11}`);
+    await waitForOpen(client);
+
+    client.send(
+      JSON.stringify({
+        type: "@xstate.actor",
+        sessionId: "x:0:no-origin",
+        rootId: "x:0",
+        name: "test",
+        snapshot: { status: "active", value: "idle", context: {} },
+        createdAt: "2026-02-28T12:00:00.000Z",
+        id: "evt-1",
+        _version: 1,
+      }),
+    );
+    await wait(50);
+    expect(store.size).toBe(1);
+
+    client.close();
+  });
 });

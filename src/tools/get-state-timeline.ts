@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import { actorNotFoundResult, type ToolResult } from "../errors.js";
+import { safeStringify } from "../safe-stringify.js";
 
 export const getStateTimelineOutputSchema = {
   sessionId: z.string(),
@@ -43,7 +44,7 @@ export function getStateTimeline(
     content: [
       {
         type: "text" as const,
-        text: JSON.stringify(structuredContent, null, 2),
+        text: safeStringify(structuredContent, 2),
       },
     ],
     structuredContent,

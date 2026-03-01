@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ClientRegistry } from "../src/client-registry.js";
+import { ActorStore } from "../src/actor-store.js";
 import { Logger } from "../src/logger.js";
 
 const logger = new Logger("error");
@@ -110,6 +111,68 @@ describe("ClientRegistry", () => {
       expect(result.error).toContain("Timeout");
 
       vi.useRealTimers();
+    });
+  });
+
+  describe("disconnect behavior", () => {
+    it("rejects pending promises when client disconnects", async () => {
+      const ws = makeMockWs();
+      registry.registerSession(ws as never, "x:0");
+
+      const promise = registry.sendEvent("x:0", { type: "TEST" });
+
+      // Disconnect before response arrives
+      registry.removeClient(ws as never);
+
+      const result = await promise;
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Client disconnected");
+    });
+
+    it("removes actors from store when store is provided", () => {
+      const store = new ActorStore(100, logger);
+      store.registerActor({
+        type: "@xstate.actor",
+        sessionId: "x:0",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+      store.registerActor({
+        type: "@xstate.actor",
+        sessionId: "x:1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+
+      const ws = makeMockWs();
+      registry.registerSession(ws as never, "x:0");
+      registry.registerSession(ws as never, "x:1");
+
+      registry.removeClient(ws as never, store);
+
+      expect(store.size).toBe(0);
+    });
+
+    it("does not affect actors from other clients", () => {
+      const store = new ActorStore(100, logger);
+      store.registerActor({
+        type: "@xstate.actor",
+        sessionId: "x:0",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+      store.registerActor({
+        type: "@xstate.actor",
+        sessionId: "x:1",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+
+      const ws1 = makeMockWs();
+      const ws2 = makeMockWs();
+      registry.registerSession(ws1 as never, "x:0");
+      registry.registerSession(ws2 as never, "x:1");
+
+      registry.removeClient(ws1 as never, store);
+
+      expect(store.size).toBe(1);
+      expect(store.getActor("x:1")).toBeDefined();
     });
   });
 

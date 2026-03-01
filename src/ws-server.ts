@@ -16,12 +16,51 @@ export interface WsServerOptions {
   store: ActorStore;
   clientRegistry?: ClientRegistry;
   logger: Logger;
+  allowedOrigins?: string[];
+}
+
+/**
+ * Check if an origin matches any of the allowed origin patterns.
+ * Patterns support `*` as a port wildcard (e.g. `http://localhost:*`).
+ */
+export function matchesAllowedOrigin(
+  origin: string,
+  patterns: string[],
+): boolean {
+  for (const pattern of patterns) {
+    // Escape regex special chars except *, then replace :* with port wildcard
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Replace :\* (escaped colon-star) with optional port: (:\d+)?
+    const regexStr = `^${escaped.replace(":\\*", "(:\\d+)?")}$`;
+    if (new RegExp(regexStr).test(origin)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function createWsServer(options: WsServerOptions): WebSocketServer {
-  const { port, store, clientRegistry, logger } = options;
+  const { port, store, clientRegistry, logger, allowedOrigins } = options;
 
-  const wss = new WebSocketServer({ port });
+  const wss = new WebSocketServer({
+    port,
+    verifyClient: allowedOrigins
+      ? (info, callback) => {
+          const origin = info.origin;
+          // No origin header (CLI tools, native clients) → allow
+          if (!origin) {
+            callback(true);
+            return;
+          }
+          if (matchesAllowedOrigin(origin, allowedOrigins)) {
+            callback(true);
+          } else {
+            logger.warn(`Rejected WebSocket connection from origin: ${origin}`);
+            callback(false, 403, "Origin not allowed");
+          }
+        }
+      : undefined,
+  });
 
   wss.on("listening", () => {
     logger.info(`WebSocket server listening on port ${port}`);
@@ -36,7 +75,7 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
 
     ws.on("close", () => {
       if (clientRegistry) {
-        clientRegistry.removeClient(ws);
+        clientRegistry.removeClient(ws, store);
       }
       logger.info("Client disconnected");
     });

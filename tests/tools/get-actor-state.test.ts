@@ -37,6 +37,57 @@ describe("get_actor_state tool", () => {
     expect(data.parentId).toBe("x:0");
   });
 
+  it("excludes context when excludeContext is true", () => {
+    const result = getActorState(store, "x:0:agents", {
+      excludeContext: true,
+    });
+    const data = JSON.parse(result.content[0].text);
+    expect(data.context).toBe("[excluded]");
+    expect(data.value).toBe("idle"); // other fields unaffected
+  });
+
+  it("truncates context when contextMaxChars is set", () => {
+    // Register actor with large context
+    store.registerActor({
+      type: "@xstate.actor",
+      sessionId: "x:0:big",
+      rootId: "x:0",
+      name: "bigActor",
+      snapshot: {
+        status: "active",
+        value: "idle",
+        context: { data: "a".repeat(500) },
+      },
+      createdAt: "2026-02-28T12:00:00.000Z",
+    });
+
+    const result = getActorState(store, "x:0:big", {
+      contextMaxChars: 20,
+    });
+    const data = JSON.parse(result.content[0].text);
+    expect(typeof data.context).toBe("string");
+    expect(data.context.length).toBeLessThan(100);
+    expect(data.context).toContain("[truncated, full size:");
+  });
+
+  it("does not truncate small context", () => {
+    const result = getActorState(store, "x:0:agents", {
+      contextMaxChars: 10000,
+    });
+    const data = JSON.parse(result.content[0].text);
+    // Context fits within limit — returned as-is (parsed back to object)
+    expect(data.context).toEqual({ entities: [], selectedId: null });
+  });
+
+  it("excludeContext takes precedence over contextMaxChars", () => {
+    const result = getActorState(store, "x:0:agents", {
+      excludeContext: true,
+      contextMaxChars: 10,
+    });
+    const data = JSON.parse(result.content[0].text);
+    expect(data.context).toBe("[excluded]");
+  });
+
   it("returns error for unknown sessionId", () => {
     const result = getActorState(store, "nonexistent");
     const data = JSON.parse(result.content[0].text);

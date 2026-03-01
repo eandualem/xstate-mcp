@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { WebSocket } from "ws";
+import type { ActorStore } from "./actor-store.js";
 import type { Logger } from "./logger.js";
 
 interface PendingRequest {
@@ -19,6 +20,8 @@ export class ClientRegistry {
   private clientToSessions = new Map<WebSocket, Set<string>>();
   /** requestId → pending resolve + timeout */
   private pending = new Map<string, PendingRequest>();
+  /** requestId → sessionId for matching pending requests to sessions on disconnect */
+  private requestToSession = new Map<string, string>();
 
   constructor(
     private timeoutMs: number,
@@ -39,12 +42,32 @@ export class ClientRegistry {
 
   /**
    * Remove all sessions associated with a disconnected client.
+   * Rejects pending sendEvent promises and optionally removes actors from the store.
    */
-  removeClient(ws: WebSocket): void {
+  removeClient(ws: WebSocket, store?: ActorStore): void {
     const sessions = this.clientToSessions.get(ws);
     if (sessions) {
+      // Reject pending requests for sessions owned by this client
+      for (const [requestId, sessionId] of this.requestToSession) {
+        if (sessions.has(sessionId)) {
+          const pending = this.pending.get(requestId);
+          if (pending) {
+            clearTimeout(pending.timer);
+            this.pending.delete(requestId);
+            this.requestToSession.delete(requestId);
+            pending.resolve({
+              success: false,
+              error: "Client disconnected",
+            });
+          }
+        }
+      }
+
       for (const sessionId of sessions) {
         this.sessionToClient.delete(sessionId);
+        if (store) {
+          store.removeActor(sessionId);
+        }
       }
       this.clientToSessions.delete(ws);
     }
@@ -78,6 +101,7 @@ export class ClientRegistry {
     return new Promise<SendEventResult>((resolve) => {
       const timer = setTimeout(() => {
         this.pending.delete(requestId);
+        this.requestToSession.delete(requestId);
         resolve({
           success: false,
           error: `Timeout waiting for response (${this.timeoutMs}ms)`,
@@ -85,6 +109,7 @@ export class ClientRegistry {
       }, this.timeoutMs);
 
       this.pending.set(requestId, { resolve, timer });
+      this.requestToSession.set(requestId, sessionId);
 
       const message = JSON.stringify({
         type: "xstate-mcp.send",
@@ -97,6 +122,7 @@ export class ClientRegistry {
         if (err) {
           clearTimeout(timer);
           this.pending.delete(requestId);
+          this.requestToSession.delete(requestId);
           resolve({ success: false, error: `Failed to send: ${err.message}` });
         }
       });
@@ -119,6 +145,7 @@ export class ClientRegistry {
 
     clearTimeout(pending.timer);
     this.pending.delete(requestId);
+    this.requestToSession.delete(requestId);
     pending.resolve({ success, error });
   }
 
