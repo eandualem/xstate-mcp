@@ -13,8 +13,6 @@ function makeActorEvent(overrides: Partial<ActorEvent> = {}): ActorEvent {
     definition: { id: "test", initial: "idle", states: { idle: {} } },
     snapshot: { status: "active", value: "idle", context: {} },
     createdAt: "2026-02-28T12:00:00.000Z",
-    id: "evt-1",
-    _version: 1,
     ...overrides,
   };
 }
@@ -29,8 +27,6 @@ function makeSnapshotEvent(
     snapshot: { status: "active", value: "loading", context: { items: [] } },
     event: { type: "LOAD" },
     createdAt: "2026-02-28T12:00:01.000Z",
-    id: "evt-2",
-    _version: 1,
     ...overrides,
   };
 }
@@ -43,8 +39,6 @@ function makeXStateEvent(overrides: Partial<XStateEvent> = {}): XStateEvent {
     sourceId: "x:0",
     event: { type: "LOAD" },
     createdAt: "2026-02-28T12:00:01.000Z",
-    id: "evt-3",
-    _version: 1,
     ...overrides,
   };
 }
@@ -175,7 +169,6 @@ describe("ActorStore", () => {
         smallStore.addEvent(
           makeXStateEvent({
             event: { type: `EVENT_${i}` },
-            id: `evt-${i}`,
             createdAt: `2026-02-28T12:00:${String(i).padStart(2, "0")}.000Z`,
           }),
         );
@@ -193,7 +186,7 @@ describe("ActorStore", () => {
       smallStore.registerActor(makeActorEvent());
 
       for (let i = 0; i < 10; i++) {
-        smallStore.addEvent(makeXStateEvent({ id: `evt-${i}` }));
+        smallStore.addEvent(makeXStateEvent());
       }
 
       const actor = smallStore.getActor("x:0:testMachine");
@@ -208,7 +201,6 @@ describe("ActorStore", () => {
         store.addEvent(
           makeXStateEvent({
             event: { type: `EVENT_${i}` },
-            id: `evt-${i}`,
           }),
         );
       }

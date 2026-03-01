@@ -8,16 +8,18 @@ import {
   type InspectionEvent,
 } from "./types.js";
 import type { ActorStore } from "./actor-store.js";
+import type { ClientRegistry } from "./client-registry.js";
 import type { Logger } from "./logger.js";
 
 export interface WsServerOptions {
   port: number;
   store: ActorStore;
+  clientRegistry?: ClientRegistry;
   logger: Logger;
 }
 
 export function createWsServer(options: WsServerOptions): WebSocketServer {
-  const { port, store, logger } = options;
+  const { port, store, clientRegistry, logger } = options;
 
   const wss = new WebSocketServer({ port });
 
@@ -29,10 +31,13 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
     logger.info("Client connected");
 
     ws.on("message", (data: Buffer | string) => {
-      handleMessage(data.toString(), store, logger);
+      handleMessage(data.toString(), ws, store, clientRegistry, logger);
     });
 
     ws.on("close", () => {
+      if (clientRegistry) {
+        clientRegistry.removeClient(ws);
+      }
       logger.info("Client disconnected");
     });
 
@@ -48,7 +53,13 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
   return wss;
 }
 
-function handleMessage(raw: string, store: ActorStore, logger: Logger): void {
+function handleMessage(
+  raw: string,
+  ws: WebSocket,
+  store: ActorStore,
+  clientRegistry: ClientRegistry | undefined,
+  logger: Logger,
+): void {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -57,13 +68,20 @@ function handleMessage(raw: string, store: ActorStore, logger: Logger): void {
     return;
   }
 
+  const obj = parsed as Record<string, unknown>;
+
+  // Handle send_event responses from the browser
+  if (obj.type === "xstate-mcp.send.response" && clientRegistry) {
+    clientRegistry.handleResponse(
+      obj.requestId as string,
+      obj.success as boolean,
+      obj.error as string | undefined,
+    );
+    return;
+  }
+
   // Skip microstep events
-  if (
-    typeof parsed === "object" &&
-    parsed !== null &&
-    "type" in parsed &&
-    (parsed as Record<string, unknown>).type === "@xstate.microstep"
-  ) {
+  if (obj.type === "@xstate.microstep") {
     logger.debug("Skipping @xstate.microstep event");
     return;
   }
@@ -82,6 +100,10 @@ function handleMessage(raw: string, store: ActorStore, logger: Logger): void {
   switch (event.type) {
     case "@xstate.actor":
       store.registerActor(event);
+      // Track which WS client owns this actor
+      if (clientRegistry) {
+        clientRegistry.registerSession(ws, event.sessionId);
+      }
       break;
     case "@xstate.snapshot":
       store.updateSnapshot(event);

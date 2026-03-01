@@ -108,6 +108,13 @@ export interface EventRecord {
   createdAt: string;
 }
 
+export interface TransitionRecord {
+  fromValue: unknown;
+  toValue: unknown;
+  event: string;
+  timestamp: string;
+}
+
 export interface ActorSnapshot {
   status: string;
   value: unknown;
@@ -123,6 +130,7 @@ export interface ActorRecord {
   definition: unknown | null;
   currentSnapshot: ActorSnapshot | null;
   eventHistory: RingBuffer<EventRecord>;
+  transitionHistory: RingBuffer<TransitionRecord>;
   createdAt: string;
   updatedAt: string;
 }

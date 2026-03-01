@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { ActorStore } from "../../src/actor-store.js";
 import { Logger } from "../../src/logger.js";
 import { getMachineDefinition } from "../../src/tools/get-machine-definition.js";
-import type { ActorEvent } from "../../src/types.js";
 
 const logger = new Logger("error");
 
@@ -29,9 +28,7 @@ describe("get_machine_definition tool", () => {
       },
       snapshot: { status: "active", value: "idle", context: {} },
       createdAt: "2026-02-28T12:00:00.000Z",
-      id: "evt-1",
-      _version: 1,
-    } as ActorEvent);
+    });
 
     const result = getMachineDefinition(store, "x:0:agents");
     const data = JSON.parse(result.content[0].text);
@@ -50,9 +47,7 @@ describe("get_machine_definition tool", () => {
       name: "test",
       snapshot: { status: "active", value: "idle", context: {} },
       createdAt: "2026-02-28T12:00:00.000Z",
-      id: "evt-1",
-      _version: 1,
-    } as ActorEvent);
+    });
 
     const result = getMachineDefinition(store, "x:0:test");
     const data = JSON.parse(result.content[0].text);

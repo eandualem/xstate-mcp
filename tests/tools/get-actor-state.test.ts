@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { ActorStore } from "../../src/actor-store.js";
 import { Logger } from "../../src/logger.js";
 import { getActorState } from "../../src/tools/get-actor-state.js";
-import type { ActorEvent } from "../../src/types.js";
 
 const logger = new Logger("error");
 
@@ -23,9 +22,7 @@ describe("get_actor_state tool", () => {
         context: { entities: [], selectedId: null },
       },
       createdAt: "2026-02-28T12:00:00.000Z",
-      id: "evt-1",
-      _version: 1,
-    } as ActorEvent);
+    });
   });
 
   it("returns full snapshot for valid sessionId", () => {

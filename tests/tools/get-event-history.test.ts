@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { ActorStore } from "../../src/actor-store.js";
 import { Logger } from "../../src/logger.js";
 import { getEventHistory } from "../../src/tools/get-event-history.js";
-import type { ActorEvent, XStateEvent } from "../../src/types.js";
 
 const logger = new Logger("error");
 
@@ -18,9 +17,7 @@ describe("get_event_history tool", () => {
       name: "test",
       snapshot: { status: "active", value: "idle", context: {} },
       createdAt: "2026-02-28T12:00:00.000Z",
-      id: "evt-1",
-      _version: 1,
-    } as ActorEvent);
+    });
 
     // Add some events
     for (let i = 0; i < 30; i++) {
@@ -31,9 +28,7 @@ describe("get_event_history tool", () => {
         sourceId: "x:0",
         event: { type: `EVENT_${i}` },
         createdAt: `2026-02-28T12:00:${String(i).padStart(2, "0")}.000Z`,
-        id: `evt-${i + 2}`,
-        _version: 1,
-      } as XStateEvent);
+      });
     }
   });
 

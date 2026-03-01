@@ -2,6 +2,7 @@ import type {
   ActorRecord,
   ActorSnapshot,
   EventRecord,
+  TransitionRecord,
   ActorEvent,
   SnapshotEvent,
   XStateEvent,
@@ -61,6 +62,7 @@ export class ActorStore {
       definition: parsedDefinition,
       currentSnapshot,
       eventHistory: new RingBuffer<EventRecord>(this.bufferSize),
+      transitionHistory: new RingBuffer<TransitionRecord>(this.bufferSize),
       createdAt,
       updatedAt: createdAt,
     };
@@ -78,13 +80,31 @@ export class ActorStore {
 
     if (event.snapshot && typeof event.snapshot === "object") {
       const s = event.snapshot as Record<string, unknown>;
+      const previousValue = actor.currentSnapshot?.value ?? null;
+      const newValue = s.value ?? actor.currentSnapshot?.value ?? null;
+
       actor.currentSnapshot = {
         status:
           (s.status as string) ?? actor.currentSnapshot?.status ?? "active",
-        value: s.value ?? actor.currentSnapshot?.value ?? null,
+        value: newValue,
         context: s.context ?? actor.currentSnapshot?.context ?? null,
         output: s.output,
       };
+
+      // Track state transition when value changes
+      if (
+        newValue !== null &&
+        JSON.stringify(previousValue) !== JSON.stringify(newValue)
+      ) {
+        const eventType = (event.event as Record<string, unknown> | undefined)
+          ?.type;
+        actor.transitionHistory.push({
+          fromValue: previousValue,
+          toValue: newValue,
+          event: typeof eventType === "string" ? eventType : "unknown",
+          timestamp: event.createdAt,
+        });
+      }
     }
 
     actor.updatedAt = event.createdAt;

@@ -2,8 +2,11 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { loadConfig } from "./config.js";
 import { Logger } from "./logger.js";
 import { ActorStore } from "./actor-store.js";
+import { ClientRegistry } from "./client-registry.js";
 import { createWsServer } from "./ws-server.js";
 import { createMcpServer } from "./mcp-server.js";
+
+const SEND_EVENT_TIMEOUT_MS = 5000;
 
 async function main() {
   const config = loadConfig();
@@ -16,8 +19,14 @@ async function main() {
   });
 
   const store = new ActorStore(config.bufferSize, logger);
-  const wss = createWsServer({ port: config.wsPort, store, logger });
-  const mcpServer = createMcpServer(store, logger);
+  const clientRegistry = new ClientRegistry(SEND_EVENT_TIMEOUT_MS, logger);
+  const wss = createWsServer({
+    port: config.wsPort,
+    store,
+    clientRegistry,
+    logger,
+  });
+  const mcpServer = createMcpServer(store, clientRegistry, logger);
 
   const transport = new StdioServerTransport();
   await mcpServer.connect(transport);
