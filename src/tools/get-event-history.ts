@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
-import { actorNotFoundResult } from "../errors.js";
+import { actorNotFoundResult, type ToolResult } from "../errors.js";
 
 const DEFAULT_LIMIT = 20;
 
@@ -21,7 +21,7 @@ export function getEventHistory(
   store: ActorStore,
   sessionId: string,
   limit?: number,
-) {
+): ToolResult {
   const actor = store.getActor(sessionId);
 
   if (!actor) {

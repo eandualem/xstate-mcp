@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
-import { actorNotFoundResult } from "../errors.js";
+import { actorNotFoundResult, type ToolResult } from "../errors.js";
 
 export const getMachineDefinitionOutputSchema = {
   sessionId: z.string(),
@@ -9,7 +9,10 @@ export const getMachineDefinitionOutputSchema = {
   note: z.string().optional(),
 };
 
-export function getMachineDefinition(store: ActorStore, sessionId: string) {
+export function getMachineDefinition(
+  store: ActorStore,
+  sessionId: string,
+): ToolResult {
   const actor = store.getActor(sessionId);
 
   if (!actor) {

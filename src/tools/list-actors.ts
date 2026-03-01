@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
+import type { ToolResult } from "../errors.js";
 
 export const listActorsOutputSchema = {
   actors: z.array(
@@ -14,7 +15,7 @@ export const listActorsOutputSchema = {
   totalActors: z.number(),
 };
 
-export function listActors(store: ActorStore) {
+export function listActors(store: ActorStore): ToolResult {
   const actors = store.listActors().map((actor) => ({
     sessionId: actor.sessionId,
     name: actor.name,

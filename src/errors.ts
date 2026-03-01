@@ -1,11 +1,22 @@
 import type { ActorStore } from "./actor-store.js";
 
+/** Standard MCP tool result shape with optional structured content. */
+export type ToolResult = {
+  [key: string]: unknown;
+  content: { type: "text"; text: string }[];
+  structuredContent?: Record<string, unknown>;
+  isError?: boolean;
+};
+
 /**
  * Returns a standardized MCP error result for "actor not found" cases.
  * Includes actor count and a suggestion to call list_actors,
  * enabling the LLM to self-recover.
  */
-export function actorNotFoundResult(sessionId: string, store: ActorStore) {
+export function actorNotFoundResult(
+  sessionId: string,
+  store: ActorStore,
+): ToolResult {
   const actorCount = store.size;
   const suggestion =
     actorCount > 0

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import type { ClientRegistry } from "../client-registry.js";
-import { actorNotFoundResult } from "../errors.js";
+import { actorNotFoundResult, type ToolResult } from "../errors.js";
 
 export const sendEventOutputSchema = {
   sessionId: z.string(),
@@ -15,7 +15,7 @@ export async function sendEvent(
   clientRegistry: ClientRegistry,
   target: string,
   event: Record<string, unknown>,
-) {
+): Promise<ToolResult> {
   // Resolve target: try as sessionId first, then as actor name
   let sessionId = target;
   if (!store.getActor(target)) {

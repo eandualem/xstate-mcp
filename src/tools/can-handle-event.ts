@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
-import { actorNotFoundResult } from "../errors.js";
+import { actorNotFoundResult, type ToolResult } from "../errors.js";
 
 export const canHandleEventOutputSchema = {
   sessionId: z.string(),
@@ -14,7 +14,7 @@ export function canHandleEvent(
   store: ActorStore,
   sessionId: string,
   eventType: string,
-) {
+): ToolResult {
   const actor = store.getActor(sessionId);
 
   if (!actor) {

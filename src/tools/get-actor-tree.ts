@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
+import type { ToolResult } from "../errors.js";
 
 interface TreeNode {
   sessionId: string;
@@ -25,7 +26,7 @@ export const getActorTreeOutputSchema = {
   totalActors: z.number(),
 };
 
-export function getActorTree(store: ActorStore) {
+export function getActorTree(store: ActorStore): ToolResult {
   const actors = store.listActors();
 
   // Build parent → children map

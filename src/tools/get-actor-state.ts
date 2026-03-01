@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
-import { actorNotFoundResult } from "../errors.js";
+import { actorNotFoundResult, type ToolResult } from "../errors.js";
 
 export const getActorStateOutputSchema = {
   sessionId: z.string(),
@@ -12,7 +12,10 @@ export const getActorStateOutputSchema = {
   updatedAt: z.string(),
 };
 
-export function getActorState(store: ActorStore, sessionId: string) {
+export function getActorState(
+  store: ActorStore,
+  sessionId: string,
+): ToolResult {
   const actor = store.getActor(sessionId);
 
   if (!actor) {
