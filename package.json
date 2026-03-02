@@ -1,6 +1,6 @@
 {
   "name": "xstate-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server bridging XState v5 inspection API to AI coding agents",
   "type": "module",
   "main": "dist/index.js",
