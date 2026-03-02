@@ -1,27 +1,13 @@
 # xstate-mcp
 
+[![npm version](https://img.shields.io/npm/v/xstate-mcp.svg)](https://www.npmjs.com/package/xstate-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 An MCP server that gives AI coding agents live read/write access to XState v5 state machines. See every running actor, query state and context, inspect event history, check transition eligibility, and send events — without console.log or React DevTools.
 
 ## Quick Start
 
-### 1. Install and build
-
-```bash
-bun install
-bun run build
-```
-
-### 2. Verify with MCP Inspector
-
-Before wiring up your app, confirm the server works:
-
-```bash
-npx -y @modelcontextprotocol/inspector node dist/index.js
-```
-
-This opens a web UI at `http://localhost:6274`. You should see 9 tools, 3 resources, and 3 prompts listed. Click any tool to test it — `list_actors` will return an empty array (no browser connected yet), which confirms the server is running correctly.
-
-### 3. Configure your MCP client
+### 1. Configure your MCP client
 
 **Claude Code** — add to `.mcp.json` in your project root:
 
@@ -29,8 +15,8 @@ This opens a web UI at `http://localhost:6274`. You should see 9 tools, 3 resour
 {
   "mcpServers": {
     "xstate-mcp": {
-      "command": "node",
-      "args": ["/absolute/path/to/xstate-mcp/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "xstate-mcp"]
     }
   }
 }
@@ -42,8 +28,8 @@ This opens a web UI at `http://localhost:6274`. You should see 9 tools, 3 resour
 {
   "mcpServers": {
     "xstate-mcp": {
-      "command": "node",
-      "args": ["/absolute/path/to/xstate-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "xstate-mcp"],
       "env": {
         "XSTATE_MCP_WS_PORT": "7357"
       }
@@ -51,6 +37,35 @@ This opens a web UI at `http://localhost:6274`. You should see 9 tools, 3 resour
   }
 }
 ```
+
+**Cursor** — add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "xstate-mcp": {
+      "command": "npx",
+      "args": ["-y", "xstate-mcp"]
+    }
+  }
+}
+```
+
+Or install globally:
+
+```bash
+npm install -g xstate-mcp
+```
+
+### 2. Verify with MCP Inspector (optional)
+
+Confirm the server works before wiring up your app:
+
+```bash
+npx -y @modelcontextprotocol/inspector npx -y xstate-mcp
+```
+
+This opens a web UI at `http://localhost:6274`. You should see 9 tools, 3 resources, and 3 prompts listed. Click any tool to test it — `list_actors` will return an empty array (no browser connected yet), which confirms the server is running correctly.
 
 ## Configuration
 
@@ -523,7 +538,11 @@ createActor(machine, {              WebSocket Server :7357         MCP Client
 
 ## Development
 
+For contributors working on xstate-mcp itself:
+
 ```bash
+git clone https://github.com/eandualem/xstate-mcp.git
+cd xstate-mcp
 bun install           # Install dependencies
 bun run dev           # Start dev server (tsx watch)
 bun run build         # Production build (tsup)

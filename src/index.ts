@@ -8,6 +8,19 @@ import { createMcpServer } from "./mcp-server.js";
 
 const SEND_EVENT_TIMEOUT_MS = 5000;
 
+/**
+ * Create a standalone MCP server for capability scanning (used by Smithery).
+ * No WebSocket server, no stdio transport — just the registered tools/resources/prompts.
+ */
+export function createSandboxServer() {
+  const logger = new Logger("error");
+  const store = new ActorStore(100, logger);
+  const clientRegistry = new ClientRegistry(SEND_EVENT_TIMEOUT_MS, logger);
+  return createMcpServer(store, clientRegistry, logger);
+}
+
+export default createSandboxServer;
+
 async function main() {
   const config = loadConfig();
   const logger = new Logger(config.logLevel);
