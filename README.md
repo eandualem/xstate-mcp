@@ -5,6 +5,14 @@
 
 An MCP server that gives AI coding agents live read/write access to XState v5 state machines. See every running actor, query state and context, inspect event history, check transition eligibility, and send events — without console.log or React DevTools.
 
+## Local MCPB bundle
+
+The optional [MCPB distribution guide](docs/mcpb.md) builds a self-contained local
+bundle from the same npm artifact and verifies it with a clean MCPB/SDK client.
+It includes configuration, checksums, reproducibility checks and a separate
+maintainer Smithery publication procedure. This is a development packaging path;
+the guide records the unmerged lifecycle/version prerequisites and client limits.
+
 ## Quick Start
 
 ### 1. Configure your MCP client

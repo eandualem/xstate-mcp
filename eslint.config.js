@@ -25,6 +25,27 @@ export default [
     },
   },
   {
+    files: ["tools/mcpb/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: {
+        process: "readonly",
+        console: "readonly",
+        Buffer: "readonly",
+        URL: "readonly",
+        AbortSignal: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+      },
+    },
+    rules: {
+      "no-unused-vars": "error",
+      "no-undef": "error",
+      "no-unreachable": "error",
+    },
+  },
+  {
     ignores: ["dist/", "node_modules/"],
   },
 ];

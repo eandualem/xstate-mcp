@@ -3,3 +3,6 @@ dist/
 *.tsbuildinfo
 .env
 .env.local
+
+# Local distribution candidates and test evidence
+artifacts/
