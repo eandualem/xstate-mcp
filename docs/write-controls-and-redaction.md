@@ -92,7 +92,8 @@ const guard = createInspectionGuard({
 The helper defaults to disabled and read-only. It has no Node dependencies or
 network side effects. Only open your inspection WebSocket when `guard.enabled`
 is true. Call `guard.serializeInspection(preparedEnvelope)` **before** `ws.send`;
-it returns redacted JSON, or `null` when disabled. Do not send the original envelope
+it returns redacted JSON, or `null` when disabled or when the sanitized envelope
+lacks a supported inspection type and a non-empty top-level session ID. Do not send the original envelope
 alongside the sanitized one, or attach a second unfiltered inspector.
 
 Prepare explicit plain data from native XState inspection events. Project actor
