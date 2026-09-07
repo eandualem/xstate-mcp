@@ -207,16 +207,36 @@ describe("redaction before retention and transfer", () => {
     );
   });
 
-  it("parses serialized definitions before transfer and omits invalid definitions", () => {
+  it("parses serialized definitions before transfer and drops invalid envelopes", () => {
     const guard = createInspectionGuard({ enabled: true });
+    const envelope = { type: "@xstate.actor", sessionId: "x:1" };
+    const message = guard.serializeInspection({
+      ...envelope,
+      definition: '{"meta":{"password":"private"}}',
+    });
+    expect(JSON.parse(message!).definition.meta.password).toBe(REDACTED);
+    for (const definition of ["private invalid JSON", '"private"']) {
+      expect(
+        JSON.parse(guard.serializeInspection({ ...envelope, definition })!)
+          .definition,
+      ).toBe("[OMITTED]");
+    }
+    for (const invalid of [
+      null,
+      undefined,
+      [],
+      "null",
+      {},
+      { ...envelope, type: "unknown" },
+      { ...envelope, sessionId: "" },
+    ])
+      expect(guard.serializeInspection(invalid)).toBeNull();
     expect(
-      guard.serializeInspection({
-        definition: '{"meta":{"password":"private"}}',
-      }),
-    ).not.toContain("private");
-    expect(
-      guard.serializeInspection({ definition: "private invalid JSON" }),
-    ).not.toContain("private");
+      createInspectionGuard({
+        enabled: true,
+        redaction: { keys: ["sessionId"] },
+      }).serializeInspection(envelope),
+    ).toBeNull();
   });
 
   it("copies inputs before storage and filters snapshots, outputs, definitions and event history", () => {

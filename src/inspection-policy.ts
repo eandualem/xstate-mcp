@@ -233,7 +233,18 @@ export function createInspectionGuard(
     enabled,
     serializeInspection(value: unknown): string | null {
       if (!enabled) return null;
-      return JSON.stringify(redact(value)) ?? "null";
+      const sanitized = redact(value);
+      if (
+        !isRecord(sanitized) ||
+        !["@xstate.actor", "@xstate.snapshot", "@xstate.event"].includes(
+          sanitized.type as string,
+        ) ||
+        !validString(sanitized.sessionId, 1024) ||
+        sanitized.sessionId === REDACTED ||
+        sanitized.sessionId === OMITTED
+      )
+        return null;
+      return JSON.stringify(sanitized);
     },
     dispatch(actor: DispatchActor | undefined, command: unknown): PolicyResult {
       if (!enabled)
