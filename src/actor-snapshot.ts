@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { actorIdentity } from "./actor-identity.js";
-import type { ActorError, ActorRecord, ActorSnapshot } from "./types.js";
+import { actorCursor, type ActorError, type ActorRecord, type ActorSnapshot } from "./types.js";
 
 export const actorErrorSchema = z.object({
   message: z.string().max(4096),
@@ -70,5 +70,6 @@ export function actorSnapshotData(actor: ActorRecord) {
     error: actor.currentSnapshot?.error ?? null,
     parentId: actor.parentId,
     updatedAt: actor.updatedAt,
+    cursor: actorCursor(actor),
   };
 }

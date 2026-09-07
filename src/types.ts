@@ -120,6 +120,7 @@ export type InspectionEvent = ActorEvent | SnapshotEvent | XStateEvent;
 // --- Actor Registry ---
 
 export interface EventRecord {
+  sequence: number;
   event: Record<string, unknown>;
   sourceId: string | null;
   createdAt: string;
@@ -156,6 +157,8 @@ export interface ActorRecord {
   connectionId: string | null;
   localSessionId: string;
   applicationName: string | null;
+  generation: string;
+  snapshotVersion: number;
   sessionId: string;
   name: string;
   rootId: string | null;
@@ -166,6 +169,22 @@ export interface ActorRecord {
   transitionHistory: RingBuffer<TransitionRecord>;
   createdAt: string;
   updatedAt: string;
+}
+
+export const actorCursorSchema = z.object({
+  generation: z.string().uuid(),
+  snapshot: z.number().int().nonnegative().safe(),
+  event: z.number().int().nonnegative().safe(),
+});
+
+export type ActorCursor = z.infer<typeof actorCursorSchema>;
+
+export function actorCursor(actor: ActorRecord): ActorCursor {
+  return {
+    generation: actor.generation,
+    snapshot: actor.snapshotVersion,
+    event: actor.eventHistory.total,
+  };
 }
 
 // --- Ring Buffer ---

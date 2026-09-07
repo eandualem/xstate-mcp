@@ -16,6 +16,7 @@ export const getActorStateOutputSchema = {
   error: actorErrorSchema.nullable(),
   parentId: z.string().nullable(),
   updatedAt: z.string(),
+  cursor: actorCursorSchema,
 };
 
 export interface GetActorStateOptions {
