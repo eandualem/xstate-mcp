@@ -16,10 +16,12 @@ XState/Stately inspection format version.
    `listener.state: "listening"` and the actual bound `listener.endpoint.url`,
    including the assigned port when a library host requests port zero. A factory
    used only for capability scanning shows `not_started`. `starting` means binding
-   is pending, `closed` means the listener stopped, and `error` has a bounded
-   `errorCode`, such as `EADDRINUSE`. Choose a free port for that error. If MCP itself
-   cannot initialize, inspect the CLI's stderr first; a failed process cannot
-   answer a health tool call.
+   is pending, `closed` means the listener stopped, and `error` means startup
+   failed, with a bounded `errorCode`, such as `EADDRINUSE`. Choose a free port for
+   that error. If MCP itself cannot initialize, inspect the CLI's stderr first;
+   a failed process cannot
+   answer a health tool call. Errors after startup are logged to stderr and do
+   not clear an established endpoint; the close event records `closed`.
 2. If `totals.connectedClients` is `0`, open the development application and check
    its WebSocket URL. `totals.rejectedConnections > 0` records origin-policy
    rejections since this server started. Configure the exact development origin;
@@ -109,8 +111,9 @@ identity or proof of compatibility. The connection UUID belongs to the server;
 an application cannot choose it by adding a field to its hello.
 
 A malformed or incompatible hello returns `success: false` with `code` and bounded
-remediation. Before the first successful negotiation, that connection cannot
-ingest inspection until it sends a valid hello. An already accepted handshake
+remediation. Connections with `invalid` or `incompatible` negotiation cannot
+ingest inspection until they send a valid version-1 hello. Legacy connections
+with `awaiting_hello` can still ingest inspection. An already accepted handshake
 remains in effect when a later hello is rejected.
 A successful hello is fixed for the socket's lifetime. An identical repeat is
 idempotent; changing it returns `capabilities_locked`. Reconnect to change capabilities.

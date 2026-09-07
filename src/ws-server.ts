@@ -67,7 +67,11 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
   const health = clientRegistry.health;
   health.setListener("starting");
   let wss: WebSocketServer;
+  let hasListened = false;
   const listenerError = (err: unknown) => {
+    // After startup, an error alone does not mean the listener has stopped.
+    // Keep its endpoint until close; only startup failures replace it with error.
+    if (hasListened) return;
     const code =
       err && typeof err === "object" && "code" in err
         ? String(err.code)
@@ -123,6 +127,7 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
   wss.once("close", unsubscribeClear);
 
   wss.on("listening", () => {
+    hasListened = true;
     const address = wss.address();
     if (address && typeof address !== "string") {
       const endpointHost =

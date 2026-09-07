@@ -249,6 +249,29 @@ it("negotiates a real adapter, commands a real XState actor and exposes no actor
   );
 });
 
+it("keeps a live endpoint after server errors and reports its eventual closure", async () => {
+  const h = await harness();
+  const listening = (await status(h.client)).listener;
+  h.wss().emit("error", new Error("Post-startup listener error"));
+  expect((await status(h.client)).listener).toEqual(listening);
+
+  // A server error need not stop the underlying listener or legacy inspection.
+  const ws = await h.connect();
+  const producer = h.producer(ws);
+  await flush(ws);
+  expect((await status(h.client)).totals.registeredSessions).toBe(1);
+  producer.stop();
+  const socketClosed = once([...h.wss().clients][0], "close");
+  ws.close();
+  await socketClosed;
+  await new Promise<void>((resolve) => h.wss().close(() => resolve()));
+  expect((await status(h.client)).listener).toEqual({
+    state: "closed",
+    endpoint: null,
+    errorCode: null,
+  });
+});
+
 it.each(["legacy", "read-only"])(
   "fails %s writes immediately while retaining observation",
   async (mode) => {
@@ -455,6 +478,12 @@ it("reports origin rejection and an occupied listener without reflecting URLs or
   ).rejects.toMatchObject({ code: "EADDRINUSE" });
   expect(await status(occupied.client)).toMatchObject({
     listener: { state: "error", endpoint: null, errorCode: "EADDRINUSE" },
+  });
+  await new Promise<void>((resolve) => occupied.wss().close(() => resolve()));
+  expect((await status(occupied.client)).listener).toEqual({
+    state: "error",
+    endpoint: null,
+    errorCode: "EADDRINUSE",
   });
 });
 
