@@ -413,7 +413,7 @@ textarea {
   width: 17px;
   height: 17px;
   flex-shrink: 0;
-  border: 1px solid currentColor;
+  border: 1px solid currentcolor;
   border-radius: 50%;
   text-align: center;
   line-height: 15px;

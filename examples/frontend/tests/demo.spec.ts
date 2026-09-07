@@ -3,6 +3,51 @@ import { preview } from "vite";
 import { resolve } from "node:path";
 const revisedTitle = "A calmer place for your next idea";
 
+test("persisted pagehide keeps the editor live until ordinary pagehide disposes it", async ({
+  page,
+  demo,
+}) => {
+  await page.goto(demo.url);
+  const { document } = await demo.discover("cached-tab");
+  await demo.waitState(document.sessionId, "editing");
+  for (const title of [
+    "Draft after first restore",
+    "Draft after second restore",
+  ]) {
+    await page.evaluate(() => {
+      window.dispatchEvent(
+        new PageTransitionEvent("pagehide", { persisted: true }),
+      );
+      window.dispatchEvent(
+        new PageTransitionEvent("pageshow", { persisted: true }),
+      );
+    });
+    await page.getByLabel("TITLE", { exact: true }).fill(title);
+    await expect(page.locator("#preview-title")).toHaveText(title);
+    await expect
+      .poll(
+        async () =>
+          (
+            await demo.call("get_actor_state", {
+              sessionId: document.sessionId,
+            })
+          ).context,
+      )
+      .toMatchObject({ title });
+  }
+  demo.record("browser-lifecycle", {
+    observation:
+      "Synthetic persisted pagehide/pageshow pairs retain the same live actor and editable draft",
+  });
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new PageTransitionEvent("pagehide", { persisted: false }),
+    );
+  });
+  await expect.poll(async () => (await demo.actors()).length).toBe(0);
+  await page.close();
+});
+
 test("real MCP loop: inspect, fail, reject, retry, and verify the UI", async ({
   page,
   demo,

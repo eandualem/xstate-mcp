@@ -112,5 +112,12 @@ function dispose() {
   inspector?.dispose();
   workspace.stop();
 }
-window.addEventListener("pagehide", dispose, { once: true });
+window.addEventListener(
+  "pagehide",
+  (event) => {
+    // Cached documents can return with the same actors and DOM listeners.
+    if (!event.persisted) dispose();
+  },
+  { signal: listeners.signal },
+);
 if (import.meta.hot) import.meta.hot.dispose(dispose);

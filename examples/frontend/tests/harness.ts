@@ -8,6 +8,7 @@ import { execFileSync } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve, join, basename } from "node:path";
 import { createHash } from "node:crypto";
+import { finishDemoRun } from "./teardown.js";
 const frontend = resolve(import.meta.dirname, "..");
 const repository = resolve(frontend, "../..");
 export interface Actor {
@@ -205,65 +206,88 @@ export const test = base.extend<{ demo: Harness }>({
       });
       await use(harness);
     } finally {
-      await vite.close();
-      await client.close();
-      await transport.close();
-      const probe = createServer();
-      await new Promise<void>((resolve, reject) => {
-        probe.once("error", reject);
-        probe.listen(port, "127.0.0.1", () => probe.close(() => resolve()));
-      });
-      if (harness) {
-        expect(logs).not.toContain("fixture-only-never-transfer-17");
-        const sourceFiles = [
-          "src/model.ts",
-          "src/demo-inspector.ts",
-          "src/main.ts",
-          "src/style.css",
-          "index.html",
-          "tests/harness.ts",
-          "tests/demo.spec.ts",
-        ];
-        const sources = Object.fromEntries(
-          await Promise.all(
-            sourceFiles.map(async (file) => [
-              file,
-              createHash("sha256")
-                .update(await readFile(join(frontend, file)))
-                .digest("hex"),
-            ]),
-          ),
-        );
-        const packageJson = JSON.parse(
-          await readFile(join(frontend, "package.json"), "utf8"),
-        );
-        const transcript = {
-          schemaVersion: 1,
-          scenario: info.title,
-          generator:
-            "Deterministic test client; not a live model/agent session",
-          sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], {
+      const evidence = harness ?? new Harness(client, "");
+      const teardown = await finishDemoRun({
+        closeClient: () => client.close(),
+        closeTransport: () => transport.close(),
+        closeVite: () => vite.close(),
+        probePort: async () => {
+          const probe = createServer();
+          await new Promise<void>((resolve, reject) => {
+            probe.once("error", reject);
+            probe.listen(port, "127.0.0.1", () =>
+              probe.close((error) => (error ? reject(error) : resolve())),
+            );
+          });
+        },
+        sourceCommit: () =>
+          execFileSync("git", ["rev-parse", "HEAD"], {
             cwd: repository,
             encoding: "utf8",
+            stdio: ["ignore", "pipe", "pipe"],
+            timeout: 5000,
           }).trim(),
-          sourceHashes: sources,
-          runtime: {
-            node: process.version,
-            browser: browser.version(),
-            ...packageJson.dependencies,
-            ...packageJson.devDependencies,
-          },
-          teardown:
-            "MCP transport and Vite closed; former WS port successfully rebound",
-          steps: harness.sanitized(harness.rows),
-        };
-        const file = info.outputPath("sanitized-transcript.json");
-        await writeFile(file, JSON.stringify(transcript, null, 2) + "\n");
-        await info.attach("sanitized MCP transcript", {
-          path: file,
-          contentType: "application/json",
-        });
-      }
+        writeTranscript: async (observations) => {
+          const sourceFiles = [
+            "src/model.ts",
+            "src/demo-inspector.ts",
+            "src/main.ts",
+            "src/style.css",
+            "index.html",
+            "tests/harness.ts",
+            "tests/demo.spec.ts",
+            "tests/teardown.ts",
+            "tests/teardown.spec.ts",
+          ];
+          const sources = Object.fromEntries(
+            await Promise.all(
+              sourceFiles.map(async (file) => [
+                file,
+                createHash("sha256")
+                  .update(await readFile(join(frontend, file)))
+                  .digest("hex"),
+              ]),
+            ),
+          );
+          const packageJson = JSON.parse(
+            await readFile(join(frontend, "package.json"), "utf8"),
+          );
+          const transcript = {
+            schemaVersion: 2,
+            scenario: info.title,
+            generator:
+              "Deterministic test client; not a live model/agent session",
+            sourceCommit:
+              observations.sourceCommit.status === "fulfilled"
+                ? observations.sourceCommit.value
+                : null,
+            sourceHashes: sources,
+            runtime: {
+              node: process.version,
+              browser: browser.version(),
+              ...packageJson.dependencies,
+              ...packageJson.devDependencies,
+            },
+            teardown: observations,
+            steps: evidence.rows,
+          };
+          const file = info.outputPath("sanitized-transcript.json");
+          await writeFile(
+            file,
+            JSON.stringify(evidence.sanitized(transcript), null, 2) + "\n",
+          );
+          await info.attach("sanitized MCP transcript", {
+            path: file,
+            contentType: "application/json",
+          });
+        },
+      });
+      expect(logs).not.toContain("fixture-only-never-transfer-17");
+      for (const result of Object.values(teardown.cleanup))
+        expect(result).toMatchObject({ status: "fulfilled" });
+      expect(teardown.portReleased, JSON.stringify(teardown.portProbe)).toBe(
+        true,
+      );
     }
   },
 });

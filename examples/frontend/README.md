@@ -29,7 +29,8 @@ profiles and ephemeral loopback ports. They never attach to an existing MCP serv
 or reuse a developer's browser session.
 
 `demo:verify` builds the **current repository CLI**, builds the frontend, and runs
-three real browser/MCP scenarios. It starts and cleans up its own processes. Each
+four real browser/MCP scenarios plus a teardown failure regression. It starts and
+cleans up its own processes. Each
 MCP request has a five-second limit; state verification polls real MCP snapshots
 with a five-second bound. A successful command ACK is followed by state and browser
 assertions. Source/test TypeScript and formatting can be checked separately:
@@ -52,6 +53,9 @@ The scenarios cover:
 - Mobile save/retry controls, no horizontal overflow, and a built production page
   that opens no inspection WebSocket. Closing tabs removes actors; teardown closes
   MCP/Vite and proves the old inspection port can be rebound.
+- Synthetic persisted `pagehide`/`pageshow` events retain editable actors across
+  repeated restores; ordinary `pagehide` disposes them. This checks lifecycle
+  handling, not whether a particular browser chooses to cache the page.
 
 ## Use it with your coding agent
 
@@ -105,7 +109,7 @@ Give any coding agent [the task brief](AGENT_TASK.md). A manual verification loo
 
 Stop Vite with Ctrl-C and let the MCP client stop its owned server. Reload resets
 the local mock data; inspection reconnect preserves the running draft. Neither
-behavior is persistence or a production save service.
+behavior provides persistence or uses a production save service.
 
 ## What the evidence proves
 
@@ -121,6 +125,12 @@ per-tab aliases. Source hashes identify the exact runtime and test files; the
 source commit identifies the code checkout used when capturing the evidence.
 Failures retain a Playwright trace for local diagnosis. CI uploads the report and
 evidence with a 14-day retention period.
+
+Fresh transcripts record each teardown result and the port-rebinding observation
+before cleanup assertions run. If Git metadata is unavailable, `sourceCommit` is
+null and the lookup error is recorded; file hashes still identify the sources.
+The selected checked-in evidence preserves its original source and transcript
+format.
 
 Only fixture document contents are used in captured evidence. The adapter explicitly
 projects supported snapshot fields and event payloads, keeping live actor references
