@@ -24,7 +24,9 @@ describe("ClientRegistry", () => {
   let registry: ClientRegistry;
 
   beforeEach(() => {
-    registry = new ClientRegistry(1000, logger);
+    registry = new ClientRegistry(1000, logger, {
+      writePolicy: { readOnly: false, allow: [{ actor: "*", events: ["*"] }] },
+    });
   });
 
   describe("session tracking", () => {
@@ -141,12 +143,17 @@ describe("ClientRegistry", () => {
 
       const result = await registry.sendEvent("x:0", { type: "TEST" });
       expect(result.success).toBe(false);
-      expect(result.error).toContain("Connection reset");
+      expect(result.error).toBe("Failed to send event");
     });
 
     it("times out when no response arrives", async () => {
       vi.useFakeTimers();
-      const shortRegistry = new ClientRegistry(100, logger);
+      const shortRegistry = new ClientRegistry(100, logger, {
+        writePolicy: {
+          readOnly: false,
+          allow: [{ actor: "*", events: ["*"] }],
+        },
+      });
       const ws = makeMockWs();
       shortRegistry.registerSession(ws as never, "x:0");
 
@@ -248,7 +255,7 @@ describe("ClientRegistry", () => {
       registry.handleResponse("nonexistent", true);
     });
 
-    it("forwards error from browser response", async () => {
+    it("withholds free-form error from browser response", async () => {
       const ws = makeMockWs();
       registry.registerSession(ws as never, "x:0");
 
@@ -263,7 +270,9 @@ describe("ClientRegistry", () => {
 
       const result = await promise;
       expect(result.success).toBe(false);
-      expect(result.error).toBe("Actor not found in browser");
+      expect(result.error).toBe(
+        "Application rejected event (details withheld)",
+      );
     });
   });
 });

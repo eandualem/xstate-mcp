@@ -30,10 +30,13 @@ async function main() {
     wsPort: config.wsPort,
     bufferSize: config.bufferSize,
     logLevel: config.logLevel,
+    applicationReadOnly: config.writePolicy.readOnly,
   });
 
-  const store = new ActorStore(config.bufferSize, logger);
-  const clientRegistry = new ClientRegistry(SEND_EVENT_TIMEOUT_MS, logger);
+  const store = new ActorStore(config.bufferSize, logger, config.redaction);
+  const clientRegistry = new ClientRegistry(SEND_EVENT_TIMEOUT_MS, logger, {
+    writePolicy: config.writePolicy,
+  });
   const wss = createWsServer({
     port: config.wsPort,
     host: config.wsHost,

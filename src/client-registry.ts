@@ -1,3 +1,7 @@
+import {
+  createWritePolicy,
+  type WritePolicyOptions,
+} from "./inspection-policy.js";
 import { randomUUID } from "node:crypto";
 import type { WebSocket } from "ws";
 import type { ActorStore } from "./actor-store.js";
@@ -11,6 +15,7 @@ interface PendingRequest {
 export interface SendEventResult {
   success: boolean;
   error?: string;
+  code?: string;
 }
 
 export class ClientRegistry {
@@ -23,10 +28,15 @@ export class ClientRegistry {
   /** requestId → sessionId for matching pending requests to sessions on disconnect */
   private requestToSession = new Map<string, string>();
 
+  private checkWrite: ReturnType<typeof createWritePolicy>;
+
   constructor(
     private timeoutMs: number,
     private logger: Logger,
-  ) {}
+    options: { writePolicy?: WritePolicyOptions } = {},
+  ) {
+    this.checkWrite = createWritePolicy(options.writePolicy);
+  }
 
   /**
    * Register that a WebSocket client owns a given actor sessionId.
@@ -93,6 +103,9 @@ export class ClientRegistry {
     sessionId: string,
     event: Record<string, unknown>,
   ): Promise<SendEventResult> {
+    const policy = this.checkWrite(sessionId, event.type);
+    if (!policy.success) return Promise.resolve(policy);
+
     const ws = this.sessionToClient.get(sessionId);
     if (!ws) {
       return Promise.resolve({
@@ -135,7 +148,7 @@ export class ClientRegistry {
           clearTimeout(timer);
           this.pending.delete(requestId);
           this.requestToSession.delete(requestId);
-          resolve({ success: false, error: `Failed to send: ${err.message}` });
+          resolve({ success: false, error: "Failed to send event" });
         }
       });
 
@@ -158,7 +171,14 @@ export class ClientRegistry {
     clearTimeout(pending.timer);
     this.pending.delete(requestId);
     this.requestToSession.delete(requestId);
-    pending.resolve({ success, error });
+    pending.resolve({
+      success,
+      error: success
+        ? undefined
+        : error === undefined
+          ? "Application rejected event"
+          : "Application rejected event (details withheld)",
+    });
   }
 
   /**

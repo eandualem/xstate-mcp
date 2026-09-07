@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: ["src/index.ts", "src/inspection-policy.ts"],
   format: ["esm"],
   target: "node20",
   outDir: "dist",
@@ -9,7 +9,5 @@ export default defineConfig({
   sourcemap: true,
   dts: true,
   splitting: false,
-  banner: {
-    js: "#!/usr/bin/env node",
-  },
+  banner: { js: "#!/usr/bin/env node" },
 });

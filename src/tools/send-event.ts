@@ -9,6 +9,7 @@ export const sendEventOutputSchema = {
   event: z.record(z.unknown()),
   success: z.boolean(),
   error: z.string().optional(),
+  code: z.string().optional(),
 };
 
 export async function sendEvent(
@@ -48,9 +49,13 @@ export async function sendEvent(
 
   const result = await clientRegistry.sendEvent(sessionId, event);
 
+  const sanitized = store.redactField("event", event);
   const structuredContent = {
     sessionId,
-    event,
+    event:
+      sanitized && typeof sanitized === "object"
+        ? sanitized
+        : { type: "[OMITTED]" },
     ...result,
   };
 

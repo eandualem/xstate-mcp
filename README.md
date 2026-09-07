@@ -78,77 +78,34 @@ This opens a web UI at `http://localhost:6274`. You should see 9 tools, 3 resour
 | `XSTATE_MCP_ALLOWED_ORIGINS` | `http://localhost:*,http://127.0.0.1:*` | Comma-separated list of allowed WebSocket origins (supports `*` port wildcard) |
 | `XSTATE_MCP_REQUIRE_ORIGIN`  | `false`                                 | When `true`, reject WebSocket connections without an Origin header             |
 
+Application write settings are `XSTATE_MCP_READ_ONLY` (default `true`) and
+`XSTATE_MCP_WRITE_ALLOW` (JSON paired actor/event rules, default `[]`). Additional
+redaction is configured by `XSTATE_MCP_REDACTION` (JSON, default `{}`). See
+[the policy guide](docs/write-controls-and-redaction.md) for examples and limits.
+
 ## Browser Adapter
 
-Your XState 5 app needs to send inspection events to the WebSocket server. Two options:
+Use a development-only adapter that projects native XState inspection events into
+plain data, redacts before sending, and checks write policy immediately before
+`actor.send`. Import `createInspectionGuard` from `xstate-mcp/inspection-policy`;
+it defaults to disabled and read-only.
 
-### Option A: Using `@statelyai/inspect` (recommended)
-
-```typescript
-import { createWebSocketInspector } from "@statelyai/inspect";
-
-const inspector = createWebSocketInspector({
-  url: "ws://127.0.0.1:7357",
-});
-
-const actor = createActor(yourMachine, {
-  inspect: inspector.inspect,
-});
-actor.start();
-```
-
-### Option B: Custom adapter (minimal)
-
-```typescript
-const ws = new WebSocket("ws://127.0.0.1:7357");
-
-const actor = createActor(yourMachine, {
-  inspect: (event) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(event));
-    }
-  },
-});
-actor.start();
-```
-
-Both approaches work. Actors register automatically when they start — you'll see them in `list_actors` immediately.
+See [write controls and redaction](docs/write-controls-and-redaction.md) for the
+contract and [the runnable single-actor example](examples/policy-app.mjs). The
+example requires a built checkout; this helper is not in historical npm releases.
+The complete reconnecting adapter is tracked in #13.
 
 ### Enabling `send_event` (bidirectional)
 
-The `send_event` tool sends events from the AI agent to your running actors. This requires the browser to handle incoming messages and respond:
+Application writes are disabled by default. Set `XSTATE_MCP_READ_ONLY=false` and
+an explicit `XSTATE_MCP_WRITE_ALLOW` array, and opt into the adapter's own policy.
+For example, `[{"actor":"*","events":["NEXT"]}]` permits only `NEXT` on any actor.
+Empty rules deny everything; read-only true overrides all rules. The server checks
+the resolved session ID even when the tool target is an actor name.
 
-```typescript
-const ws = new WebSocket("ws://127.0.0.1:7357");
+A successful acknowledgement confirms dispatch, not a completed transition. Read
+the actor state/history afterward, and verify the UI when developing a frontend.
 
-ws.addEventListener("message", (msg) => {
-  const data = JSON.parse(msg.data);
-
-  if (data.type === "xstate-mcp.send") {
-    try {
-      // Find the actor and send the event
-      const actor = getActorBySessionId(data.sessionId); // your lookup logic
-      actor.send(data.event);
-      ws.send(
-        JSON.stringify({
-          type: "xstate-mcp.send.response",
-          requestId: data.requestId,
-          success: true,
-        }),
-      );
-    } catch (err) {
-      ws.send(
-        JSON.stringify({
-          type: "xstate-mcp.send.response",
-          requestId: data.requestId,
-          success: false,
-          error: err.message,
-        }),
-      );
-    }
-  }
-});
-```
 
 ## Tools
 
@@ -335,7 +292,7 @@ Static check: can this actor handle a given event type in its current state? Ana
 
 #### `send_event`
 
-Send an event to a running actor. Target can be a sessionId or actor name. Requires the [browser-side response handler](#enabling-send_event-bidirectional).
+Send an event to a running actor. Target can be a sessionId or actor name. Requires explicit [server and adapter write permission](#enabling-send_event-bidirectional). Events may cause destructive application side effects.
 
 **Parameters:**
 
@@ -556,14 +513,16 @@ Requires Node.js 20+.
 
 ## Privacy
 
-xstate-mcp runs entirely on your local machine. It does not:
+The server binds to loopback by default, keeps inspection history in memory and
+implements no telemetry, persistence or uploads. The MCP client receives results
+over stdio and may forward them to its configured model provider or retain them
+in logs and conversations.
 
-- Send any data to external servers or APIs
-- Collect telemetry, analytics, or usage metrics
-- Store any data to disk (all state is in-memory and cleared on restart)
-- Make any outbound network requests
-
-The WebSocket server binds to `127.0.0.1` by default (localhost only, not reachable from other machines). The MCP transport uses stdio. All data stays between your browser and your AI coding tool.
+Redact sensitive data in the application before transfer. Server redaction applies
+before retention, so existing tools, resources, prompts and history share sanitized
+values. Default secret-key filtering can be extended with application-specific
+keys and paths through `XSTATE_MCP_REDACTION`. Context truncation is a presentation
+option; it is not a privacy policy. See the [redaction contract and limits](docs/write-controls-and-redaction.md#redaction-contract).
 
 ## License
 

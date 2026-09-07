@@ -76,7 +76,7 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
           if (matchesAllowedOrigin(origin, allowedOrigins)) {
             callback(true);
           } else {
-            logger.warn(`Rejected WebSocket connection from origin: ${origin}`);
+            logger.warn("Rejected WebSocket connection: origin not allowed");
             callback(false, 403, "Origin not allowed");
           }
         }
@@ -101,8 +101,8 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
       logger.info("Client disconnected");
     });
 
-    ws.on("error", (err: Error) => {
-      logger.error(`WebSocket error: ${err.message}`);
+    ws.on("error", () => {
+      logger.error("WebSocket connection error");
     });
   });
 
@@ -148,9 +148,7 @@ function handleMessage(
 
   const result = inspectionEventSchema.safeParse(parsed);
   if (!result.success) {
-    logger.warn("Invalid inspection event", {
-      errors: result.error.issues.map((i) => i.message),
-    });
+    logger.warn("Invalid inspection event");
     return;
   }
 
