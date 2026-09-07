@@ -97,8 +97,11 @@ same server port in the MCP client. Restart Vite after changing that setting.
 
 Give any coding agent [the task brief](AGENT_TASK.md). A manual verification loop:
 
-1. Discover `workspace` and `document` with `list_actors` (SDK clients should send
-   `arguments: {}` for optional-only tools on the baseline SDK).
+1. Discover `workspace` and `document` with `list_actors` (SDK clients send
+   `arguments: {}` for this discovery call).
+   Use the returned public `sessionId` in MCP requests; `localSessionId` belongs
+   to the application adapter. The two actors share a `connectionId`, and each
+   tab or inspection reconnect has its own connection.
 2. Read the tree, document definition, and current snapshot. Edit the title in the
    browser and verify the preview changes.
 3. Call `send_event` with the discovered document session ID and `{ "type": "SAVE" }`.
@@ -120,8 +123,9 @@ model/agent session**. A future Design Studio coding-agent demonstration is #18.
 
 Fresh runs produce `test-results/**/sanitized-transcript.json` and numbered PNGs.
 The transcript records tool calls/results, elapsed times, browser checkpoint
-labels and screenshot filenames. Session IDs are replaced consistently with
-per-tab aliases. Source hashes identify the exact runtime and test files; the
+labels and screenshot filenames. Public session IDs, local IDs and connection
+IDs are replaced consistently with per-tab aliases. Source hashes identify the
+exact runtime and test files; the
 source commit identifies the code checkout used when capturing the evidence.
 Failures retain a Playwright trace for local diagnosis. CI uploads the report and
 evidence with a 14-day retention period.
@@ -154,16 +158,24 @@ keeps at most 50 disconnected events, uses a fresh UUID generation for producer 
 and disposes on page exit/hot module replacement. It permits only valid `SAVE`,
 `RETRY`, `CHANGE_TITLE` (120 characters) and `CHANGE_BODY` (4000 characters) events
 on the document actor, checking current `snapshot.can(event)` before dispatch.
-It starts only in a Vite development build. This is not the reusable adapter,
-React Strict Mode support, authentication, or server-side socket ownership from #13/#25.
+It starts only in a Vite development build. The server enforces socket ownership
+and gives MCP callers scoped public actor IDs. The adapter continues using its
+local IDs on the wire. The reusable adapter, React Strict Mode support and
+authentication are outside this example's scope.
 
-It sends the proposed protocol-v1 hello before inspection. Current main ignores
+It sends the proposed protocol-v1 hello before inspection. The pinned server base ignores
 that message; #31 negotiates it. Explicit handshake rejection closes the socket
 without falling back to writes. A connection label means a socket is open, not
 proof that capabilities were negotiated. Server write authorization and capability
 negotiation remain separate checks when #31/#32 are integrated.
 
-This branch runs against current main's nine tools. It uses **bounded MCP polling**,
+This integration preparation uses server base `a0d15baf2c445c6664f1d52b49ce78a9243d210a`,
+which includes the dependency, Stately inspection, envelope validation and scoped
+identity fixes. It is a checkpoint before the remaining core PRs are combined.
+The checked-in captures retain their original source pins; fresh `test-results/`
+transcripts identify the checkout and actual source hashes used by each run.
+
+This checkpoint exposes nine tools. It uses **bounded MCP polling**,
 not the still-unmerged `wait_for_state` tool from #24. It does not claim wildcard/
 forbidden-transition correctness from #28 or the complete contract CI from #7.
 The frontend workflow adds its own real MCP/browser gates on Node 22/24. Preserve
@@ -174,6 +186,6 @@ reads the configured CLI executable, and supplies narrowly scoped write opt-in.
 Exact frontend versions: XState **5.32.6**, Vite **8.2.2**, Playwright **1.63.0**,
 MCP client SDK **1.30.0**, TypeScript **5.9.3**, Node types **22.20.1**, Prettier
 **3.8.2**. The isolated `bun.lock` pins transitive dependencies without refreshing
-the root graph. Current main's server lock pins SDK **1.27.1**, ws **8.19.0** and
-Zod **3.25.76**; server dependency updates remain #27. Capture files record the
+the root graph. The prepared server lock pins SDK **1.30.0**, ws **8.21.3** and
+Zod **4.5.4**. Capture files record the
 actual browser and Node versions used.

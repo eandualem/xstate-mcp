@@ -210,6 +210,9 @@ test("refresh, reconnect and two tabs keep actor state isolated", async ({
     .click();
   const reconnected = await demo.discover("tab-1-reconnected");
   expect(reconnected.document.sessionId).not.toBe(first.document.sessionId);
+  expect(reconnected.document.connectionId).not.toBe(
+    first.document.connectionId,
+  );
   expect(
     (await demo.waitState(reconnected.document.sessionId, "editing")).context,
   ).toMatchObject({ title: "Edited while disconnected" });
@@ -236,6 +239,9 @@ test("refresh, reconnect and two tabs keep actor state isolated", async ({
     refreshed.root.sessionId,
     refreshed.document.sessionId,
   ]);
+  expect(second.document.connectionId).not.toBe(
+    refreshed.document.connectionId,
+  );
   await demo.waitState(second.document.sessionId, "editing");
   expect(second.document.sessionId).not.toBe(refreshed.document.sessionId);
   expect(

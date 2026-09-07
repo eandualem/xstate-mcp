@@ -13,6 +13,8 @@ const frontend = resolve(import.meta.dirname, "..");
 const repository = resolve(frontend, "../..");
 export interface Actor {
   sessionId: string;
+  localSessionId: string;
+  connectionId: string | null;
   name: string;
   currentState: unknown;
 }
@@ -87,8 +89,17 @@ export class Harness {
     const root = found.find((a) => a.name === "workspace")!;
     const document = found.find((a) => a.name === "document")!;
     expect(root).toBeDefined();
+    expect(root.connectionId).toEqual(expect.any(String));
+    expect(document.connectionId).toBe(root.connectionId);
+    for (const actor of [root, document]) {
+      expect(actor.localSessionId).toEqual(expect.any(String));
+      expect(actor.sessionId).not.toBe(actor.localSessionId);
+    }
     this.aliases.set(root.sessionId, `${label}/workspace`);
     this.aliases.set(document.sessionId, `${label}/document`);
+    this.aliases.set(root.localSessionId, `${label}/local/workspace`);
+    this.aliases.set(document.localSessionId, `${label}/local/document`);
+    this.aliases.set(root.connectionId!, `${label}/connection`);
     return { root, document };
   }
   async waitState(
@@ -126,7 +137,10 @@ export class Harness {
         "fixture-only-never-transfer-17",
         "[REDACTED]",
       );
-      for (const [id, alias] of this.aliases)
+      // Replace full public IDs before their embedded local/connection IDs.
+      for (const [id, alias] of [...this.aliases].sort(
+        ([left], [right]) => right.length - left.length,
+      ))
         result = result.replaceAll(id, alias);
       return result;
     }
