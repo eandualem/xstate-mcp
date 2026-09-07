@@ -1,5 +1,5 @@
 {
-  "status": "baseline-captured; recovery implementation pending",
+  "status": "baseline capture; final evidence is indexed in manifest.json",
   "applicationRepository": "https://github.com/eandualem/design-studio",
   "originalBaseline": "e1bd77533decbb0a139c152cd5c0a8ae8d3eca81",
   "serverSource": "16c7a0004dce3f676eab0b5606be1e3542c89449",
@@ -25,9 +25,9 @@
     "Machine, hook and component match original baseline at capture source commit"
   ],
   "limitations": [
-    "This is baseline evidence only; no successful recovery or final recording yet",
+    "This baseline contains no successful recovery; final and Node24 captures are indexed separately in manifest.json.",
     "Assistant runtime connections were blocked by the fixture; its visible error is expected",
-    "Coding-agent model/cost provenance will be recorded separately from the MCP server runtime",
+    "Coding-agent provenance is recorded separately in development-versions.json.",
     "Exact adapter reload provenance is not established for this baseline; inspect the captured definition response rather than assuming all checkout changes were loaded."
   ],
   "checkoutAtCapture": "99513dbf6b666eecd0e779d8970424a26ca47397",

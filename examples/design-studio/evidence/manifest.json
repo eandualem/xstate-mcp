@@ -1,0 +1,90 @@
+{
+  "applicationRepository": "https://github.com/eandualem/design-studio",
+  "applicationPullRequest": "https://github.com/eandualem/design-studio/pull/2",
+  "applicationReviewHead": "718e1434fde306ce45aa06d273e0df2da83779ef",
+  "originalBaseline": "e1bd77533decbb0a139c152cd5c0a8ae8d3eca81",
+  "preFixObservationCommit": "4c8bc7983208c1f6060c126696ac054ecad8dc52",
+  "verifiedFeatureCommit": "0da1b6ae93a65c376022874f2d687f23f26352a8",
+  "serverSourceCommit": "16c7a0004dce3f676eab0b5606be1e3542c89449",
+  "developmentEvidence": {
+    "sourceDirectory": "docs/evidence/save-recovery",
+    "copiedUnchangedFromApplication": [
+      "03-after-auto-retry.png",
+      "04-after-manual-fallback.png",
+      "05-after-mcp-recovery.png",
+      "06-after-ui-recovery.png",
+      "07-after-reload.png",
+      "08-after-automatic-recovery.png",
+      "09-production-no-inspection.png",
+      "save-recovery.mp4",
+      "transcript.jsonl -> development-transcript.jsonl",
+      "versions.json -> development-versions.json"
+    ],
+    "runtime": "Node26.8.1; Chrome152.0.7977.77",
+    "provenance": "Actual interactive coding-agent MCP/browser development sequence, including explicitly retained intermediate observations. Source working tree changed during after/lifecycle runs. The recorded pre-fix observation precedes the recovery commit.",
+    "video": {
+      "durationSeconds": 34,
+      "bytes": 225530,
+      "cuts": "Baseline source recording seconds23\u201335 followed by after source recording seconds225\u2013247, normal speed",
+      "visualReviewSeconds": [
+        5,
+        15,
+        21,
+        32
+      ],
+      "kind": "Actual browser video excerpts; no generated or simulated frames"
+    }
+  },
+  "independentValidation": {
+    "agent": "xstate-mcp coordinator",
+    "sourceCommit": "0da1b6ae93a65c376022874f2d687f23f26352a8",
+    "node": "24.20.0",
+    "bun": "1.4.2",
+    "browser": "Chrome152.0.7977.77",
+    "checks": [
+      "frozen clean install",
+      "standalone inspector preparation",
+      "bun run lint",
+      "bunx tsc --noEmit",
+      "bun run test:81 passed in11 files",
+      "bun run build",
+      "live MCP/browser failure,rejection,retry,persistence,reload,actor cleanup",
+      "actual port rebind after teardown:7358 and7133"
+    ],
+    "regressionSensitivity": "Replacing only the document machine with e1bd775 makes8 of9 new cases fail; test harness and shared retry constants remain present. Feature source restored and final quality checks run afterward.",
+    "captureStartedAt": "2026-09-07T19:20:57.866Z",
+    "captureCompletedAt": "2026-09-07T19:30:32.451Z",
+    "sanitization": "Screenshot paths shortened to basenames; all request/results otherwise retained, including initial selector and missing-target mistakes. Synthetic document text retained. Screenshots unchanged.",
+    "ports": {
+      "app": 7133,
+      "inspection": 7358
+    },
+    "definitionVerification": "Fresh runtime exposes plain transition targets and named guards; one actor system before and after reload."
+  },
+  "limits": [
+    "Unmerged development server build:package1.0.1,MCP handshake1.0.0. No new npm release.",
+    "HMR remounts from persisted data and does not preserve an unsaved draft across a code update.",
+    "Synthetic IndexedDB transaction aborts; no in-app model requests. Assistant panel connection error is expected.",
+    "Coding-agent exact deployment,cost and token usage unavailable; see development-versions.json.",
+    "Baseline adapter reload provenance is explicitly limited in baseline-manifest.json."
+  ],
+  "artifactsSha256": {
+    "01-before-saved.png": "6b3de37138538b023de70526172988d6b7023b65cf6d4f3359b6d30acad27d9c",
+    "02-before-not-saved.png": "6d3d67adbed05e9121bfceb3d0ed489ecceaaa33da10c45ef8b088bdc2f36eef",
+    "03-after-auto-retry.png": "7c5eda01c4ff00c3d4b81ad5d38bf9c02641dc140bd519097f28c573eafcda02",
+    "04-after-manual-fallback.png": "f3224eb310f1db33d78cd5daa346b927b607f4394bf4483d16936b29aa873af0",
+    "05-after-mcp-recovery.png": "ec33f3b566ce75857c78d0c55ba3647772af670ae1ca64f349a149f16d474ffe",
+    "06-after-ui-recovery.png": "66bbed998533b15743832f7909f60f748c29a174988f439da4b7b214af2fdc10",
+    "07-after-reload.png": "fc81744b338b2ae6afa35395d83fd6d2ad342cd993fceb731b906a87811d24c1",
+    "08-after-automatic-recovery.png": "c4b49f5bdd21ee7c94bef133e79359b9f71cfd7681df679e594efc0136768a01",
+    "09-production-no-inspection.png": "56141621caea5934bda4ca1eee7157547d4c8a0baaa77fe4d315cec2283f22e8",
+    "baseline-manifest.json": "b1ee562cdf2e9da7399ea170590781d98a626b80f73795c18c59d40d0749427c",
+    "baseline-transcript.jsonl": "4973209cb8c22815c2ce794798594bf0a96665135fd84f44b9e1d3f8b3909b6e",
+    "development-transcript.jsonl": "41c99c09d1899bb04104a95f2b5fa453b89c9db45fea32f6f69689852b6c97df",
+    "development-versions.json": "f641d3f32490a790eb32c07b76a32a346bd5bd6b942441423169daf1c7c116fb",
+    "node24-recovered.png": "41aa017d97ada1a65f70639614eec84689d1381c5fd2adf4b6e88fb3183ed336",
+    "node24-retry-exhausted.png": "1ba75f892fd1785e102e4ed00d3df211f7300d60fa4675ef960520745e8b921f",
+    "node24-transcript.jsonl": "c9f08cd14ba7fec502b2997e4ddd347505a5307e59a6d9ed6fadd2ed5d83f19a",
+    "save-recovery.mp4": "7573c6038980c9a86db57637f6909c77383573ec02bd007836063b74a4dd2f35"
+  }
+}

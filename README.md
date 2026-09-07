@@ -24,11 +24,10 @@ clean-clone commands, current-main compatibility, and captured evidence.
 
 ## Design Studio coding-agent demo
 
-The coordinated [Design Studio demo guide](examples/design-studio/README.md) follows
-a coding agent diagnosing and improving document-save recovery using real MCP
-observations and browser checks. The integration is tracked in
-[issue #18](https://github.com/eandualem/xstate-mcp/issues/18); implementation and
-recording are in progress.
+The [Design Studio demo](examples/design-studio/README.md) shows a coding agent
+diagnosing and fixing document-save recovery through real MCP observations and
+browser checks. It includes a 34-second recording, actual transcripts, the
+application diff, and a reproducible setup verified on Node 24.
 
 ## Quick Start
 
