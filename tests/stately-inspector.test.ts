@@ -57,49 +57,72 @@ it("exposes real Stately actors, hierarchy, definitions and events through MCP",
   });
   actor.start();
   const worker = actor.getSnapshot().children.worker!;
-  await expect
-    .poll(() => store.getActor(worker.sessionId)?.currentSnapshot?.value, {
-      timeout: 2000,
-    })
-    .toBe("idle");
-
   async function callTool(name: string, args: Record<string, unknown> = {}) {
     const result = await client.callTool({ name, arguments: args });
     expect(result.isError).not.toBe(true);
     return result.structuredContent;
   }
 
-  expect(await callTool("list_actors")).toMatchObject({
+  await expect
+    .poll(() => callTool("list_actors"), { timeout: 2000 })
+    .toMatchObject({
+      totalActors: 2,
+      actors: expect.arrayContaining([
+        expect.objectContaining({
+          localSessionId: actor.sessionId,
+          currentState: "running",
+        }),
+        expect.objectContaining({
+          localSessionId: worker.sessionId,
+          currentState: "idle",
+        }),
+      ]),
+    });
+  const listed = (await callTool("list_actors")) as {
+    actors: { sessionId: string; localSessionId: string }[];
+  };
+  const rootSessionId = listed.actors.find(
+    (entry) => entry.localSessionId === actor.sessionId,
+  )!.sessionId;
+  const workerSessionId = listed.actors.find(
+    (entry) => entry.localSessionId === worker.sessionId,
+  )!.sessionId;
+  expect(rootSessionId).not.toBe(actor.sessionId);
+  expect(workerSessionId).not.toBe(worker.sessionId);
+
+  expect(listed).toMatchObject({
     totalActors: 2,
     actors: expect.arrayContaining([
-      {
-        sessionId: actor.sessionId,
+      expect.objectContaining({
+        sessionId: rootSessionId,
+        localSessionId: actor.sessionId,
         name: "app",
         currentState: "running",
         status: "active",
         childCount: 1,
-      },
-      {
-        sessionId: worker.sessionId,
+      }),
+      expect.objectContaining({
+        sessionId: workerSessionId,
+        localSessionId: worker.sessionId,
         name: "worker",
         currentState: "idle",
         status: "active",
         childCount: 0,
-      },
+      }),
     ]),
   });
   expect(await callTool("get_actor_tree")).toMatchObject({
     totalActors: 2,
     tree: [
       {
-        sessionId: actor.sessionId,
-        children: [{ sessionId: worker.sessionId, children: [] }],
+        sessionId: rootSessionId,
+        children: [{ sessionId: workerSessionId, children: [] }],
       },
     ],
   });
   expect(
     await callTool("get_machine_definition", {
-      sessionId: actor.sessionId,
+      sessionId: rootSessionId,
     }),
   ).toMatchObject({
     definition: {
@@ -109,7 +132,7 @@ it("exposes real Stately actors, hierarchy, definitions and events through MCP",
   });
   expect(
     await callTool("get_machine_definition", {
-      sessionId: worker.sessionId,
+      sessionId: workerSessionId,
     }),
   ).toMatchObject({
     definition: {
@@ -120,34 +143,34 @@ it("exposes real Stately actors, hierarchy, definitions and events through MCP",
 
   actor.send({ type: "PING" });
   await expect
-    .poll(() => store.getActor(worker.sessionId)?.currentSnapshot?.value)
+    .poll(() => store.getActor(workerSessionId)?.currentSnapshot?.value)
     .toBe("working");
   expect(
     await callTool("get_actor_state", {
-      sessionId: worker.sessionId,
+      sessionId: workerSessionId,
     }),
   ).toMatchObject({
     value: "working",
     context: { count: 1 },
-    parentId: actor.sessionId,
+    parentId: rootSessionId,
     updatedAt: expect.stringMatching(isoTimestamp),
   });
   expect(
     await callTool("get_event_history", {
-      sessionId: worker.sessionId,
+      sessionId: workerSessionId,
     }),
   ).toMatchObject({
     events: expect.arrayContaining([
       {
         event: { type: "PING", message: "from parent" },
-        sourceId: actor.sessionId,
+        sourceId: rootSessionId,
         createdAt: expect.stringMatching(isoTimestamp),
       },
     ]),
   });
   expect(
     await callTool("get_state_timeline", {
-      sessionId: worker.sessionId,
+      sessionId: workerSessionId,
     }),
   ).toMatchObject({
     transitions: expect.arrayContaining([
@@ -161,6 +184,16 @@ it("exposes real Stately actors, hierarchy, definitions and events through MCP",
   });
 
   // Observe the wire without rewriting the producer's messages.
+  expect(messages).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        type: "@xstate.event",
+        sessionId: worker.sessionId,
+        sourceId: actor.sessionId,
+        event: { type: "PING", message: "from parent" },
+      }),
+    ]),
+  );
   for (const type of ["@xstate.actor", "@xstate.event", "@xstate.snapshot"]) {
     expect(messages).toEqual(
       expect.arrayContaining([
@@ -211,7 +244,12 @@ it("rejects invalid wire timestamps before mutating an existing actor", async ()
     }),
   );
   await flushMessages();
-  const registered = store.getActor("x:0");
+  expect(store.size).toBe(1);
+  const registered = store
+    .listActors()
+    .find((entry) => entry.localSessionId === "x:0");
+  expect(registered).toBeDefined();
+  const sessionId = registered!.sessionId;
   expect(registered?.createdAt).toBe("2026-09-07T08:00:00.000Z");
 
   for (const type of ["@xstate.actor", "@xstate.snapshot", "@xstate.event"]) {
@@ -227,7 +265,7 @@ it("rejects invalid wire timestamps before mutating an existing actor", async ()
     );
   }
   await flushMessages();
-  expect(store.getActor("x:0")).toBe(registered);
+  expect(store.getActor(sessionId)).toBe(registered);
   expect(registered?.currentSnapshot).toMatchObject({
     value: "idle",
     context: { count: 0 },

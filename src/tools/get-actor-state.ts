@@ -1,3 +1,4 @@
+import { actorIdentity, actorIdentityOutputSchema } from "../actor-identity.js";
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import { actorNotFoundResult, type ToolResult } from "../errors.js";
@@ -5,6 +6,7 @@ import { safeStringify } from "../safe-stringify.js";
 
 export const getActorStateOutputSchema = {
   sessionId: z.string(),
+  ...actorIdentityOutputSchema,
   name: z.string(),
   status: z.string(),
   value: z.unknown(),
@@ -41,6 +43,7 @@ export function getActorState(
 
   const structuredContent = {
     sessionId: actor.sessionId,
+    ...actorIdentity(actor),
     name: actor.name,
     status: actor.currentSnapshot?.status ?? "unknown",
     value: actor.currentSnapshot?.value ?? null,

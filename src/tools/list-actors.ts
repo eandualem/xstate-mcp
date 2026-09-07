@@ -1,3 +1,4 @@
+import { actorIdentity, actorIdentityOutputSchema } from "../actor-identity.js";
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import type { ToolResult } from "../errors.js";
@@ -7,6 +8,7 @@ export const listActorsOutputSchema = {
   actors: z.array(
     z.object({
       sessionId: z.string(),
+      ...actorIdentityOutputSchema,
       name: z.string(),
       currentState: z.unknown(),
       status: z.string(),
@@ -16,8 +18,14 @@ export const listActorsOutputSchema = {
   totalActors: z.number(),
 };
 
-export function listActors(store: ActorStore, status?: string): ToolResult {
+export function listActors(
+  store: ActorStore,
+  status?: string,
+  connectionId?: string,
+): ToolResult {
   let allActors = store.listActors();
+  if (connectionId)
+    allActors = allActors.filter((a) => a.connectionId === connectionId);
   if (status) {
     allActors = allActors.filter(
       (a) => (a.currentSnapshot?.status ?? "unknown") === status,
@@ -25,6 +33,7 @@ export function listActors(store: ActorStore, status?: string): ToolResult {
   }
   const actors = allActors.map((actor) => ({
     sessionId: actor.sessionId,
+    ...actorIdentity(actor),
     name: actor.name,
     currentState: actor.currentSnapshot?.value ?? null,
     status: actor.currentSnapshot?.status ?? "unknown",

@@ -1,3 +1,4 @@
+import { actorIdentity, actorIdentityOutputSchema } from "../actor-identity.js";
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import type { ToolResult } from "../errors.js";
@@ -5,6 +6,9 @@ import { safeStringify } from "../safe-stringify.js";
 
 interface TreeNode {
   sessionId: string;
+  connectionId: string | null;
+  localSessionId: string;
+  applicationName: string | null;
   name: string;
   state: unknown;
   status: string;
@@ -15,6 +19,7 @@ interface TreeNode {
 const treeNodeSchema: z.ZodType<any> = z.lazy(() =>
   z.object({
     sessionId: z.string(),
+    ...actorIdentityOutputSchema,
     name: z.string(),
     state: z.any(),
     status: z.string(),
@@ -27,8 +32,13 @@ export const getActorTreeOutputSchema = {
   totalActors: z.number(),
 };
 
-export function getActorTree(store: ActorStore): ToolResult {
-  const actors = store.listActors();
+export function getActorTree(
+  store: ActorStore,
+  connectionId?: string,
+): ToolResult {
+  const actors = store
+    .listActors()
+    .filter((a) => !connectionId || a.connectionId === connectionId);
 
   // Build parent → children map
   const childrenMap = new Map<string | null, typeof actors>();
@@ -47,6 +57,7 @@ export function getActorTree(store: ActorStore): ToolResult {
     const children = childrenMap.get(actor.sessionId) ?? [];
     return {
       sessionId: actor.sessionId,
+      ...actorIdentity(actor),
       name: actor.name,
       state: actor.currentSnapshot?.value ?? null,
       status: actor.currentSnapshot?.status ?? "unknown",

@@ -11,7 +11,7 @@ import {
   type InspectionEvent,
 } from "./types.js";
 import type { ActorStore } from "./actor-store.js";
-import type { ClientRegistry } from "./client-registry.js";
+import { ClientRegistry } from "./client-registry.js";
 import type { Logger } from "./logger.js";
 
 export interface WsServerOptions {
@@ -48,15 +48,11 @@ export function matchesAllowedOrigin(
 const DEFAULT_MAX_PAYLOAD = 10 * 1024 * 1024; // 10 MB
 
 export function createWsServer(options: WsServerOptions): WebSocketServer {
-  const {
-    port,
-    host,
-    store,
-    clientRegistry,
-    logger,
-    allowedOrigins,
-    requireOrigin,
-  } = options;
+  const { port, host, store, logger, allowedOrigins, requireOrigin } = options;
+
+  const clientRegistry =
+    options.clientRegistry ?? new ClientRegistry(5000, logger);
+  const unsubscribeClear = store.onCleared(() => clientRegistry.clear());
 
   const wss = new WebSocketServer({
     port,
@@ -86,11 +82,19 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
       : undefined,
   });
 
+  wss.once("close", unsubscribeClear);
+
   wss.on("listening", () => {
     logger.info(`WebSocket server listening on ${host ?? "127.0.0.1"}:${port}`);
   });
 
-  wss.on("connection", (ws: WebSocket) => {
+  wss.on("connection", (ws: WebSocket, request) => {
+    const query = (request.url ?? "").split("?").slice(1).join("?");
+    const params = new URLSearchParams(query);
+    clientRegistry.registerClient(
+      ws,
+      params.get("applicationName") ?? undefined,
+    );
     logger.info("Client connected");
 
     ws.on("message", (data: Buffer | string) => {
@@ -98,9 +102,7 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
     });
 
     ws.on("close", () => {
-      if (clientRegistry) {
-        clientRegistry.removeClient(ws, store);
-      }
+      clientRegistry.removeClient(ws, store);
       logger.info("Client disconnected");
     });
 
@@ -120,7 +122,7 @@ function handleMessage(
   raw: string,
   ws: WebSocket,
   store: ActorStore,
-  clientRegistry: ClientRegistry | undefined,
+  clientRegistry: ClientRegistry,
   logger: Logger,
 ): void {
   let parsed: unknown;
@@ -137,14 +139,15 @@ function handleMessage(
     return;
   }
 
-  // Handle send_event responses from the browser
+  // Validate acknowledgements before checking the original socket ownership.
   if (envelope.data.type === "xstate-mcp.send.response") {
     const response = sendResponseSchema.safeParse(parsed);
     if (!response.success) {
       logger.warn("Invalid send response, skipping");
       return;
     }
-    clientRegistry?.handleResponse(
+    clientRegistry.handleResponse(
+      ws,
       response.data.requestId,
       response.data.success,
       response.data.error,
@@ -167,20 +170,50 @@ function handleMessage(
   const event = normalizeEvent(result.data, logger);
   if (!event) return;
 
-  switch (event.type) {
-    case "@xstate.actor":
-      store.registerActor(event);
-      // Track which WS client owns this actor
-      if (clientRegistry) {
-        clientRegistry.registerSession(ws, event.sessionId);
-      }
-      break;
-    case "@xstate.snapshot":
-      store.updateSnapshot(event);
-      break;
-    case "@xstate.event":
-      store.addEvent(event);
-      break;
+  const localSessionId = event.sessionId;
+  const scope = (id: string | undefined) =>
+    id === undefined ? undefined : clientRegistry.getSessionId(ws, id);
+  if (event.type === "@xstate.actor") {
+    const identity = clientRegistry.registerSession(ws, localSessionId);
+    if (store.getActor(identity.sessionId)) {
+      logger.debug(
+        "Ignoring duplicate actor registration on the same connection",
+      );
+      return;
+    }
+    store.registerActor({
+      ...event,
+      ...identity,
+      name: event.name ?? localSessionId,
+      rootId: scope(event.rootId),
+      parentId: scope(event.parentId),
+    });
+    return;
+  }
+
+  const identity = clientRegistry.getSession(ws, localSessionId);
+  if (
+    !identity ||
+    store.getActor(identity.sessionId)?.connectionId !== identity.connectionId
+  ) {
+    logger.warn(
+      "Rejected inspection update for an actor not registered on this connection",
+    );
+    return;
+  }
+  if (event.type === "@xstate.snapshot") {
+    store.updateSnapshot({
+      ...event,
+      sessionId: identity.sessionId,
+      rootId: scope(event.rootId),
+    });
+  } else {
+    store.addEvent({
+      ...event,
+      sessionId: identity.sessionId,
+      rootId: scope(event.rootId),
+      sourceId: scope(event.sourceId),
+    });
   }
 }
 

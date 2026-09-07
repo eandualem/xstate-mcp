@@ -40,8 +40,13 @@ export class ActorStore {
     this.onSnapshotCallbacks.push(cb);
   }
 
-  onCleared(cb: StoreCleared): void {
+  onCleared(cb: StoreCleared): () => void {
     this.onClearCallbacks.push(cb);
+    return () => {
+      this.onClearCallbacks = this.onClearCallbacks.filter(
+        (listener) => listener !== cb,
+      );
+    };
   }
 
   registerActor(event: ActorEvent): void {
@@ -81,6 +86,9 @@ export class ActorStore {
     }
 
     const record: ActorRecord = {
+      connectionId: event.connectionId ?? null,
+      localSessionId: event.localSessionId ?? sessionId,
+      applicationName: event.applicationName ?? null,
       sessionId,
       name: name ?? sessionId,
       rootId: rootId ?? null,
