@@ -352,7 +352,7 @@ Raw events that flowed through an actor (from the ring buffer). Includes full ev
   "events": [
     {
       "event": { "type": "sys.refresh" },
-      "sourceId": "app-session",
+      "sourceId": "x:0",
       "createdAt": "2026-02-28T12:00:01.000Z"
     }
   ],
