@@ -43,12 +43,12 @@ describe("can_handle_event tool", () => {
     expect(data.error).toContain("unknown");
   });
 
-  it("returns canHandle:false when no definition", () => {
+  it("returns unknown when no definition", () => {
     store.registerActor(makeActorEvent({ definition: undefined }));
     const result = canHandleEvent(store, "x:0", "TIMER");
     const data = JSON.parse(result.content[0].text);
-    expect(data.canHandle).toBe(false);
-    expect(data.note).toContain("No machine definition");
+    expect(data.canHandle).toBeNull();
+    expect(data.reason).toBe("definition_unavailable");
   });
 
   it("finds matching transition in current state", () => {
@@ -112,7 +112,7 @@ describe("can_handle_event tool", () => {
     expect(data.matchedTransitions).toContain("panel.closed.on.TOGGLE");
   });
 
-  it("falls back to initial when no child value in currentState", () => {
+  it("returns unknown when no child value in currentState", () => {
     const machineDef = {
       id: "machine",
       initial: "loading",
@@ -136,11 +136,12 @@ describe("can_handle_event tool", () => {
       }),
     );
 
-    // When value is a string, falls back to initial ("fetching")
+    // A partial snapshot cannot establish which child is active.
     const result = canHandleEvent(store, "x:0", "DONE");
     const data = JSON.parse(result.content[0].text);
-    expect(data.canHandle).toBe(true);
-    expect(data.matchedTransitions).toContain("loading.fetching.on.DONE");
+    expect(data.canHandle).toBeNull();
+    expect(data.reason).toBe("snapshot_unavailable");
+    expect(data.matchedTransitions).toEqual([]);
   });
 
   it("handles 3-level deep nesting", () => {

@@ -425,7 +425,20 @@ updates and lifecycle results; `changes` lists every changed field. The existing
 
 #### `can_handle_event`
 
-Static check: can this actor handle a given event type in its current state? Analyzes the machine definition without executing anything.
+Static check of the current snapshot and supplied definition, with XState v5
+child/ancestor precedence, partial/global wildcards and forbidden transitions.
+`canHandle` is `true` for a structural handler, `false` for no handler, a forbidden
+transition or an inactive actor, and `null` when the answer is unknown. Known
+guards are never evaluated and produce `null`. Missing/incomplete definitions or
+snapshots also produce `null`.
+
+Every result has `analysis: "static"` and a `reason`. `matchedTransitions` contains
+selected handler paths (or the guarded candidate for an unknown result);
+`blockedTransitions` contains selected forbidden paths. These are paths in the
+supplied definition, not a list of all ancestor/wildcard declarations.
+Serialization can omit inline guards and other details, so even a structural
+match does not guarantee a runtime transition. See the
+[semantics and schema migration](docs/event-eligibility.md).
 
 **Parameters:**
 
@@ -436,9 +449,12 @@ Static check: can this actor handle a given event type in its current state? Ana
 {
   "sessionId": "agents-session",
   "canHandle": true,
+  "analysis": "static",
+  "reason": "transition_found",
   "currentState": "idle",
   "matchedTransitions": ["idle.on.sys.refresh"],
-  "note": "Guards are not evaluated — transition may still be rejected at runtime"
+  "blockedTransitions": [],
+  "note": "Static evidence from the supplied definition and snapshot; guards are not evaluated and serialization may omit them. null means unknown. A structural match does not guarantee a transition; verify state after sending the full event."
 }
 ```
 
@@ -489,7 +505,7 @@ get_actor_state     → drill into one actor for full context
 
 ### "Can this machine handle what I'm about to send?"
 
-Before triggering an action:
+Inspect the structural evidence before triggering an action:
 
 ```
 can_handle_event(sessionId, "sys.refresh")
@@ -499,7 +515,10 @@ can_handle_event(sessionId, "NAVIGATE")
 → { canHandle: false, matchedTransitions: [] }
 ```
 
-Catches event type typos and wrong-target bugs before they happen.
+Handle `canHandle === null` as unknown; use `reason` to identify missing data or
+guards. Do not coerce it to `false`. A `true` result is structural evidence only:
+send the complete event payload when appropriate, then inspect state/history and
+the UI to verify what actually happened.
 
 ### "Trigger and verify"
 
