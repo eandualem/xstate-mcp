@@ -199,6 +199,12 @@ ws.addEventListener("message", (msg) => {
 });
 ```
 
+For writes, install the handler before sending a version-1 `xstate-mcp.hello` on
+that same socket and wait for its successful response. See the complete
+[doctor example](examples/doctor-app.mjs) and [handshake guide](docs/connection-health.md).
+The snippets above are inspection/command wiring fragments; complete startup and
+reconnect handling is tracked in [#13](https://github.com/eandualem/xstate-mcp/issues/13).
+
 ### Incoming message validation
 
 Every WebSocket message must be a JSON object with a non-empty string `type`.
@@ -231,6 +237,21 @@ Examples below abbreviate public IDs as `app-session` and `agents-session`.
 Always copy the actual opaque `sessionId` from discovery.
 
 ### Discovery & Orientation
+
+#### `get_connection_health`
+
+Start here when no actors appear or before sending an event. Reports the actual
+listener endpoint, live applications (including sockets without actors), negotiated
+adapter/protocol versions, supported commands, rejected-frame counters and freshness.
+Output contains metadata only, with at most 50 connection rows.
+
+**Parameters:** optional `limit` (integer 1–50), `offset` (nonnegative integer),
+and `connectionId` (UUID). Use `nextOffset` for further pages.
+
+See the [connection doctor guide](docs/connection-health.md) for expected failure
+outputs, the version-1 adapter handshake and a runnable XState example. Legacy
+inspectors remain readable; `send_event` now requires a successful hello advertising
+that command and otherwise fails immediately with remediation.
 
 #### `list_actors`
 
@@ -529,6 +550,7 @@ Reset the registry. Actors re-register automatically on next page load.
 Start every debugging session here:
 
 ```
+get_connection_health → check listener, application, freshness and commands
 list_actors         → see all actors, their states, and statuses
 get_actor_tree      → see the parent-child hierarchy
 get_actor_state     → drill into one actor for full context

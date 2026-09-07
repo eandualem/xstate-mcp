@@ -10,6 +10,7 @@ import { WebSocket } from "ws";
 import * as current from "xstate";
 import * as compatible from "xstate-compat";
 import { describe, expect, it, onTestFinished } from "vitest";
+import { negotiateApplication } from "./fixtures/application-hello.js";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
@@ -125,6 +126,7 @@ describe.each([
   (_version, makeActor) => {
     it("discovers, queries, commands and verifies a real actor through the built CLI", async () => {
       const { client, ws, stdout } = await startCli();
+      await negotiateApplication(ws);
       const actor = makeActor(ws);
       onTestFinished(() => {
         actor.stop();

@@ -17,17 +17,6 @@ export type LogLevel = "debug" | "info" | "warn" | "error";
 // Accepts BOTH native XState 5 InspectionEvent format (actorRef/sourceRef objects)
 // and @statelyai/inspect serialized format (top-level sessionId/sourceId strings).
 
-export const messageEnvelopeSchema = z.object({
-  type: z.string().min(1),
-});
-
-export const sendResponseSchema = z.object({
-  type: z.literal("xstate-mcp.send.response"),
-  requestId: z.string().min(1),
-  success: z.boolean(),
-  error: z.string().optional(),
-});
-
 const actorRefSchema = z
   .object({ sessionId: z.string().optional(), id: z.string().optional() })
   .passthrough();
@@ -243,3 +232,15 @@ export class RingBuffer<T> {
     this.totalAdded = 0;
   }
 }
+
+// Control envelopes are validated before dispatch; payloads stay out of health data.
+export const messageEnvelopeSchema = z
+  .object({ type: z.string().min(1).max(128) })
+  .passthrough();
+export const sendResponseSchema = z.object({
+  type: z.literal("xstate-mcp.send.response"),
+  requestId: z.string().min(1).max(128),
+  success: z.boolean(),
+  error: z.string().max(4096).optional(),
+  sessionId: z.string().optional(),
+});

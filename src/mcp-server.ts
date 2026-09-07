@@ -1,4 +1,8 @@
 import { actorIdentity } from "./actor-identity.js";
+import {
+  connectionHealthOutputSchema,
+  MAX_HEALTH_CONNECTIONS,
+} from "./connection-health.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -63,6 +67,35 @@ export function createMcpServer(
   const waits = new ActorWaits(store);
 
   // --- Tools ---
+
+  server.registerTool(
+    "get_connection_health",
+    {
+      title: "Connection Health",
+      description:
+        "Diagnose the inspection listener, connected applications, capability negotiation, rejected frames and freshness. Contains bounded metadata and counters, never actor payloads. Start here when list_actors is empty or before send_event.",
+      inputSchema: {
+        limit: z.number().int().min(1).max(MAX_HEALTH_CONNECTIONS).optional(),
+        connectionId: z.string().uuid().optional(),
+        offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+      },
+      outputSchema: connectionHealthOutputSchema,
+      annotations: READ_ONLY_ANNOTATIONS,
+    },
+    ({ limit, connectionId, offset }) => {
+      const structuredContent = clientRegistry.getHealth(
+        limit,
+        connectionId,
+        offset,
+      );
+      return {
+        content: [
+          { type: "text" as const, text: safeStringify(structuredContent, 2) },
+        ],
+        structuredContent,
+      };
+    },
+  );
 
   server.registerTool(
     "list_actors",
