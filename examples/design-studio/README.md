@@ -27,9 +27,12 @@ and the persisted document reopened after a reload.
 ## Captured baseline
 
 The coding agent used the interactive MCP/browser harness before changing the
-save behavior. At instrumented source commit
+save behavior. The capture checkout was commit
 [`99513db`](https://github.com/eandualem/design-studio/commit/99513dbf6b666eecd0e779d8970424a26ca47397),
-the document machine, hook and component still match the original baseline.
+and its document machine, hook and component still match the original baseline.
+The dev server retained an earlier adapter: its recorded definition has omitted
+transition targets. This baseline proves the save failure and rejected retry; final
+adapter serialization needs verification after a fresh load.
 
 The [actual transcript](evidence/baseline-transcript.jsonl) records an injected
 IndexedDB transaction abort, followed by these observations:
