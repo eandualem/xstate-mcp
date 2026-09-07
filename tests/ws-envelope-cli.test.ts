@@ -68,6 +68,9 @@ async function startCli() {
       XSTATE_MCP_WS_PORT: String(port),
       XSTATE_MCP_WS_HOST: "127.0.0.1",
       XSTATE_MCP_LOG_LEVEL: "info",
+      // These tests exercise ACK validation after the write-policy boundary.
+      XSTATE_MCP_READ_ONLY: "false",
+      XSTATE_MCP_WRITE_ALLOW: '[{"actor":"*","events":["NEXT"]}]',
     },
   });
   let stderr = "";
@@ -276,7 +279,9 @@ describe("CLI WebSocket envelope validation", () => {
       const result = await response;
       expect(result.structuredContent).toMatchObject({
         success,
-        ...(success ? {} : { error: "Action rejected" }),
+        ...(success
+          ? {}
+          : { error: "Application rejected event (details withheld)" }),
       });
       expect(result.isError).toBe(!success);
       await flush(ws);
