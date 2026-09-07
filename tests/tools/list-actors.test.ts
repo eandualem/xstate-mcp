@@ -99,6 +99,9 @@ describe("list_actors tool", () => {
     expect(data.totalActors).toBe(2);
     expect(data.actors[0]).toEqual({
       sessionId: "x:0",
+      localSessionId: "x:0",
+      connectionId: null,
+      applicationName: null,
       name: "app",
       currentState: "idle",
       status: "active",

@@ -22,6 +22,9 @@ describe("WebSocket Server", () => {
   let store: ActorStore;
   let wss: ReturnType<typeof createWsServer>;
 
+  const findActor = (localId: string) =>
+    store.listActors().find((a) => a.localSessionId === localId);
+
   afterEach(async () => {
     if (wss) {
       await new Promise<void>((resolve) => wss.close(() => resolve()));
@@ -53,7 +56,7 @@ describe("WebSocket Server", () => {
 
     await wait(50);
 
-    const actor = store.getActor("x:0:agents");
+    const actor = findActor("x:0:agents");
     expect(actor).toBeDefined();
     expect(actor!.name).toBe("agentsMachine");
     expect(actor!.currentSnapshot!.value).toBe("idle");
@@ -105,7 +108,7 @@ describe("WebSocket Server", () => {
 
     await wait(50);
 
-    const actor = store.getActor("x:0:test");
+    const actor = findActor("x:0:test");
     expect(actor!.currentSnapshot!.value).toBe("loading");
     expect(actor!.currentSnapshot!.context).toEqual({ items: [1, 2, 3] });
 
@@ -152,7 +155,7 @@ describe("WebSocket Server", () => {
 
     await wait(50);
 
-    const actor = store.getActor("x:0:test");
+    const actor = findActor("x:0:test");
     const events = actor!.eventHistory.toArray();
     expect(events).toHaveLength(1);
     expect(events[0].event).toEqual({ type: "sys.refresh" });
@@ -215,9 +218,10 @@ describe("WebSocket Server", () => {
 
     await wait(50);
 
-    const actor = store.getActor("x:0:agents");
+    const actor = findActor("x:0:agents");
     expect(actor).toBeDefined();
-    expect(actor!.sessionId).toBe("x:0:agents");
+    expect(actor!.localSessionId).toBe("x:0:agents");
+    expect(actor!.sessionId).not.toBe(actor!.localSessionId);
     expect(actor!.name).toBe("agentsMachine");
     expect(actor!.createdAt).toBeDefined();
 
@@ -261,7 +265,7 @@ describe("WebSocket Server", () => {
 
     await wait(50);
 
-    const actor = store.getActor("x:0:test");
+    const actor = findActor("x:0:test");
     expect(actor!.currentSnapshot!.value).toBe("loading");
     expect(actor!.currentSnapshot!.context).toEqual({ items: [1, 2] });
 
@@ -301,11 +305,14 @@ describe("WebSocket Server", () => {
 
     await wait(50);
 
-    const actor = store.getActor("x:0:test");
+    const actor = findActor("x:0:test");
     const events = actor!.eventHistory.toArray();
     expect(events).toHaveLength(1);
     expect(events[0].event).toEqual({ type: "sys.refresh" });
-    expect(events[0].sourceId).toBe("x:0");
+    expect(events[0].sourceId).not.toBe("x:0");
+    expect(events[0].sourceId?.startsWith(`${actor!.connectionId}.`)).toBe(
+      true,
+    );
 
     client.close();
   });
@@ -330,9 +337,10 @@ describe("WebSocket Server", () => {
 
     await wait(50);
 
-    const actor = store.getActor("x:5");
+    const actor = findActor("x:5");
     expect(actor).toBeDefined();
-    expect(actor!.sessionId).toBe("x:5");
+    expect(actor!.localSessionId).toBe("x:5");
+    expect(actor!.sessionId).not.toBe(actor!.localSessionId);
 
     // Send event with sourceRef using id
     client.send(
@@ -349,7 +357,10 @@ describe("WebSocket Server", () => {
     const events = actor!.eventHistory.toArray();
     expect(events).toHaveLength(1);
     expect(events[0].event).toEqual({ type: "NAVIGATE" });
-    expect(events[0].sourceId).toBe("x:0");
+    expect(events[0].sourceId).not.toBe("x:0");
+    expect(events[0].sourceId?.startsWith(`${actor!.connectionId}.`)).toBe(
+      true,
+    );
 
     client.close();
   });

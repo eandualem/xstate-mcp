@@ -48,40 +48,40 @@ describe("send_event tool", () => {
   });
 
   it("resolves target by sessionId", async () => {
-    store.registerActor(makeActorEvent());
     const ws = makeMockWs();
-    registry.registerSession(ws as never, "x:0");
+    const identity = registry.registerSession(ws as never, "x:0");
+    store.registerActor(makeActorEvent(identity));
 
-    const promise = sendEvent(store, registry, "x:0", { type: "SUBMIT" });
+    const promise = sendEvent(store, registry, identity.sessionId, {
+      type: "SUBMIT",
+    });
 
     // Resolve the pending request
     const sentMsg = JSON.parse(ws.send.mock.calls[0][0] as string);
-    registry.handleResponse(sentMsg.requestId, true);
+    registry.handleResponse(ws as never, sentMsg.requestId, true);
 
     const result = await promise;
     const data = JSON.parse(result.content[0].text);
     expect(data.success).toBe(true);
-    expect(data.sessionId).toBe("x:0");
+    expect(data.sessionId).toBe(identity.sessionId);
     expect(data.event).toEqual({ type: "SUBMIT" });
   });
 
   it("resolves target by actor name when sessionId not found", async () => {
-    store.registerActor(
-      makeActorEvent({ sessionId: "x:99", name: "appMachine" }),
-    );
     const ws = makeMockWs();
-    registry.registerSession(ws as never, "x:99");
+    const identity = registry.registerSession(ws as never, "x:99");
+    store.registerActor(makeActorEvent({ ...identity, name: "appMachine" }));
 
     const promise = sendEvent(store, registry, "appMachine", { type: "LOAD" });
 
     const sentMsg = JSON.parse(ws.send.mock.calls[0][0] as string);
     expect(sentMsg.sessionId).toBe("x:99");
-    registry.handleResponse(sentMsg.requestId, true);
+    registry.handleResponse(ws as never, sentMsg.requestId, true);
 
     const result = await promise;
     const data = JSON.parse(result.content[0].text);
     expect(data.success).toBe(true);
-    expect(data.sessionId).toBe("x:99");
+    expect(data.sessionId).toBe(identity.sessionId);
   });
 
   it("returns error when multiple actors match by name", async () => {

@@ -3,187 +3,204 @@ import type { WebSocket } from "ws";
 import type { ActorStore } from "./actor-store.js";
 import type { Logger } from "./logger.js";
 
+export interface SessionIdentity {
+  sessionId: string;
+  localSessionId: string;
+  connectionId: string;
+  applicationName: string | null;
+}
+
+interface Connection {
+  connectionId: string;
+  applicationName: string | null;
+}
+interface Session extends SessionIdentity {
+  client: WebSocket;
+}
 interface PendingRequest {
+  session: Session;
   resolve: (result: SendEventResult) => void;
   timer: ReturnType<typeof setTimeout>;
 }
-
 export interface SendEventResult {
   success: boolean;
   error?: string;
 }
 
 export class ClientRegistry {
-  /** sessionId → WebSocket that owns this actor */
-  private sessionToClient = new Map<string, WebSocket>();
-  /** WebSocket → set of sessionIds it owns */
+  private connections = new WeakMap<WebSocket, Connection>();
+  private sessions = new Map<string, Session>();
   private clientToSessions = new Map<WebSocket, Set<string>>();
-  /** requestId → pending resolve + timeout */
   private pending = new Map<string, PendingRequest>();
-  /** requestId → sessionId for matching pending requests to sessions on disconnect */
-  private requestToSession = new Map<string, string>();
 
   constructor(
     private timeoutMs: number,
     private logger: Logger,
   ) {}
 
-  /**
-   * Register that a WebSocket client owns a given actor sessionId.
-   * Called when we receive an @xstate.actor event from a client.
-   */
-  registerSession(ws: WebSocket, sessionId: string): void {
-    // If this session was previously owned by a different client, clean up the stale mapping
-    const previousOwner = this.sessionToClient.get(sessionId);
-    if (previousOwner && previousOwner !== ws) {
-      const previousSessions = this.clientToSessions.get(previousOwner);
-      if (previousSessions) {
-        previousSessions.delete(sessionId);
-        if (previousSessions.size === 0) {
-          this.clientToSessions.delete(previousOwner);
-        }
-      }
-    }
+  /** A connection's namespace is server-assigned; labels never confer ownership. */
+  registerClient(ws: WebSocket, applicationName?: string): void {
+    if (this.connections.has(ws)) return;
+    this.connections.set(ws, {
+      connectionId: randomUUID(),
+      applicationName: applicationName?.trim().slice(0, 128) || null,
+    });
+  }
 
-    this.sessionToClient.set(sessionId, ws);
-    if (!this.clientToSessions.has(ws)) {
+  /** Scope even unregistered references so they cannot link into another app. */
+  getSessionId(ws: WebSocket, localSessionId: string): string {
+    this.registerClient(ws);
+    const { connectionId } = this.connections.get(ws)!;
+    // UTF-16 preserves every JS string, including otherwise-colliding lone surrogates.
+    const encoded = Buffer.from(localSessionId, "utf16le").toString(
+      "base64url",
+    );
+    return `${connectionId}.${encoded}`;
+  }
+
+  /** Repeated registration on one socket is idempotent; ownership never migrates. */
+  registerSession(ws: WebSocket, localSessionId: string): SessionIdentity {
+    const sessionId = this.getSessionId(ws, localSessionId);
+    const existing = this.sessions.get(sessionId);
+    if (existing) return this.identity(existing);
+    const session: Session = {
+      ...this.connections.get(ws)!,
+      sessionId,
+      localSessionId,
+      client: ws,
+    };
+    this.sessions.set(sessionId, session);
+    if (!this.clientToSessions.has(ws))
       this.clientToSessions.set(ws, new Set());
-    }
     this.clientToSessions.get(ws)!.add(sessionId);
+    return this.identity(session);
   }
 
-  /**
-   * Remove all sessions associated with a disconnected client.
-   * Rejects pending sendEvent promises and optionally removes actors from the store.
-   */
+  getSession(
+    ws: WebSocket,
+    localSessionId: string,
+  ): SessionIdentity | undefined {
+    const session = this.sessions.get(this.getSessionId(ws, localSessionId));
+    return session?.client === ws ? this.identity(session) : undefined;
+  }
+
+  private identity({
+    sessionId,
+    localSessionId,
+    connectionId,
+    applicationName,
+  }: Session): SessionIdentity {
+    return { sessionId, localSessionId, connectionId, applicationName };
+  }
+
   removeClient(ws: WebSocket, store?: ActorStore): void {
-    const sessions = this.clientToSessions.get(ws);
-    if (sessions) {
-      // Reject pending requests for sessions owned by this client
-      for (const [requestId, sessionId] of this.requestToSession) {
-        if (sessions.has(sessionId)) {
-          const pending = this.pending.get(requestId);
-          if (pending) {
-            clearTimeout(pending.timer);
-            this.pending.delete(requestId);
-            this.requestToSession.delete(requestId);
-            pending.resolve({
-              success: false,
-              error: "Client disconnected",
-            });
-          }
-        }
+    // Match the original socket, independently of current actor mappings.
+    for (const [requestId, pending] of this.pending) {
+      if (pending.session.client === ws) {
+        this.settle(requestId, {
+          success: false,
+          error: "Client disconnected",
+        });
       }
-
-      for (const sessionId of sessions) {
-        this.sessionToClient.delete(sessionId);
-        if (store) {
-          store.removeActor(sessionId);
-        }
-      }
-      this.clientToSessions.delete(ws);
     }
+    for (const sessionId of this.clientToSessions.get(ws) ?? []) {
+      const session = this.sessions.get(sessionId);
+      if (session?.client !== ws) continue;
+      this.sessions.delete(sessionId);
+      if (store?.getActor(sessionId)?.connectionId === session.connectionId) {
+        store.removeActor(sessionId);
+      }
+    }
+    this.clientToSessions.delete(ws);
+    this.connections.delete(ws);
   }
 
-  /**
-   * Send an event to an actor via its owning WebSocket client.
-   * Returns a promise that resolves when the client responds or times out.
-   */
   sendEvent(
     sessionId: string,
     event: Record<string, unknown>,
   ): Promise<SendEventResult> {
-    const ws = this.sessionToClient.get(sessionId);
-    if (!ws) {
+    const session = this.sessions.get(sessionId);
+    if (!session)
       return Promise.resolve({
         success: false,
         error: `No connected client owns actor ${sessionId}`,
       });
-    }
-
-    if (ws.readyState !== ws.OPEN) {
+    const ws = session.client;
+    if (ws.readyState !== ws.OPEN)
       return Promise.resolve({
         success: false,
         error: `Client connection is not open (state: ${ws.readyState})`,
       });
-    }
-
     const requestId = randomUUID();
-
-    return new Promise<SendEventResult>((resolve) => {
+    return new Promise((resolve) => {
       const timer = setTimeout(() => {
-        this.pending.delete(requestId);
-        this.requestToSession.delete(requestId);
-        resolve({
+        this.settle(requestId, {
           success: false,
           error: `Timeout waiting for response (${this.timeoutMs}ms)`,
         });
       }, this.timeoutMs);
-
-      this.pending.set(requestId, { resolve, timer });
-      this.requestToSession.set(requestId, sessionId);
-
+      this.pending.set(requestId, { session, resolve, timer });
+      // Applications continue to receive their original, local XState session ID.
       const message = JSON.stringify({
         type: "xstate-mcp.send",
         requestId,
-        sessionId,
+        sessionId: session.localSessionId,
         event,
       });
-
       ws.send(message, (err) => {
-        if (err) {
-          clearTimeout(timer);
-          this.pending.delete(requestId);
-          this.requestToSession.delete(requestId);
-          resolve({ success: false, error: `Failed to send: ${err.message}` });
-        }
+        if (err)
+          this.settle(requestId, {
+            success: false,
+            error: `Failed to send: ${err.message}`,
+          });
       });
-
       this.logger.debug(
         `Sent event to actor ${sessionId} (request: ${requestId})`,
       );
     });
   }
 
-  /**
-   * Handle a response from a client for a pending send_event request.
-   */
-  handleResponse(requestId: string, success: boolean, error?: string): void {
+  handleResponse(
+    ws: WebSocket,
+    requestId: string,
+    success: boolean,
+    error?: string,
+  ): void {
     const pending = this.pending.get(requestId);
     if (!pending) {
       this.logger.warn("Received response for unknown request, skipping");
       return;
     }
-
-    clearTimeout(pending.timer);
-    this.pending.delete(requestId);
-    this.requestToSession.delete(requestId);
-    pending.resolve({ success, error });
+    if (
+      pending.session.client !== ws ||
+      this.sessions.get(pending.session.sessionId) !== pending.session
+    ) {
+      this.logger.warn("Rejected response from non-owning connection");
+      return;
+    }
+    this.settle(requestId, { success, error });
   }
 
-  /**
-   * Find the sessionId of an actor by its name.
-   * Returns the first match, or undefined if not found.
-   */
-  /**
-   * Clear all session/client mappings and reject pending requests.
-   * Called when the actor store is cleared to keep registry in sync.
-   */
+  private settle(requestId: string, result: SendEventResult): void {
+    const pending = this.pending.get(requestId);
+    if (!pending) return;
+    this.pending.delete(requestId);
+    clearTimeout(pending.timer);
+    pending.resolve(result);
+  }
+
   clear(): void {
-    for (const [, pending] of this.pending) {
-      clearTimeout(pending.timer);
-      pending.resolve({ success: false, error: "Registry cleared" });
+    for (const requestId of this.pending.keys()) {
+      this.settle(requestId, { success: false, error: "Registry cleared" });
     }
-    this.pending.clear();
-    this.requestToSession.clear();
-    this.sessionToClient.clear();
+    this.sessions.clear();
     this.clientToSessions.clear();
+    // Live sockets keep their connection identity, but must register actors again.
   }
 
   getConnectedSessionCount(): number {
-    return this.sessionToClient.size;
+    return this.sessions.size;
   }
-
   getConnectedClientCount(): number {
     return this.clientToSessions.size;
   }

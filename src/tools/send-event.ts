@@ -1,3 +1,4 @@
+import { actorIdentity } from "../actor-identity.js";
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import type { ClientRegistry } from "../client-registry.js";
@@ -28,6 +29,7 @@ export async function sendEvent(
         error: `Ambiguous actor name: "${target}" matches ${matches.length} actors`,
         matches: matches.map((a) => ({
           sessionId: a.sessionId,
+          ...actorIdentity(a),
           name: a.name,
         })),
         suggestion: "Use a specific sessionId instead of the actor name.",

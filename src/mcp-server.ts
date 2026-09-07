@@ -1,3 +1,4 @@
+import { actorIdentity } from "./actor-identity.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -62,6 +63,12 @@ export function createMcpServer(
       description:
         "List all registered XState actors with summary information including current state, status, and child count.",
       inputSchema: {
+        connectionId: z
+          .string()
+          .optional()
+          .describe(
+            "Filter to an application connection from list_actors. Reconnects get a new ID.",
+          ),
         status: z
           .enum(["active", "done", "stopped", "error"])
           .optional()
@@ -70,9 +77,9 @@ export function createMcpServer(
       outputSchema: listActorsOutputSchema,
       annotations: READ_ONLY_ANNOTATIONS,
     },
-    ({ status }) => {
+    ({ status, connectionId }) => {
       logger.debug(`Tool called: list_actors(status=${status ?? "all"})`);
-      return listActors(store, status);
+      return listActors(store, status, connectionId);
     },
   );
 
@@ -85,7 +92,9 @@ export function createMcpServer(
       inputSchema: {
         sessionId: z
           .string()
-          .describe("The actor's session ID (from list_actors)"),
+          .describe(
+            "The actor's opaque, connection-scoped sessionId from list_actors (not localSessionId)",
+          ),
         excludeContext: z
           .boolean()
           .optional()
@@ -120,7 +129,9 @@ export function createMcpServer(
       inputSchema: {
         sessionId: z
           .string()
-          .describe("The actor's session ID (from list_actors)"),
+          .describe(
+            "The actor's opaque, connection-scoped sessionId from list_actors (not localSessionId)",
+          ),
         limit: z
           .number()
           .optional()
@@ -144,7 +155,9 @@ export function createMcpServer(
       inputSchema: {
         sessionId: z
           .string()
-          .describe("The actor's session ID (from list_actors)"),
+          .describe(
+            "The actor's opaque, connection-scoped sessionId from list_actors (not localSessionId)",
+          ),
       },
       outputSchema: getMachineDefinitionOutputSchema,
       annotations: READ_ONLY_ANNOTATIONS,
@@ -183,12 +196,18 @@ export function createMcpServer(
       title: "Get Actor Tree",
       description:
         "Get the hierarchical tree of all actors showing parent-child relationships, current states, and statuses.",
+      inputSchema: {
+        connectionId: z
+          .string()
+          .optional()
+          .describe("Filter to an application connection from list_actors."),
+      },
       outputSchema: getActorTreeOutputSchema,
       annotations: READ_ONLY_ANNOTATIONS,
     },
-    () => {
+    ({ connectionId }) => {
       logger.debug("Tool called: get_actor_tree");
-      return getActorTree(store);
+      return getActorTree(store, connectionId);
     },
   );
 
@@ -201,7 +220,9 @@ export function createMcpServer(
       inputSchema: {
         sessionId: z
           .string()
-          .describe("The actor's session ID (from list_actors)"),
+          .describe(
+            "The actor's opaque, connection-scoped sessionId from list_actors (not localSessionId)",
+          ),
         eventType: z
           .string()
           .describe("The event type to check (e.g. 'SUBMIT', 'user.click')"),
@@ -226,7 +247,9 @@ export function createMcpServer(
       inputSchema: {
         sessionId: z
           .string()
-          .describe("The actor's session ID (from list_actors)"),
+          .describe(
+            "The actor's opaque, connection-scoped sessionId from list_actors (not localSessionId)",
+          ),
         limit: z
           .number()
           .optional()
@@ -253,7 +276,7 @@ export function createMcpServer(
         target: z
           .string()
           .describe(
-            "Actor sessionId or name (name resolution tries sessionId first, then actor name)",
+            "Opaque sessionId from list_actors, or a unique actor name. Duplicate names require the exact sessionId.",
           ),
         event: z
           .object({ type: z.string() })
@@ -288,6 +311,7 @@ export function createMcpServer(
     () => {
       const actors = store.listActors().map((actor) => ({
         sessionId: actor.sessionId,
+        ...actorIdentity(actor),
         name: actor.name,
         currentState: actor.currentSnapshot?.value ?? null,
         status: actor.currentSnapshot?.status ?? "unknown",
@@ -361,6 +385,7 @@ export function createMcpServer(
             text: safeStringify(
               {
                 sessionId: actor.sessionId,
+                ...actorIdentity(actor),
                 name: actor.name,
                 status: actor.currentSnapshot?.status ?? "unknown",
                 value: actor.currentSnapshot?.value ?? null,
@@ -434,6 +459,7 @@ export function createMcpServer(
             text: safeStringify(
               {
                 sessionId: actor.sessionId,
+                ...actorIdentity(actor),
                 name: actor.name,
                 definition: actor.definition,
               },

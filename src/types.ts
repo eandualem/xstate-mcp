@@ -84,6 +84,9 @@ export type IncomingEvent = z.infer<typeof inspectionEventSchema>;
 // --- Normalized internal types (what ActorStore consumes) ---
 
 export interface ActorEvent {
+  connectionId?: string;
+  localSessionId?: string;
+  applicationName?: string | null;
   type: "@xstate.actor";
   sessionId: string;
   rootId?: string;
@@ -137,6 +140,9 @@ export interface ActorSnapshot {
 }
 
 export interface ActorRecord {
+  connectionId: string | null;
+  localSessionId: string;
+  applicationName: string | null;
   sessionId: string;
   name: string;
   rootId: string | null;

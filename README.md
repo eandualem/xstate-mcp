@@ -145,12 +145,15 @@ actor.start();
 
 Registration must reach the server before snapshots and events can be stored.
 The minimal example drops events while the socket is connecting and does not
-serialize machine definitions or parent metadata. See the review for the fixes
-required before treating either example as a complete integration.
+serialize machine definitions or parent metadata. Adapters must preserve local
+session IDs and replay registrations after reconnecting; see the
+[adapter requirements](docs/application-sessions.md#identifier-migration).
+The snippets illustrate connection points and do not implement buffering or
+reconnect replay. See the review before treating them as complete integrations.
 
 ### Enabling `send_event` (bidirectional)
 
-The `send_event` tool sends events from the AI agent to your running actors. This requires the browser to handle incoming messages and respond:
+The `send_event` tool sends events from the AI agent to your running actors. Attach this handler to the same WebSocket that forwards inspection events:
 
 ```typescript
 const ws = new WebSocket("ws://127.0.0.1:7357");
@@ -160,7 +163,7 @@ ws.addEventListener("message", (msg) => {
 
   if (data.type === "xstate-mcp.send") {
     try {
-      // Find the actor and send the event
+      // data.sessionId is the original local XState ID, not the MCP ID
       const actor = getActorBySessionId(data.sessionId); // your lookup logic
       actor.send(data.event);
       ws.send(
@@ -198,7 +201,22 @@ the existing timeout. Unknown request IDs are ignored. Validation warnings and
 unknown-request warnings use fixed descriptions on stderr, without echoing the
 incoming payload or request ID.
 
+## Application identity
+
+Each WebSocket connection gets its own namespace. Two tabs with identical local
+XState IDs remain independent. Use `applicationName` (an optional URL query
+parameter) and `connectionId` from `list_actors` to select an application, then
+copy the returned opaque `sessionId` into tools, prompts, and resource URIs.
+
+This changes MCP identifiers: local IDs such as `x:0` are no longer actor keys.
+Application-side inspection and command messages continue to use local IDs.
+Reconnects get fresh namespaces and require rediscovery. See the
+[application-session contract and migration guide](docs/application-sessions.md).
+
 ## Tools
+
+Examples below abbreviate public IDs as `app-session` and `agents-session`.
+Always copy the actual opaque `sessionId` from discovery.
 
 ### Discovery & Orientation
 
@@ -206,20 +224,26 @@ incoming payload or request ID.
 
 What's running right now? Returns all registered actors with their current state, status, and child count.
 
-**Parameters:** none
+**Parameters:** optional `connectionId` and `status` filters
 
 ```json
 {
   "actors": [
     {
-      "sessionId": "x:0",
+      "sessionId": "app-session",
+      "localSessionId": "x:0",
+      "connectionId": "connection-A",
+      "applicationName": "Checkout",
       "name": "app",
       "currentState": "ready",
       "status": "active",
       "childCount": 5
     },
     {
-      "sessionId": "x:0:agents",
+      "sessionId": "agents-session",
+      "localSessionId": "x:0:agents",
+      "connectionId": "connection-A",
+      "applicationName": "Checkout",
       "name": "agentsMachine",
       "currentState": "idle",
       "status": "active",
@@ -234,19 +258,25 @@ What's running right now? Returns all registered actors with their current state
 
 See the parent-child hierarchy. Useful when your app has nested or parallel actors.
 
-**Parameters:** none
+**Parameters:** optional `connectionId` filter
 
 ```json
 {
   "tree": [
     {
-      "sessionId": "x:0",
+      "sessionId": "app-session",
+      "localSessionId": "x:0",
+      "connectionId": "connection-A",
+      "applicationName": "Checkout",
       "name": "app",
       "state": "ready",
       "status": "active",
       "children": [
         {
-          "sessionId": "x:0:agents",
+          "sessionId": "agents-session",
+          "localSessionId": "x:0:agents",
+          "connectionId": "connection-A",
+          "applicationName": "Checkout",
           "name": "agentsMachine",
           "state": "idle",
           "status": "active",
@@ -269,12 +299,15 @@ Drill into one actor — full state value, context, and status.
 
 ```json
 {
-  "sessionId": "x:0:agents",
+  "sessionId": "agents-session",
+  "localSessionId": "x:0:agents",
+  "connectionId": "connection-A",
+  "applicationName": "Checkout",
   "name": "agentsMachine",
   "status": "active",
   "value": "idle",
   "context": { "entities": [], "selectedId": null },
-  "parentId": "x:0",
+  "parentId": "app-session",
   "updatedAt": "2026-02-28T12:00:01.500Z"
 }
 ```
@@ -289,7 +322,7 @@ Full state chart structure — states, transitions, guards, actions, invoked ser
 
 ```json
 {
-  "sessionId": "x:0:agents",
+  "sessionId": "agents-session",
   "name": "agentsMachine",
   "definition": {
     "id": "agents",
@@ -315,11 +348,11 @@ Raw events that flowed through an actor (from the ring buffer). Includes full ev
 
 ```json
 {
-  "sessionId": "x:0:agents",
+  "sessionId": "agents-session",
   "events": [
     {
       "event": { "type": "sys.refresh" },
-      "sourceId": "x:0",
+      "sourceId": "app-session",
       "createdAt": "2026-02-28T12:00:01.000Z"
     }
   ],
@@ -339,7 +372,7 @@ State transition history — from/to values, triggering event, and timestamps. H
 
 ```json
 {
-  "sessionId": "x:0:agents",
+  "sessionId": "agents-session",
   "name": "agentsMachine",
   "currentState": "idle",
   "totalTransitions": 4,
@@ -371,7 +404,7 @@ Static check: can this actor handle a given event type in its current state? Ana
 
 ```json
 {
-  "sessionId": "x:0:agents",
+  "sessionId": "agents-session",
   "canHandle": true,
   "currentState": "idle",
   "matchedTransitions": ["idle.on.sys.refresh"],
@@ -392,7 +425,7 @@ Send an event to a running actor. Target can be a sessionId or actor name. Requi
 
 ```json
 {
-  "sessionId": "x:0:agents",
+  "sessionId": "agents-session",
   "event": { "type": "sys.refresh" },
   "success": true
 }
@@ -441,10 +474,10 @@ Catches event type typos and wrong-target bugs before they happen.
 ### "Trigger and verify"
 
 ```
-send_event(target: "x:5", event: { type: "sys.refresh" })
+send_event(target: "actor-session", event: { type: "sys.refresh" })
 → { success: true }
 
-get_state_timeline(sessionId: "x:5", limit: 3)
+get_state_timeline(sessionId: "actor-session", limit: 3)
 → idle → loading → idle (with timestamps)
 ```
 
@@ -527,9 +560,9 @@ Assembles the full event and transition history, then asks the LLM to walk throu
 ```
 User: The checkout form isn't submitting. Can you check what state the form machine is in?
 
-Agent uses: list_actors → finds "formMachine" at sessionId "x:3"
-Agent uses: get_actor_state("x:3") → state: "validating", context: { errors: ["email"] }
-Agent uses: can_handle_event("x:3", "SUBMIT") → canHandle: false
+Agent uses: list_actors → finds "formMachine" at sessionId "form-session"
+Agent uses: get_actor_state("form-session") → state: "validating", context: { errors: ["email"] }
+Agent uses: can_handle_event("form-session", "SUBMIT") → canHandle: false
 
 Agent: The form machine is stuck in "validating" because there's an email validation
 error in the context. The SUBMIT event can't fire from this state — the machine
@@ -541,10 +574,10 @@ needs the validation to pass first. Check the email field validation logic.
 ```
 User: Something broke after the refresh button was clicked. Trace what happened.
 
-Agent uses: get_state_timeline("x:0:agents", limit: 5) →
+Agent uses: get_state_timeline("agents-session", limit: 5) →
   idle → loading → error (event: "xstate.error.actor")
 
-Agent uses: get_event_history("x:0:agents", limit: 10) →
+Agent uses: get_event_history("agents-session", limit: 10) →
   Shows the error event payload: { type: "xstate.error.actor", data: { status: 500 } }
 
 Agent: The agents machine transitioned from idle to loading on sys.refresh, then
