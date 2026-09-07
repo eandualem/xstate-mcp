@@ -14,6 +14,7 @@ import { WebSocket } from "ws";
 import { createActor, createMachine } from "xstate";
 import { unzipSync } from "fflate";
 import {
+  defaultArtifacts,
   hashFile,
   json,
   run,
@@ -370,8 +371,8 @@ if (
   const bundle =
     process.argv[2] ??
     resolve(
-      "artifacts/mcpb",
-      json("artifacts/mcpb/build-evidence.json").bundle,
+      defaultArtifacts,
+      json(join(defaultArtifacts, "build-evidence.json")).bundle,
     );
   const report = await verifyBundle(bundle, process.argv[3]);
   console.log(

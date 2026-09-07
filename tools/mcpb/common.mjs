@@ -9,6 +9,7 @@ import addFormats from "ajv-formats";
 import { MANIFEST_SCHEMAS } from "@anthropic-ai/mcpb";
 
 export const here = dirname(fileURLToPath(import.meta.url));
+export const defaultArtifacts = resolve(here, "../../artifacts/mcpb");
 export const json = (file) => JSON.parse(readFileSync(file, "utf8"));
 export const sha = (data) => createHash("sha256").update(data).digest("hex");
 export const hashFile = (file) => sha(readFileSync(file));

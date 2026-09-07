@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { hashFile, json, run } from "./common.mjs";
+import { defaultArtifacts, hashFile, json, run } from "./common.mjs";
 import { verifyArchive } from "./verify.mjs";
 
 export function assertReady(build, reports, currentCommit) {
@@ -58,7 +58,7 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
-  const dir = resolve(process.argv[2] ?? "artifacts/mcpb");
+  const dir = resolve(process.argv[2] ?? defaultArtifacts);
   const { readdirSync } = await import("node:fs");
   const build = json(join(dir, "build-evidence.json"));
   verifyArchive(join(dir, build.bundle), build);
