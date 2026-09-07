@@ -44,7 +44,7 @@ const incomingActorEventSchema = z.object({
   snapshot: z.record(z.string(), z.unknown()).optional(),
   // Fields present in serialized format but missing in native
   createdAt: z.string().optional(),
-  id: z.string().optional(),
+  id: z.string().nullish(),
   _version: z.union([z.string(), z.number()]).optional(),
 });
 
@@ -56,7 +56,7 @@ const incomingSnapshotEventSchema = z.object({
   snapshot: z.record(z.string(), z.unknown()).optional(),
   event: z.record(z.string(), z.unknown()).optional(),
   createdAt: z.string().optional(),
-  id: z.string().optional(),
+  id: z.string().nullish(),
   _version: z.union([z.string(), z.number()]).optional(),
 });
 
@@ -69,7 +69,7 @@ const incomingXstateEventSchema = z.object({
   rootId: z.string().optional(),
   event: z.record(z.string(), z.unknown()).optional(),
   createdAt: z.string().optional(),
-  id: z.string().optional(),
+  id: z.string().nullish(),
   _version: z.union([z.string(), z.number()]).optional(),
 });
 

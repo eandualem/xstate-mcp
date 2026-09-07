@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { normalizeEvent } from "../src/ws-server.js";
 import { Logger } from "../src/logger.js";
 import type { IncomingEvent } from "../src/types.js";
@@ -6,6 +6,80 @@ import type { IncomingEvent } from "../src/types.js";
 const logger = new Logger("error");
 
 describe("normalizeEvent", () => {
+  describe("timestamps", () => {
+    it.each([
+      ["1788768000000", "2026-09-07T08:00:00.000Z"],
+      ["0", "1970-01-01T00:00:00.000Z"],
+      ["-1", "1969-12-31T23:59:59.999Z"],
+      ["2026-09-07T11:00:00+03:00", "2026-09-07T08:00:00.000Z"],
+      ["2026-09-07T08:00:00Z", "2026-09-07T08:00:00.000Z"],
+      ["2026-09-07T08:00:00.123Z", "2026-09-07T08:00:00.123Z"],
+    ])("normalizes %s to UTC ISO", (createdAt, expected) => {
+      for (const type of [
+        "@xstate.actor",
+        "@xstate.event",
+        "@xstate.snapshot",
+      ] as const) {
+        expect(
+          normalizeEvent(
+            {
+              type,
+              sessionId: "x:0",
+              createdAt,
+            },
+            logger,
+          )?.createdAt,
+        ).toBe(expected);
+      }
+    });
+
+    it.each([
+      "",
+      "not-a-date",
+      "1788768000000junk",
+      "1.5",
+      "1e12",
+      "Infinity",
+      "8640000000000001",
+      "-8640000000000001",
+      "99999999999999999999",
+      "2026-02-30T08:00:00Z",
+      "2026-09-07",
+      "2026-09-07T08:00:00",
+      " 1788768000000 ",
+      "2026-09-07T08:00:00+99:00",
+    ])("rejects an invalid supplied timestamp: %s", (createdAt) => {
+      expect(
+        normalizeEvent(
+          {
+            type: "@xstate.actor",
+            sessionId: "x:0",
+            createdAt,
+          },
+          logger,
+        ),
+      ).toBeNull();
+    });
+
+    it("uses receipt time only when createdAt is absent", () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date("2026-09-07T08:00:00.123Z"));
+        expect(
+          normalizeEvent(
+            {
+              type: "@xstate.actor",
+              sessionId: "x:0",
+            },
+            logger,
+          )?.createdAt,
+        ).toBe("2026-09-07T08:00:00.123Z");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   describe("native XState 5 format (actorRef/sourceRef)", () => {
     it("extracts sessionId from actorRef.sessionId", () => {
       const incoming: IncomingEvent = {
