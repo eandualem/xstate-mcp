@@ -9,7 +9,7 @@ export const getEventHistoryOutputSchema = {
   sessionId: z.string(),
   events: z.array(
     z.object({
-      event: z.record(z.unknown()),
+      event: z.record(z.string(), z.unknown()),
       sourceId: z.string().nullable(),
       createdAt: z.string(),
     }),

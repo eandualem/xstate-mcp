@@ -187,8 +187,7 @@ export function normalizeEvent(
   // Extract sessionId: prefer top-level sessionId, fall back to actorRef.sessionId or actorRef.id
   // Native XState 5 serializes actorRef as { xstate$$type: 1, id: "x:5" } — no sessionId field
   const actorRef = (incoming as Record<string, unknown>).actorRef as
-    | { sessionId?: string; id?: string }
-    | undefined;
+    { sessionId?: string; id?: string } | undefined;
   const resolvedSessionId =
     incoming.sessionId ?? actorRef?.sessionId ?? actorRef?.id;
 
@@ -207,8 +206,7 @@ export function normalizeEvent(
       const name =
         incoming.name ??
         ((actorRef as Record<string, unknown> | undefined)?.id as
-          | string
-          | undefined);
+          string | undefined);
 
       const event: ActorEvent = {
         type: "@xstate.actor",
@@ -238,8 +236,7 @@ export function normalizeEvent(
     case "@xstate.event": {
       // sourceId: prefer top-level sourceId, fall back to sourceRef.sessionId or sourceRef.id
       const sourceRef = (incoming as Record<string, unknown>).sourceRef as
-        | { sessionId?: string; id?: string }
-        | undefined;
+        { sessionId?: string; id?: string } | undefined;
       const sourceId =
         incoming.sourceId ?? sourceRef?.sessionId ?? sourceRef?.id;
 
