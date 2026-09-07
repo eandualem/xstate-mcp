@@ -1,0 +1,3 @@
+# Shared, read-only project context. Model and permission choices are user-owned.
+read:
+  - AGENTS.md

@@ -5,6 +5,16 @@
 
 An MCP server that gives AI coding agents live read/write access to XState v5 state machines. See every running actor, query state and context, inspect event history, check transition eligibility, and send events — without console.log or React DevTools.
 
+The intended loop is **observe the running machine → develop or exercise the
+frontend → verify state and UI**. The coding agent writes the frontend; this
+server supplies runtime evidence. See [purpose and architecture](docs/concepts.md),
+[contributing](CONTRIBUTING.md), and [working across coding agents](docs/agent-workflow.md).
+
+**September 2026 review:** the existing 148 tests pass, but real application checks
+found adapter compatibility and lifecycle bugs. Read the
+[review and issue roadmap](docs/reviews/2026-09-07.md) before relying on the browser
+examples below. The [demo plan](docs/demo-plan.md) follows the reliability fixes.
+
 ## Quick Start
 
 ### 1. Configure your MCP client
@@ -65,7 +75,7 @@ Confirm the server works before wiring up your app:
 npx -y @modelcontextprotocol/inspector npx -y xstate-mcp
 ```
 
-This opens a web UI at `http://localhost:6274`. You should see 9 tools, 3 resources, and 3 prompts listed. Click any tool to test it — `list_actors` will return an empty array (no browser connected yet), which confirms the server is running correctly.
+This opens a web UI at `http://localhost:6274`. The server exposes 9 tools, 1 fixed resource, 2 resource templates, and 3 prompts. `list_actors` returns an empty actor list when no application is connected. This verifies MCP discovery only; it does not verify that the application inspection connection works.
 
 ## Configuration
 
@@ -82,7 +92,11 @@ This opens a web UI at `http://localhost:6274`. You should see 9 tools, 3 resour
 
 Your XState 5 app needs to send inspection events to the WebSocket server. Two options:
 
-### Option A: Using `@statelyai/inspect` (recommended)
+The examples below describe the existing integration approaches. The September
+review reproduced registration failure with `@statelyai/inspect@0.7.2` and lost
+startup events with the minimal adapter. A tested, complete adapter is planned.
+
+### Option A: Using `@statelyai/inspect`
 
 ```typescript
 import { createWebSocketInspector } from "@statelyai/inspect";
@@ -112,7 +126,10 @@ const actor = createActor(yourMachine, {
 actor.start();
 ```
 
-Both approaches work. Actors register automatically when they start — you'll see them in `list_actors` immediately.
+Registration must reach the server before snapshots and events can be stored.
+The minimal example drops events while the socket is connecting and does not
+serialize machine definitions or parent metadata. See the review for the fixes
+required before treating either example as a complete integration.
 
 ### Enabling `send_event` (bidirectional)
 
@@ -437,7 +454,10 @@ This catches the two most common XState integration bugs:
 
 ## Resources
 
-MCP resources provide direct access to actor data without tool calls. Clients that support resource subscriptions get real-time updates when actors register, snapshots change, or the store clears.
+MCP resources provide direct access to actor data without tool calls. Resource
+subscription support is incomplete: the server emits some notifications but does
+not implement `resources/subscribe` or `resources/unsubscribe`. Use explicit reads
+until the subscription issue in the review is resolved.
 
 | Resource           | URI                                     | Description                                         |
 | ------------------ | --------------------------------------- | --------------------------------------------------- |
@@ -563,7 +583,7 @@ xstate-mcp runs entirely on your local machine. It does not:
 - Store any data to disk (all state is in-memory and cleared on restart)
 - Make any outbound network requests
 
-The WebSocket server binds to `127.0.0.1` by default (localhost only, not reachable from other machines). The MCP transport uses stdio. All data stays between your browser and your AI coding tool.
+The WebSocket server binds to `127.0.0.1` by default (localhost only, not reachable from other machines). The MCP transport uses stdio. Inspection data is provided to your AI coding tool, which may send tool results to its configured model provider. The server itself makes no outbound requests; the coding tool's data handling depends on your configuration.
 
 ## License
 
