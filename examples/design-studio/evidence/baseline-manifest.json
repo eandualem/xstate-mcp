@@ -1,0 +1,33 @@
+{
+  "status": "baseline-captured; recovery implementation pending",
+  "applicationRepository": "https://github.com/eandualem/design-studio",
+  "originalBaseline": "e1bd77533decbb0a139c152cd5c0a8ae8d3eca81",
+  "instrumentedBaseline": "99513dbf6b666eecd0e779d8970424a26ca47397",
+  "serverSource": "16c7a0004dce3f676eab0b5606be1e3542c89449",
+  "captureStartedAt": "2026-09-07T18:54:57.738Z",
+  "captureCompletedAt": "2026-09-07T18:55:28.810Z",
+  "serverRuntime": {
+    "server": {
+      "name": "xstate-mcp",
+      "version": "1.0.0"
+    },
+    "node": "v26.8.1"
+  },
+  "artifactsSha256": {
+    "01-before-saved.png": "6b3de37138538b023de70526172988d6b7023b65cf6d4f3359b6d30acad27d9c",
+    "02-before-not-saved.png": "6d3d67adbed05e9121bfceb3d0ed489ecceaaa33da10c45ef8b088bdc2f36eef",
+    "baseline-transcript.jsonl": "4973209cb8c22815c2ce794798594bf0a96665135fd84f44b9e1d3f8b3909b6e"
+  },
+  "sanitization": "Only screenshot result paths changed to basenames. Public synthetic document text and fresh protocol IDs are retained. Screenshots copied unchanged.",
+  "assertions": [
+    "Save failure remains in open.ready with saveError",
+    "MCP eligibility and dispatch reject user.retrySave",
+    "Stored document retains previous text",
+    "Machine, hook and component match original baseline at capture source commit"
+  ],
+  "limitations": [
+    "This is baseline evidence only; no successful recovery or final recording yet",
+    "Assistant runtime connections were blocked by the fixture; its visible error is expected",
+    "Coding-agent model/cost provenance will be recorded separately from the MCP server runtime"
+  ]
+}

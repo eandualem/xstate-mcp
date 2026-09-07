@@ -5,10 +5,10 @@ This demonstration follows the coding agent assigned to
 frontend. The in-app assistant and assistant-runtime are separate participants;
 this scenario exercises the document editor without an in-app model request.
 
-**Status:** application instrumentation, implementation and recording are in
-progress in [Design Studio #1](https://github.com/eandualem/design-studio/issues/1).
-This guide currently records the preparation. It does not yet claim a completed
-live development run. See [the acceptance brief](BRIEF.md),
+**Status:** development instrumentation and the baseline failure are captured.
+Recovery implementation and the final recording are in progress in [Design Studio #1](https://github.com/eandualem/design-studio/issues/1).
+This guide records preparation and actual baseline evidence. It does not yet claim
+a completed recovery demonstration. See [the acceptance brief](BRIEF.md),
 [xstate-mcp #18](https://github.com/eandualem/xstate-mcp/issues/18), and
 [the integration PR](https://github.com/eandualem/xstate-mcp/pull/34).
 
@@ -23,6 +23,34 @@ it, then implement and verify bounded retry with a visible recovery action.
 A successful command acknowledgement alone does not prove that the draft reached
 storage. The final proof must include successful save state, matching rendered UI,
 and the persisted document reopened after a reload.
+
+## Captured baseline
+
+The coding agent used the interactive MCP/browser harness before changing the
+save behavior. At instrumented source commit
+[`99513db`](https://github.com/eandualem/design-studio/commit/99513dbf6b666eecd0e779d8970424a26ca47397),
+the document machine, hook and component still match the original baseline.
+
+The [actual transcript](evidence/baseline-transcript.jsonl) records an injected
+IndexedDB transaction abort, followed by these observations:
+
+- `get_actor_state`: `open.ready`, with `saveError: "Storage write failed"`.
+- `can_handle_event`: `user.retrySave` cannot be handled.
+- `send_event`: the application rejects `user.retrySave`.
+- The browser displays “not saved” and retains the new draft in the editor.
+- Reading IndexedDB still returns the previous text, “Persisted baseline.”
+
+![The actual unsaved draft before recovery was implemented](evidence/02-before-not-saved.png)
+
+The assistant panel's connection error is expected: the fixture blocks the unused
+assistant-runtime connection and makes no in-app model call. It is separate from
+the document save failure being investigated.
+
+[Capture metadata and SHA-256 hashes](evidence/baseline-manifest.json) identify the
+source, real server runtime and timestamps. Screenshot paths in the transcript
+were shortened to filenames; screenshots are unchanged, and document content is
+synthetic. This is baseline evidence. Successful recovery, final checks and the
+short recording are still required.
 
 ## Prepare the pinned server
 
