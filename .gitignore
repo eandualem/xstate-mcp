@@ -3,3 +3,7 @@ dist/
 *.tsbuildinfo
 .env
 .env.local
+
+# Generated frontend verification output (curated evidence is tracked separately)
+examples/frontend/test-results/
+examples/frontend/playwright-report/

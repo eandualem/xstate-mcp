@@ -5,6 +5,14 @@
 
 An MCP server that gives AI coding agents live read/write access to XState v5 state machines. See every running actor, query state and context, inspect event history, check transition eligibility, and send events — without console.log or React DevTools.
 
+## Runnable frontend example
+
+[Fieldnotes](examples/frontend/README.md) demonstrates the complete local MCP loop
+with a real XState release-note editor: inspect root/child actors, save, observe an
+intentional failure, reject a forbidden command, retry, and verify the rendered UI.
+Automated browser/MCP tests require no model or API key. See the example guide for
+clean-clone commands, current-main compatibility, and captured evidence.
+
 ## Quick Start
 
 ### 1. Configure your MCP client
