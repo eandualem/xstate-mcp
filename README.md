@@ -14,6 +14,13 @@ server supplies runtime evidence. See [purpose and architecture](docs/concepts.m
 found adapter compatibility and lifecycle bugs. Read the
 [review and issue roadmap](docs/reviews/2026-09-07.md) before relying on the browser
 examples below. The [demo plan](docs/demo-plan.md) follows the reliability fixes.
+## Runnable frontend example
+
+[Fieldnotes](examples/frontend/README.md) demonstrates the complete local MCP loop
+with a real XState release-note editor: inspect root/child actors, save, observe an
+intentional failure, reject a forbidden command, retry, and verify the rendered UI.
+Automated browser/MCP tests require no model or API key. See the example guide for
+clean-clone commands, current-main compatibility, and captured evidence.
 
 ## Quick Start
 

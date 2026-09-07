@@ -48,7 +48,10 @@
     "version": "node scripts/metadata.mjs --write",
     "release:prepare": "node scripts/release.mjs prepare",
     "release:verify": "node scripts/release.mjs verify",
-    "test:package": "node scripts/package-smoke.mjs"
+    "test:package": "node scripts/package-smoke.mjs",
+    "demo:install": "cd examples/frontend && bun install --frozen-lockfile",
+    "demo:dev": "cd examples/frontend && bun run dev",
+    "demo:verify": "bun run build && cd examples/frontend && bun run build && bun run test:e2e"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
