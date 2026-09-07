@@ -32,6 +32,7 @@ export class ClientRegistry {
   private sessions = new Map<string, Session>();
   private clientToSessions = new Map<WebSocket, Set<string>>();
   private pending = new Map<string, PendingRequest>();
+  private closed = false;
 
   constructor(
     private timeoutMs: number,
@@ -40,6 +41,7 @@ export class ClientRegistry {
 
   /** A connection's namespace is server-assigned; labels never confer ownership. */
   registerClient(ws: WebSocket, applicationName?: string): void {
+    if (this.closed) throw new Error("Client registry is closed");
     if (this.connections.has(ws)) return;
     this.connections.set(ws, {
       connectionId: randomUUID(),
@@ -80,6 +82,7 @@ export class ClientRegistry {
     ws: WebSocket,
     localSessionId: string,
   ): SessionIdentity | undefined {
+    if (this.closed) return undefined;
     const session = this.sessions.get(this.getSessionId(ws, localSessionId));
     return session?.client === ws ? this.identity(session) : undefined;
   }
@@ -119,6 +122,8 @@ export class ClientRegistry {
     sessionId: string,
     event: Record<string, unknown>,
   ): Promise<SendEventResult> {
+    if (this.closed)
+      return Promise.resolve({ success: false, error: "Server shutting down" });
     const session = this.sessions.get(sessionId);
     if (!session)
       return Promise.resolve({
@@ -189,9 +194,16 @@ export class ClientRegistry {
     pending.resolve(result);
   }
 
-  clear(): void {
+  /** Permanently reject new registrations/commands and settle pending requests. */
+  close(): void {
+    this.closed = true;
+    this.clear("Server shutting down");
+  }
+
+  /** Clear routes and requests without reopening a closed registry. */
+  clear(error = "Registry cleared"): void {
     for (const requestId of this.pending.keys()) {
-      this.settle(requestId, { success: false, error: "Registry cleared" });
+      this.settle(requestId, { success: false, error });
     }
     this.sessions.clear();
     this.clientToSessions.clear();

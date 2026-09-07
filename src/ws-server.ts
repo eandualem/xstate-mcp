@@ -1,3 +1,4 @@
+import type { Server as HttpServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { z } from "zod";
 import {
@@ -16,6 +17,8 @@ import type { Logger } from "./logger.js";
 
 export interface WsServerOptions {
   port: number;
+  server?: HttpServer;
+  signal?: AbortSignal;
   host?: string;
   store: ActorStore;
   clientRegistry?: ClientRegistry;
@@ -55,8 +58,9 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
   const unsubscribeClear = store.onCleared(() => clientRegistry.clear());
 
   const wss = new WebSocketServer({
-    port,
-    host: host ?? "127.0.0.1",
+    ...(options.server
+      ? { server: options.server }
+      : { port, host: host ?? "127.0.0.1" }),
     maxPayload: options.maxPayload ?? DEFAULT_MAX_PAYLOAD,
     verifyClient: allowedOrigins
       ? (info, callback) => {
@@ -89,6 +93,10 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
   });
 
   wss.on("connection", (ws: WebSocket, request) => {
+    if (options.signal?.aborted) {
+      ws.terminate();
+      return;
+    }
     const query = (request.url ?? "").split("?").slice(1).join("?");
     const params = new URLSearchParams(query);
     clientRegistry.registerClient(
@@ -98,7 +106,8 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
     logger.info("Client connected");
 
     ws.on("message", (data: Buffer | string) => {
-      handleMessage(data.toString(), ws, store, clientRegistry, logger);
+      if (!options.signal?.aborted)
+        handleMessage(data.toString(), ws, store, clientRegistry, logger);
     });
 
     ws.on("close", () => {

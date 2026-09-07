@@ -80,6 +80,18 @@ npx -y @modelcontextprotocol/inspector npx -y xstate-mcp
 
 This opens a web UI at `http://localhost:6274`. The server exposes 9 tools, 1 fixed resource, 2 resource templates, and 3 prompts. `list_actors` returns an empty actor list when no application is connected. This verifies MCP discovery only; it does not verify that the application inspection connection works.
 
+## Library and lifecycle
+
+The `xstate-mcp` command starts the inspection bridge. The package's ESM import
+is a library: it exports an idle `createInspectionServer` factory and the
+`createSandboxServer` capability-scanning factory (also the default export).
+Imports read no process configuration, bind no port, and attach no stdio.
+
+The CLI waits for the inspection port before connecting MCP. It closes connected
+applications and pending commands on SIGINT, SIGTERM, or stdin EOF. For direct
+execution from a checkout, use `node dist/cli.js`; `dist/index.js` is now the
+importable library. See [embedding, migration, and shutdown](docs/server-lifecycle.md).
+
 ## Configuration
 
 | Environment Variable         | Default                                 | Description                                                                    |

@@ -28,23 +28,42 @@ export class ActorStore {
     private logger: Logger,
   ) {}
 
-  onActorRegistered(cb: ActorRegisteredCallback): void {
-    this.onRegisterCallbacks.push(cb);
+  onActorRegistered(cb: ActorRegisteredCallback): () => void {
+    const listener: ActorRegisteredCallback = (sessionId) => cb(sessionId);
+    this.onRegisterCallbacks.push(listener);
+    return () => {
+      this.onRegisterCallbacks = this.onRegisterCallbacks.filter(
+        (candidate) => candidate !== listener,
+      );
+    };
   }
 
-  onActorRemoved(cb: ActorRemovedCallback): void {
-    this.onRemovedCallbacks.push(cb);
+  onActorRemoved(cb: ActorRemovedCallback): () => void {
+    const listener: ActorRemovedCallback = (sessionId) => cb(sessionId);
+    this.onRemovedCallbacks.push(listener);
+    return () => {
+      this.onRemovedCallbacks = this.onRemovedCallbacks.filter(
+        (candidate) => candidate !== listener,
+      );
+    };
   }
 
-  onSnapshotUpdated(cb: SnapshotUpdatedCallback): void {
-    this.onSnapshotCallbacks.push(cb);
+  onSnapshotUpdated(cb: SnapshotUpdatedCallback): () => void {
+    const listener: SnapshotUpdatedCallback = (sessionId) => cb(sessionId);
+    this.onSnapshotCallbacks.push(listener);
+    return () => {
+      this.onSnapshotCallbacks = this.onSnapshotCallbacks.filter(
+        (candidate) => candidate !== listener,
+      );
+    };
   }
 
   onCleared(cb: StoreCleared): () => void {
-    this.onClearCallbacks.push(cb);
+    const listener: StoreCleared = () => cb();
+    this.onClearCallbacks.push(listener);
     return () => {
       this.onClearCallbacks = this.onClearCallbacks.filter(
-        (listener) => listener !== cb,
+        (candidate) => candidate !== listener,
       );
     };
   }
