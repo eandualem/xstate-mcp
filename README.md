@@ -95,9 +95,23 @@ This opens a web UI at `http://localhost:6274`. The server exposes 9 tools, 1 fi
 
 Your XState 5 app needs to send inspection events to the WebSocket server. Two options:
 
-The examples below describe the existing integration approaches. The September
-review reproduced registration failure with `@statelyai/inspect@0.7.2` and lost
-startup events with the minimal adapter. A tested, complete adapter is planned.
+Inspection reception is tested with **XState 5.32.6** and
+**@statelyai/inspect 0.7.2**, using a real root/child machine over WebSocket and
+MCP client queries. Stately's nullable message IDs are accepted; actor session
+IDs still require strings. The inspector integration supplies definitions,
+parent relationships, snapshots, and event history. Bidirectional commands
+still require the separate response handler described below.
+
+Incoming `createdAt` may be an integer epoch-millisecond string or an ISO
+timestamp with `Z` or an explicit timezone offset. Stored timestamps use UTC ISO
+format with millisecond precision. When `createdAt` is absent (native inspection),
+the server uses receipt time. Invalid supplied timestamps are rejected rather
+than replaced with receipt time; timezone-free dates and numeric JSON values
+are not supported. History retains receipt order rather than sorting by
+producer clocks.
+
+The minimal adapter below can still lose startup events; a complete adapter is
+tracked in [#13](https://github.com/eandualem/xstate-mcp/issues/13).
 
 ### Option A: Using `@statelyai/inspect`
 

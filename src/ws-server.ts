@@ -1,4 +1,5 @@
 import { WebSocketServer, type WebSocket } from "ws";
+import { z } from "zod";
 import {
   inspectionEventSchema,
   messageEnvelopeSchema,
@@ -183,6 +184,20 @@ function handleMessage(
   }
 }
 
+const isoTimestampSchema = z.string().datetime({ offset: true });
+
+function normalizeTimestamp(createdAt: string | undefined): string | null {
+  if (createdAt === undefined) return new Date().toISOString();
+
+  const time = /^-?\d+$/.test(createdAt)
+    ? Number(createdAt)
+    : isoTimestampSchema.safeParse(createdAt).success
+      ? Date.parse(createdAt)
+      : NaN;
+  const date = new Date(time);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
 /**
  * Normalize incoming events from either native XState 5 format (actorRef/sourceRef)
  * or @statelyai/inspect serialized format (sessionId/sourceId) into our internal types.
@@ -191,8 +206,6 @@ export function normalizeEvent(
   incoming: IncomingEvent,
   logger: Logger,
 ): InspectionEvent | null {
-  const now = new Date().toISOString();
-
   // Extract sessionId: prefer top-level sessionId, fall back to actorRef.sessionId or actorRef.id
   // Native XState 5 serializes actorRef as { xstate$$type: 1, id: "x:5" } — no sessionId field
   const actorRef = (incoming as Record<string, unknown>).actorRef as
@@ -207,7 +220,11 @@ export function normalizeEvent(
     return null;
   }
 
-  const createdAt = incoming.createdAt ?? now;
+  const createdAt = normalizeTimestamp(incoming.createdAt);
+  if (createdAt === null) {
+    logger.warn("Event has invalid createdAt, skipping");
+    return null;
+  }
 
   switch (incoming.type) {
     case "@xstate.actor": {
