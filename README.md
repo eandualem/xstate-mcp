@@ -432,7 +432,7 @@ transition or an inactive actor, and `null` when the answer is unknown. Known
 guards are never evaluated and produce `null`. Missing/incomplete definitions or
 snapshots also produce `null`.
 
-Every result has `analysis: "static"` and a `reason`. `matchedTransitions` contains
+Every successful result has `analysis: "static"` and a `reason`. `matchedTransitions` contains
 selected handler paths (or the guarded candidate for an unknown result);
 `blockedTransitions` contains selected forbidden paths. These are paths in the
 supplied definition, not a list of all ancestor/wildcard declarations.
