@@ -1,0 +1,9 @@
+{
+  "url": "https://raw.githubusercontent.com/modelcontextprotocol/mcpb/70fe3b34cd6dff1b3bba046638edc72a6467a4fb/schemas/mcpb-manifest-v0.4.schema.json",
+  "retrieved": "2026-09-07",
+  "sha256": "068557824c651d6d49b86ad132adeafe62ca788d918b3e1e2b224bf0f91320fd",
+  "tool": "@anthropic-ai/mcpb",
+  "toolVersion": "2.1.2",
+  "manifestVersion": "0.4",
+  "licenseUrl": "https://github.com/modelcontextprotocol/mcpb/blob/70fe3b34cd6dff1b3bba046638edc72a6467a4fb/LICENSE"
+}
