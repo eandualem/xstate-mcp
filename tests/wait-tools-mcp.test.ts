@@ -68,6 +68,8 @@ async function setup() {
   return {
     client,
     server,
+    serverTransport,
+    logger,
     store,
     ws,
     tools,
@@ -92,6 +94,52 @@ function deferred() {
 }
 
 describe("MCP verification waits with real XState actors", () => {
+  it("contains failed resource-list notifications and keeps MCP requests usable", async () => {
+    const { call, ws, flush, serverTransport, logger } = await setup();
+    const debug = vi.spyOn(logger, "debug");
+    const send = serverTransport.send.bind(serverTransport);
+    const delivery = vi
+      .spyOn(serverTransport, "send")
+      .mockImplementation(async (message, options) => {
+        if (
+          "method" in message &&
+          message.method === "notifications/resources/list_changed"
+        ) {
+          throw new Error("Transport closed during notification delivery");
+        }
+        await send(message, options);
+      });
+    onTestFinished(() => {
+      debug.mockRestore();
+      delivery.mockRestore();
+    });
+    const actor = createActor(
+      createMachine({ initial: "idle", states: { idle: {} } }),
+      {
+        inspect: (event) =>
+          ws.send(
+            JSON.stringify({ ...event, sessionId: event.actorRef.sessionId }),
+          ),
+      },
+    );
+    onTestFinished(() => {
+      if (ws.readyState === WebSocket.OPEN) actor.stop();
+    });
+    actor.start();
+    await flush();
+
+    expect(debug).toHaveBeenCalledWith(
+      "Resource-list notification could not be delivered",
+    );
+    expect(
+      await call("wait_for_state", {
+        sessionId: actor.sessionId,
+        state: "idle",
+        timeoutMs: 0,
+      }),
+    ).toMatchObject({ outcome: "matched", snapshot: { value: "idle" } });
+  });
+
   it("releases observers when closed before connecting a transport", async () => {
     const logger = new Logger("error");
     const store = new ActorStore(10, logger);

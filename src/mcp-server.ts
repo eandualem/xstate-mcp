@@ -508,7 +508,9 @@ export function createMcpServer(
     if (!disposed && server.isConnected()) {
       void server.server
         .sendResourceListChanged()
-        .catch(() => logger.debug("Resource notification transport closed"));
+        .catch(() =>
+          logger.debug("Resource-list notification could not be delivered"),
+        );
     }
   };
   const unsubscribe = [

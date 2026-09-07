@@ -1,3 +1,4 @@
+import { actorCursorSchema } from "../types.js";
 import { actorIdentityOutputSchema } from "../actor-identity.js";
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
