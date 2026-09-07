@@ -1,7 +1,7 @@
 import type { AnyActorRef, InspectionEvent } from "xstate";
 import type { WebSocket } from "ws";
 
-/** Test transport for native XState 5.28.0 events, with Error fields preserved. */
+/** Test transport for native XState inspection events, with Error fields preserved. */
 export function nativeInspectionForwarder(ws: WebSocket) {
   const sent: Record<string, unknown>[] = [];
   function send(event: unknown) {
@@ -23,8 +23,8 @@ export function nativeInspectionForwarder(ws: WebSocket) {
       // Error properties are non-enumerable; plain JSON.stringify loses them.
       send({ ...event, sessionId: event.actorRef.sessionId });
     },
-    // Callback failures do not emit @xstate.snapshot in XState 5.28.0.
-    // An adapter must explicitly sample the real snapshot in its error observer.
+    // Sample the real snapshot from an error observer so callback failures remain
+    // observable even when XState inspection does not emit @xstate.snapshot.
     captureSnapshot(actor: AnyActorRef) {
       send({
         type: "@xstate.snapshot",

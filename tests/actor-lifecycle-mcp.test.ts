@@ -33,7 +33,12 @@ async function setup() {
     await client.close();
     await server.close();
   });
-  const wss = createWsServer({ port: 0, store, logger });
+  const wss = createWsServer({
+    port: 0,
+    store,
+    logger,
+    clientRegistry: registry,
+  });
   await once(wss, "listening");
   onTestFinished(async () => {
     for (const socket of wss.clients) socket.terminate();
@@ -51,7 +56,29 @@ async function setup() {
   const forwarder = nativeInspectionForwarder(ws);
   // Fetch discovery so the SDK validates structured tool results against schemas.
   await client.listTools();
-  return { client, store, ...forwarder };
+  async function discover(localSessionId: string) {
+    const result = await client.callTool({
+      name: "list_actors",
+      arguments: {},
+    });
+    expect(result.isError).not.toBe(true);
+    const { actors } = result.structuredContent as {
+      actors: { sessionId: string; localSessionId: string }[];
+    };
+    const actor = actors.find(
+      (candidate) => candidate.localSessionId === localSessionId,
+    );
+    if (!actor) throw new Error(`Actor ${localSessionId} was not discovered`);
+    expect(actor.sessionId).not.toBe(localSessionId);
+    return actor.sessionId;
+  }
+  function status(localSessionId: string) {
+    return store
+      .listActors()
+      .find((actor) => actor.localSessionId === localSessionId)?.currentSnapshot
+      ?.status;
+  }
+  return { client, discover, status, ...forwarder };
 }
 
 async function readState(client: Client, sessionId: string) {
@@ -94,7 +121,7 @@ async function expectPrompts(client: Client, sessionId: string, text: string) {
 
 describe("real XState lifecycle over WebSocket and MCP", () => {
   it("exposes promise and machine completion outputs", async () => {
-    const { client, inspect, flush, store } = await setup();
+    const { client, inspect, flush, discover, status } = await setup();
     const promise = createActor(
       fromPromise(async () => ({ answer: 42 })),
       { inspect },
@@ -103,17 +130,16 @@ describe("real XState lifecycle over WebSocket and MCP", () => {
       promise.stop();
     });
     promise.start();
-    await expect
-      .poll(() => store.getActor(promise.sessionId)?.currentSnapshot?.status)
-      .toBe("done");
-    const state = await readState(client, promise.sessionId);
+    await expect.poll(() => status(promise.sessionId)).toBe("done");
+    const promiseSessionId = await discover(promise.sessionId);
+    const state = await readState(client, promiseSessionId);
     expect(state).toMatchObject({
       status: "done",
       value: null,
       output: { answer: 42 },
       error: null,
     });
-    const timeline = await readTimeline(client, promise.sessionId);
+    const timeline = await readTimeline(client, promiseSessionId);
     expect(timeline.transitions.at(-1)).toMatchObject({
       type: "lifecycle",
       changes: ["status", "output"],
@@ -123,7 +149,7 @@ describe("real XState lifecycle over WebSocket and MCP", () => {
       toValue: null,
       output: { answer: 42 },
     });
-    await expectPrompts(client, promise.sessionId, '"answer":42');
+    await expectPrompts(client, promiseSessionId, '"answer":42');
 
     const machine = createActor(
       createMachine({
@@ -142,14 +168,15 @@ describe("real XState lifecycle over WebSocket and MCP", () => {
     machine.start();
     machine.send({ type: "FINISH" });
     await flush();
-    expect(await readState(client, machine.sessionId)).toMatchObject({
+    const machineSessionId = await discover(machine.sessionId);
+    expect(await readState(client, machineSessionId)).toMatchObject({
       status: "done",
       value: "complete",
       output: { result: "finished" },
       error: null,
     });
     expect(
-      (await readTimeline(client, machine.sessionId)).transitions.at(-1),
+      (await readTimeline(client, machineSessionId)).transitions.at(-1),
     ).toMatchObject({
       type: "state",
       changes: ["value", "status", "output"],
@@ -159,7 +186,7 @@ describe("real XState lifecycle over WebSocket and MCP", () => {
   });
 
   it("retains a rejected invocation on both promise and parent machine", async () => {
-    const { client, inspect, store, sent } = await setup();
+    const { client, inspect, discover, status, sent } = await setup();
     const error = Object.assign(new TypeError("service failed"), {
       code: "SERVICE_FAILED",
     });
@@ -186,11 +213,10 @@ describe("real XState lifecycle over WebSocket and MCP", () => {
     });
     machine.start();
     const child = machine.getSnapshot().children.fetcher!;
-    await expect
-      .poll(() => store.getActor(machine.sessionId)?.currentSnapshot?.status)
-      .toBe("error");
+    await expect.poll(() => status(machine.sessionId)).toBe("error");
     expect(onError).toHaveBeenCalledWith(error);
-    for (const sessionId of [machine.sessionId, child.sessionId]) {
+    for (const localSessionId of [machine.sessionId, child.sessionId]) {
+      const sessionId = await discover(localSessionId);
       expect(await readState(client, sessionId)).toMatchObject({
         status: "error",
         output: null,
@@ -225,7 +251,7 @@ describe("real XState lifecycle over WebSocket and MCP", () => {
   });
 
   it("records callback and machine explicit stops without inventing output", async () => {
-    const { client, inspect, flush } = await setup();
+    const { client, inspect, flush, discover } = await setup();
     const cleanup = vi.fn();
     const callback = createActor(
       fromCallback(() => cleanup),
@@ -246,13 +272,14 @@ describe("real XState lifecycle over WebSocket and MCP", () => {
     await flush();
     expect(cleanup).toHaveBeenCalledOnce();
     for (const actor of [callback, machine]) {
-      expect(await readState(client, actor.sessionId)).toMatchObject({
+      const sessionId = await discover(actor.sessionId);
+      expect(await readState(client, sessionId)).toMatchObject({
         status: "stopped",
         output: null,
         error: null,
       });
       expect(
-        (await readTimeline(client, actor.sessionId)).transitions.at(-1),
+        (await readTimeline(client, sessionId)).transitions.at(-1),
       ).toMatchObject({
         type: "lifecycle",
         changes: ["status"],
@@ -264,7 +291,7 @@ describe("real XState lifecycle over WebSocket and MCP", () => {
   });
 
   it("preserves real callback failure snapshots supplied by an error observer", async () => {
-    const { client, inspect, flush, captureSnapshot } = await setup();
+    const { client, inspect, flush, captureSnapshot, discover } = await setup();
     const actor = createActor(
       fromCallback(({ receive }) => {
         receive(() => {
@@ -284,17 +311,18 @@ describe("real XState lifecycle over WebSocket and MCP", () => {
     actor.start();
     actor.send({ type: "FAIL" });
     await flush();
-    expect(await readState(client, actor.sessionId)).toMatchObject({
+    const sessionId = await discover(actor.sessionId);
+    expect(await readState(client, sessionId)).toMatchObject({
       status: "error",
       value: null,
       output: null,
       error: { name: "Error", message: "callback failed" },
     });
-    await expectPrompts(client, actor.sessionId, '"message":"callback failed"');
+    await expectPrompts(client, sessionId, '"message":"callback failed"');
   });
 
   it("records a real context reset on an actor without a state value", async () => {
-    const { client, inspect, flush } = await setup();
+    const { client, inspect, flush, discover } = await setup();
     const actor = createActor(
       fromTransition(
         (_context: { count: number } | null, _event: { type: "RESET" }) => null,
@@ -308,13 +336,14 @@ describe("real XState lifecycle over WebSocket and MCP", () => {
     actor.start();
     actor.send({ type: "RESET" });
     await flush();
-    expect(await readState(client, actor.sessionId)).toMatchObject({
+    const sessionId = await discover(actor.sessionId);
+    expect(await readState(client, sessionId)).toMatchObject({
       status: "active",
       context: null,
       value: null,
     });
     expect(
-      (await readTimeline(client, actor.sessionId)).transitions.at(-1),
+      (await readTimeline(client, sessionId)).transitions.at(-1),
     ).toMatchObject({
       type: "context",
       changes: ["context"],

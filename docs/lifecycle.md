@@ -1,9 +1,10 @@
 # Actor lifecycle diagnostics
 
 `get_actor_state` and `xstate://actor/{sessionId}/snapshot` expose the same
-snapshot fields: `sessionId`, `name`, `status`, `value`, `context`, `output`,
-`error`, `parentId`, and `updatedAt`. All three analysis prompts include output
-and error alongside status. The tool's context exclusion/truncation options
+snapshot fields: `sessionId`, `localSessionId`, `connectionId`, `applicationName`,
+`name`, `status`, `value`, `context`, `output`, `error`, `parentId`, and `updatedAt`.
+All three analysis prompts include output and error alongside status.
+The tool's context exclusion/truncation options
 affect only its context field; the resource returns the full context.
 
 `output` is the received completion value. Falsy values such as `0`, `false`,
@@ -68,8 +69,9 @@ also omits `sessionId`, so an adapter must preserve that routing metadata.
 Complete adapter behavior is tracked in [#13](https://github.com/eandualem/xstate-mcp/issues/13).
 
 The [live contract tests](../tests/actor-lifecycle-mcp.test.ts) use exact dev
-dependency `xstate@5.28.0`, a loopback WebSocket, and an MCP SDK client. The
-[test forwarder](../tests/fixtures/native-inspection.ts) preserves session IDs
+dependency `xstate@5.32.6`, a loopback WebSocket, and an MCP SDK client.
+They discover public actor IDs through `list_actors` before querying lifecycle data.
+The [test forwarder](../tests/fixtures/native-inspection.ts) preserves session IDs
 and Error fields without rewriting state, context, status, or output. Its callback
 error observer samples a real failed callback snapshot. It is test infrastructure,
 not a shipped reconnecting adapter or a Stately Inspector compatibility test.
