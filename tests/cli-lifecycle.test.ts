@@ -139,6 +139,22 @@ describe("built library and CLI lifecycle", () => {
     expect(result.stderr).toContain("EADDRINUSE");
     expect(result.stderr).toContain(String(port));
   });
+
+  it("handles closed stderr while reporting invalid startup configuration", async () => {
+    // The monitor observes uncaught errors without changing Node's crash behavior.
+    const monitor =
+      "process.on('uncaughtExceptionMonitor', () => process.stdout.write('UNCAUGHT'));";
+    const { child, exited } = launch(
+      ["--import", `data:text/javascript,${encodeURIComponent(monitor)}`, cli],
+      { XSTATE_MCP_WS_PORT: "invalid" },
+    );
+    child.stderr.destroy();
+    expect(await within(exited)).toMatchObject({
+      code: 1,
+      signal: null,
+      stdout: "",
+    });
+  });
 });
 
 async function freePort() {
@@ -150,9 +166,13 @@ async function freePort() {
   await new Promise<void>((resolve) => server.close(() => resolve()));
   return address.port;
 }
-async function runningCli(executable = cli, env: Record<string, string> = {}) {
+async function runningCli(
+  executable = cli,
+  env: Record<string, string> = {},
+  nodeArgs: string[] = [],
+) {
   const port = await freePort();
-  const launched = launch([executable], {
+  const launched = launch([...nodeArgs, executable], {
     XSTATE_MCP_WS_PORT: String(port),
     XSTATE_MCP_WS_HOST: "127.0.0.1",
     XSTATE_MCP_LOG_LEVEL: "debug",
@@ -180,6 +200,37 @@ async function assertReusable(port: number) {
 }
 
 describe("CLI shutdown with live applications", () => {
+  it("shuts down connected applications when the stderr reader closes", async () => {
+    const { child, exited, port } = await runningCli();
+    const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+    await once(ws, "open");
+    onTestFinished(() => ws.terminate());
+    const pong = once(ws, "pong");
+    ws.ping();
+    await pong;
+    const wsClosed = once(ws, "close");
+    child.stderr.destroy();
+    // Invalid input is safely rejected, but its diagnostic reaches the closed pipe.
+    ws.send("null");
+    expect(await within(exited)).toMatchObject({ code: 0, signal: null });
+    expect((await within(wsClosed))[0]).toBe(1001);
+    await assertReusable(port);
+  });
+
+  it("handles a stderr write after normal cleanup has finished", async () => {
+    const diagnostic =
+      "process.once('beforeExit', () => process.stderr.write('late diagnostic\\n'));";
+    const { child, exited, port } = await runningCli(
+      cli,
+      { XSTATE_MCP_LOG_LEVEL: "error" },
+      ["--import", `data:text/javascript,${encodeURIComponent(diagnostic)}`],
+    );
+    child.stderr.destroy();
+    child.stdin.end();
+    expect(await within(exited)).toMatchObject({ code: 0, signal: null });
+    await assertReusable(port);
+  });
+
   it.each(["SIGINT", "SIGTERM", "EOF"] as const)(
     "closes open clients and pending sends on %s",
     async (trigger) => {

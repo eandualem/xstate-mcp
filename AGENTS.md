@@ -33,7 +33,9 @@ Do not change dependencies as a side effect of a documentation task.
 
 ## Architecture and invariants
 
-- `src/index.ts` wires configuration, WebSocket, actor storage, and MCP stdio.
+- `src/index.ts` exports import-safe factories. `src/cli.ts` owns process startup,
+  configuration, stdio, and signals. `src/inspection-server.ts` coordinates the
+  WebSocket listener, actor storage, command registry, and MCP transport lifecycle.
   `src/mcp-server.ts` registers nine tools, one fixed resource, two resource
   templates, and three prompts. Prompts assemble context; they do not run a model.
 - `src/ws-server.ts` receives inspection events and routes send acknowledgements.

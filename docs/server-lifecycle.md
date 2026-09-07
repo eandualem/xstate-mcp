@@ -125,6 +125,9 @@ These cleanup changes do not implement the resource subscription protocol in
 The CLI invokes shutdown for SIGINT, SIGTERM, stdin EOF/closure, and stdio errors.
 Normal signal/EOF teardown exits with status 0. Configuration, bind, and cleanup
 errors exit nonzero with diagnostics on stderr. Stdout remains JSON-RPC only.
+The CLI handles a closed stderr pipe from startup through process exit, including
+diagnostics after cleanup. A broken pipe triggers normal shutdown; it does not
+turn a successful cleanup into an uncaught stream error.
 A final **1500ms CLI deadline** allows the normal 1000ms bridge cleanup to finish
 and then exits with status 1 if blocked stdio writes or another active handle keep
 the process alive. That fallback can discard buffered output; it avoids hanging
@@ -141,7 +144,8 @@ that work also completes before the test workers start.
 `tests/cli-lifecycle.test.ts` launches real subprocesses.
 It checks import/configuration isolation, occupied ports before MCP initialization,
 SIGINT/SIGTERM/EOF with real XState actors and pending commands, repeated shutdown,
-a nonresponsive WebSocket, early EOF, and stdout backpressure. It also extracts the
+a nonresponsive WebSocket, early EOF, stdout backpressure, and closed stderr
+during startup, a live session, and after cleanup. It also extracts the
 prepared npm archive, imports its public exports, type-checks an external consumer,
 scans capabilities, and runs the packed CLI. Packed-package tests reuse the exact
 installed dependencies without publishing or downloading new runtime versions.

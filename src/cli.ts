@@ -37,6 +37,9 @@ async function main(): Promise<void> {
     if (error.code !== "EPIPE") report(error);
     stop();
   };
+  // Diagnostics can fail before configuration loads or after cleanup, including
+  // the exit deadline. Keep stderr errors handled for the CLI's entire lifetime.
+  process.stderr.on("error", streamError);
   try {
     const config = loadConfig();
     logger = new Logger(config.logLevel);
