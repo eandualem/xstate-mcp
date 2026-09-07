@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { expect, it, onTestFinished } from "vitest";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-function fixture() {
+function fixture(version?: string) {
   const dir = mkdtempSync(resolve(tmpdir(), "xstate-release-validation-"));
   onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
   for (const file of [
@@ -29,6 +29,12 @@ function fixture() {
     "docs/releases",
   ])
     cpSync(resolve(root, file), resolve(dir, file), { recursive: true });
+  if (version !== undefined) {
+    const path = resolve(dir, "package.json");
+    const pkg = JSON.parse(readFileSync(path, "utf8"));
+    pkg.version = version;
+    writeFileSync(path, JSON.stringify(pkg));
+  }
   symlinkSync(
     resolve(root, "node_modules"),
     resolve(dir, "node_modules"),
@@ -89,7 +95,7 @@ it("rejects registry metadata outside the pinned current schema", () => {
 });
 
 it("refuses publication from a dirty checkout or a development version", () => {
-  const { dir, run } = fixture();
+  const { dir, run } = fixture("9.9.9-dev.0");
   expect(run("release.mjs", "guard").stderr).toContain(
     "Development/prerelease versions",
   );
