@@ -366,7 +366,7 @@ it("uses the packed library exports, type declarations, and executable", async (
 });
 
 it("bounds EOF shutdown even when the MCP client stops reading a large response", async () => {
-  const { child, exited, port } = await runningCli();
+  const { child, exited, port, client } = await runningCli();
   const ws = new WebSocket(`ws://127.0.0.1:${port}`);
   await once(ws, "open");
   onTestFinished(() => ws.terminate());
@@ -383,13 +383,21 @@ it("bounds EOF shutdown even when the MCP client stops reading a large response"
   const pong = once(ws, "pong");
   ws.ping();
   await pong;
+  const discovery = await client.callTool({
+    name: "list_actors",
+    arguments: {},
+  });
+  const [{ sessionId }] = (
+    discovery.structuredContent as { actors: { sessionId: string }[] }
+  ).actors;
+  expect(sessionId).not.toBe("large");
   child.stdout.pause();
   child.stdin.write(
     JSON.stringify({
       jsonrpc: "2.0",
       id: "large-response",
       method: "tools/call",
-      params: { name: "get_actor_state", arguments: { sessionId: "large" } },
+      params: { name: "get_actor_state", arguments: { sessionId } },
     }) + "\n",
   );
   child.stdin.end();

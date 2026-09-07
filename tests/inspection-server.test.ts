@@ -184,6 +184,23 @@ describe("importable inspection server lifecycle", () => {
     expect(extra.close).not.toHaveBeenCalled();
   });
 
+  it("ignores application frames after the exposed registry closes", async () => {
+    const { bridge, ws, client, flush } = await setup();
+    bridge.clientRegistry.close();
+    const actor = createActor(
+      createMachine({ initial: "idle", states: { idle: {} } }),
+      {
+        inspect: (event) => ws.send(JSON.stringify(event)),
+      },
+    );
+    actor.start();
+    await flush();
+    actor.stop();
+    expect(bridge.store.size).toBe(0);
+    expect((await client.listTools()).tools).toHaveLength(9);
+    expect(bridge.clientRegistry.isClosed).toBe(true);
+  });
+
   it("rolls back a failed transport start and releases its listening port", async () => {
     const bridge = createInspectionServer({ wsPort: 0, logLevel: "error" });
     const transport = fakeTransport();

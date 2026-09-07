@@ -93,7 +93,7 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
   });
 
   wss.on("connection", (ws: WebSocket, request) => {
-    if (options.signal?.aborted) {
+    if (options.signal?.aborted || clientRegistry.isClosed) {
       ws.terminate();
       return;
     }
@@ -106,7 +106,7 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
     logger.info("Client connected");
 
     ws.on("message", (data: Buffer | string) => {
-      if (!options.signal?.aborted)
+      if (!options.signal?.aborted && !clientRegistry.isClosed)
         handleMessage(data.toString(), ws, store, clientRegistry, logger);
     });
 

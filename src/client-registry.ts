@@ -39,6 +39,10 @@ export class ClientRegistry {
     private logger: Logger,
   ) {}
 
+  get isClosed(): boolean {
+    return this.closed;
+  }
+
   /** A connection's namespace is server-assigned; labels never confer ownership. */
   registerClient(ws: WebSocket, applicationName?: string): void {
     if (this.closed) throw new Error("Client registry is closed");

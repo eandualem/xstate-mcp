@@ -115,6 +115,10 @@ error, depending on which message reached the client first.
 Store callback registration methods now return independent, idempotent removal
 functions. Closing an MCP server removes its registrations and stops resource
 notifications. Closing a registry is terminal; clearing it alone remains a reset.
+After `ClientRegistry.close()`, new client/session registrations throw
+`Client registry is closed`, `getSession()` returns no session, and sends return
+`Server shutting down`. Calling `clear()` after close does not reopen it.
+The WebSocket receiver stops accepting inspection for a closed registry.
 These cleanup changes do not implement the resource subscription protocol in
 [#4](https://github.com/eandualem/xstate-mcp/issues/4).
 
