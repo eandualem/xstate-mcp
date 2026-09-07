@@ -1,6 +1,8 @@
 import { WebSocketServer, type WebSocket } from "ws";
 import {
   inspectionEventSchema,
+  messageEnvelopeSchema,
+  sendResponseSchema,
   type IncomingEvent,
   type ActorEvent,
   type SnapshotEvent,
@@ -128,29 +130,36 @@ function handleMessage(
     return;
   }
 
-  const obj = parsed as Record<string, unknown>;
+  const envelope = messageEnvelopeSchema.safeParse(parsed);
+  if (!envelope.success) {
+    logger.warn("Invalid WebSocket message envelope, skipping");
+    return;
+  }
 
   // Handle send_event responses from the browser
-  if (obj.type === "xstate-mcp.send.response" && clientRegistry) {
-    clientRegistry.handleResponse(
-      obj.requestId as string,
-      obj.success as boolean,
-      obj.error as string | undefined,
+  if (envelope.data.type === "xstate-mcp.send.response") {
+    const response = sendResponseSchema.safeParse(parsed);
+    if (!response.success) {
+      logger.warn("Invalid send response, skipping");
+      return;
+    }
+    clientRegistry?.handleResponse(
+      response.data.requestId,
+      response.data.success,
+      response.data.error,
     );
     return;
   }
 
   // Skip microstep events
-  if (obj.type === "@xstate.microstep") {
+  if (envelope.data.type === "@xstate.microstep") {
     logger.debug("Skipping @xstate.microstep event");
     return;
   }
 
   const result = inspectionEventSchema.safeParse(parsed);
   if (!result.success) {
-    logger.warn("Invalid inspection event", {
-      errors: result.error.issues.map((i) => i.message),
-    });
+    logger.warn("Invalid inspection event, skipping");
     return;
   }
 

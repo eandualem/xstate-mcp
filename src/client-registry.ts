@@ -151,7 +151,7 @@ export class ClientRegistry {
   handleResponse(requestId: string, success: boolean, error?: string): void {
     const pending = this.pending.get(requestId);
     if (!pending) {
-      this.logger.warn(`Received response for unknown request: ${requestId}`);
+      this.logger.warn("Received response for unknown request, skipping");
       return;
     }
 
