@@ -33,7 +33,10 @@ Application / XState v5
        └─ event command ──► application
 ```
 
-- `config.ts` loads environment configuration; `index.ts` starts the process.
+- `config.ts` loads environment configuration; `cli.ts` starts the process and
+  owns stdio, signals, and shutdown. `index.ts` exports import-safe factories.
+- `inspection-server.ts` coordinates the inspection listener, actor storage,
+  command registry, and MCP transport through explicit `start()` and `close()`.
 - `ws-server.ts` validates and normalizes inspection messages with schemas in
   `types.ts`. Registration associates an actor with the producing socket.
 - `actor-store.ts` holds the last snapshot, machine definition, actor metadata,

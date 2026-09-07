@@ -54,13 +54,11 @@ async function main(): Promise<void> {
     }
     await bridge.closed;
   } catch (error) {
-    if (
-      !(
-        stopping &&
-        error instanceof Error &&
-        error.message === "Inspection server closed during startup"
-      )
-    )
+    if (!(
+      stopping &&
+      error instanceof Error &&
+      error.message === "Inspection server closed during startup"
+    ))
       report(error);
   } finally {
     armExitDeadline();

@@ -17,19 +17,11 @@ import { WebSocket } from "ws";
 import { createActor, createMachine } from "xstate";
 import { resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
-import { beforeAll, describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, inject, it, onTestFinished } from "vitest";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-let cli: string;
-beforeAll(() => {
-  execFileSync(
-    process.execPath,
-    [resolve(root, "node_modules/tsup/dist/cli-default.js")],
-    { cwd: root, stdio: "pipe" },
-  );
-  const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-  cli = resolve(root, pkg.bin["xstate-mcp"]);
-});
+const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+const cli = resolve(root, pkg.bin["xstate-mcp"]);
 
 function launch(args: string[], env: Record<string, string> = {}, cwd = root) {
   const child = spawn(process.execPath, args, {
@@ -272,26 +264,11 @@ describe("CLI shutdown with live applications", () => {
 it("uses the packed library exports, type declarations, and executable", async () => {
   const directory = mkdtempSync(resolve(tmpdir(), "xstate-mcp-packed-"));
   onTestFinished(() => rmSync(directory, { recursive: true, force: true }));
-  const pack = JSON.parse(
-    execFileSync(
-      "npm",
-      [
-        "--cache",
-        resolve(directory, "npm-cache"),
-        "pack",
-        "--ignore-scripts",
-        "--json",
-        "--pack-destination",
-        directory,
-      ],
-      { cwd: root, encoding: "utf8" },
-    ),
-  );
   const packageRoot = resolve(directory, "node_modules/xstate-mcp");
   mkdirSync(packageRoot, { recursive: true });
   execFileSync("tar", [
     "-xzf",
-    resolve(directory, pack[0].filename),
+    inject("packedCliArchive"),
     "-C",
     packageRoot,
     "--strip-components=1",

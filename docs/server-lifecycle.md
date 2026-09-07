@@ -129,11 +129,16 @@ used for a normal clean exit and does not exist in the library.
 
 ## Verification
 
-`tests/cli-lifecycle.test.ts` builds current sources and launches real subprocesses.
+The Vitest global setup builds and packs current sources before any parallel test
+suites run. The CLI lifecycle, envelope, and runtime compatibility suites all use
+that build; they never clean or overwrite `dist/` while another suite is using it.
+Older npm versions may run `prepare` during packing despite `--ignore-scripts`;
+that work also completes before the test workers start.
+`tests/cli-lifecycle.test.ts` launches real subprocesses.
 It checks import/configuration isolation, occupied ports before MCP initialization,
 SIGINT/SIGTERM/EOF with real XState actors and pending commands, repeated shutdown,
-a nonresponsive WebSocket, early EOF, and stdout backpressure. It also packs the
-package, extracts it, imports its public exports, type-checks an external consumer,
+a nonresponsive WebSocket, early EOF, and stdout backpressure. It also extracts the
+prepared npm archive, imports its public exports, type-checks an external consumer,
 scans capabilities, and runs the packed CLI. Packed-package tests reuse the exact
 installed dependencies without publishing or downloading new runtime versions.
 
