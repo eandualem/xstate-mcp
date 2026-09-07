@@ -252,10 +252,8 @@ export class ConnectionHealth {
     const c = this.connections.get(ws)!;
     const parsed = applicationHelloSchema.safeParse(input);
     let code:
-      | "invalid_hello"
-      | "incompatible_protocol"
-      | "capabilities_locked"
-      | null = null;
+      "invalid_hello" | "incompatible_protocol" | "capabilities_locked" | null =
+      null;
     if (!parsed.success) {
       code = "invalid_hello";
       if (!c.hello) c.negotiation = "invalid";

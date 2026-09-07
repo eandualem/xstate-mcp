@@ -78,7 +78,7 @@ Confirm the server works before wiring up your app:
 npx -y @modelcontextprotocol/inspector npx -y xstate-mcp
 ```
 
-This opens a web UI at `http://localhost:6274`. The server exposes 11 tools, 1 fixed resource, 2 resource templates, and 3 prompts. `list_actors` returns an empty actor list when no application is connected. This verifies MCP discovery only; it does not verify that the application inspection connection works.
+This opens a web UI at `http://localhost:6274`. The server exposes 12 tools, 1 fixed resource, 2 resource templates, and 3 prompts. `list_actors` returns an empty actor list when no application is connected. This verifies MCP discovery only; it does not verify that the application inspection connection works.
 
 ## Library and lifecycle
 
@@ -207,13 +207,15 @@ reconnect handling is tracked in [#13](https://github.com/eandualem/xstate-mcp/i
 
 ### Incoming message validation
 
-Every WebSocket message must be a JSON object with a non-empty string `type`.
+Every WebSocket message must be a JSON object with a non-empty string `type`
+of at most 128 characters.
 The server ignores malformed JSON, nulls, arrays, primitives, and invalid
 inspection messages while keeping the connection available for valid traffic.
 
 A `xstate-mcp.send.response` acknowledgement must include a non-empty string
-`requestId` copied from the command and a boolean `success`. Optional `error`
-must be a string; omit it when there is no error. Invalid acknowledgements leave
+`requestId` of at most 128 characters copied from the command and a boolean
+`success`. Optional `error` must be a string of at most 4096 characters; omit it
+when there is no error. Invalid acknowledgements leave
 the pending request intact so a valid reply can still resolve it, subject to
 the existing timeout. Unknown request IDs are ignored. Validation warnings and
 unknown-request warnings use fixed descriptions on stderr, without echoing the
@@ -716,7 +718,7 @@ createActor(machine, {              WebSocket Server :7357         MCP Client
                                     ↓
                     xstate-mcp.send ◄────────────────────────────► send_event
                                     ↓
-                                    McpServer (stdio)  ──────────► 11 tools, 3 resources, 3 prompts
+                                    McpServer (stdio)  ──────────► 12 tools, 3 resources, 3 prompts
 ```
 
 - **MCP transport:** stdio (standard for Claude Code MCP servers)
