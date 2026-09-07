@@ -22,6 +22,14 @@ intentional failure, reject a forbidden command, retry, and verify the rendered 
 Automated browser/MCP tests require no model or API key. See the example guide for
 clean-clone commands, current-main compatibility, and captured evidence.
 
+## Design Studio coding-agent demo
+
+The coordinated [Design Studio demo brief](examples/design-studio/BRIEF.md) follows
+a coding agent diagnosing and improving document-save recovery using real MCP
+observations and browser checks. The integration is tracked in
+[issue #18](https://github.com/eandualem/xstate-mcp/issues/18); implementation and
+recording are in progress.
+
 ## Quick Start
 
 Requires Node.js 22.23.2+ within 22.x, or 24.20.0+ within 24.x.
