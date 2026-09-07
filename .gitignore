@@ -3,3 +3,9 @@ dist/
 *.tsbuildinfo
 .env
 .env.local
+
+# Shared local agent handoffs and scratch work (never committed)
+.backbone/
+.tmp/
+.aider*
+!.aider.conf.yml
