@@ -277,7 +277,7 @@ it("uses the packed library exports, type declarations, and executable", async (
       "npm",
       [
         "--cache",
-        "/private/tmp/xstate-mcp-npm-cache",
+        resolve(directory, "npm-cache"),
         "pack",
         "--ignore-scripts",
         "--json",

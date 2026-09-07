@@ -1,7 +1,9 @@
 import { once } from "node:events";
 import { createServer, connect } from "node:net";
+import { PassThrough } from "node:stream";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { WebSocket } from "ws";
@@ -200,6 +202,71 @@ describe("importable inspection server lifecycle", () => {
     await bridge.closed;
     await assertReusable(port);
   });
+
+  it("closes the supplied transport when MCP rejects before taking ownership", async () => {
+    const bridge = createInspectionServer({ wsPort: 0, logLevel: "error" });
+    const transport = fakeTransport();
+    await bridge.mcpServer.close();
+    await expect(bridge.start(transport)).rejects.toThrow(
+      "MCP server is closed",
+    );
+    await bridge.closed;
+    expect(transport.start).not.toHaveBeenCalled();
+    expect(transport.close).toHaveBeenCalledOnce();
+    expect(bridge.address).toBeNull();
+  });
+
+  it.each(["failure", "cancellation"] as const)(
+    "removes real stdio listeners exactly once after startup %s",
+    async (outcome) => {
+      const bridge = createInspectionServer({ wsPort: 0, logLevel: "error" });
+      const input = new PassThrough();
+      const output = new PassThrough();
+      const transport = new StdioServerTransport(input, output);
+      onTestFinished(async () => {
+        input.destroy();
+        output.destroy();
+        await bridge.close();
+      });
+      const close = vi.spyOn(transport, "close");
+      const originalStart = transport.start.bind(transport);
+      let entered!: () => void;
+      const attached = new Promise<void>((resolve) => {
+        entered = resolve;
+      });
+      let finish!: () => void;
+      const pending = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      vi.spyOn(transport, "start").mockImplementation(async () => {
+        await originalStart();
+        entered();
+        await pending;
+        if (outcome === "failure") throw new Error("Stdio start failed");
+      });
+      const starting = bridge.start(transport);
+      const failed = expect(starting).rejects.toThrow(
+        outcome === "failure" ? "Stdio start failed" : "closed during startup",
+      );
+      await attached;
+      expect(input.listenerCount("data")).toBe(1);
+      expect(input.listenerCount("error")).toBe(1);
+      const address = bridge.address;
+      if (!address || typeof address === "string")
+        throw new Error("Missing address");
+      if (outcome === "failure") finish();
+      else await bridge.close();
+      await failed;
+      await bridge.closed;
+      finish();
+      expect(close).toHaveBeenCalledOnce();
+      expect(input.listenerCount("data")).toBe(0);
+      expect(input.listenerCount("error")).toBe(0);
+      expect(input.isPaused()).toBe(true);
+      expect(bridge.mcpServer.isConnected()).toBe(false);
+      await assertReusable(address.port);
+    },
+  );
 
   it("cancels startup while a transport start is pending and stays closed after late completion", async () => {
     const bridge = createInspectionServer({ wsPort: 0, logLevel: "error" });

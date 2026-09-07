@@ -66,7 +66,6 @@ export function createInspectionServer(
   let http: HttpServer | undefined;
   let wss: WebSocketServer | undefined;
   let transport: Transport | undefined;
-  let transportAttached = false;
   let state: "idle" | "starting" | "running" | "closing" | "closed" = "idle";
   let resolveClosed!: () => void;
   let rejectClosed!: (error: unknown) => void;
@@ -106,6 +105,9 @@ export function createInspectionServer(
         ? new Promise<void>((resolve) => wss!.close(() => resolve()))
         : Promise.resolve();
       lifetime.abort();
+      // The SDK takes ownership before start() settles, but connect() can also
+      // reject before attachment (for example, if the MCP factory was closed).
+      const transportAttached = mcpServer.server.transport === transport;
       const mcpClosed = mcpServer.close(); // synchronously disposes store callbacks
       const unusedTransportClosed = transportAttached
         ? Promise.resolve()
@@ -133,7 +135,8 @@ export function createInspectionServer(
       clearTimeout(deadlineTimer);
       forceSockets();
       // Release SDK request handlers even if an embedder's transport close failed/hung.
-      if (transportAttached && mcpServer.isConnected()) transport?.onclose?.();
+      if (transport && mcpServer.server.transport === transport)
+        transport.onclose?.();
       if (transport) {
         transport.onclose = undefined;
         transport.onerror = undefined;
@@ -205,7 +208,6 @@ export function createInspectionServer(
       await listening;
       if (lifetime.signal.aborted)
         throw new Error("Inspection server closed during startup");
-      transportAttached = true;
       await abortable(mcpServer.connect(transport), lifetime.signal);
       if (lifetime.signal.aborted)
         throw new Error("Inspection server closed during startup");
