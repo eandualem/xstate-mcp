@@ -159,6 +159,10 @@ describe("built CLI and development policy example", () => {
             arguments: { target: sessionId, event: { type: "RESET" } },
           });
           expect(denied.isError).toBe(true);
+          expect(denied.structuredContent).toMatchObject({
+            success: false,
+            code: "write_not_allowed",
+          });
         }
         expect(stderr).not.toContain("demo-secret");
         expect(stderr).not.toContain("demo@example.test");

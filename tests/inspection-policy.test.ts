@@ -343,6 +343,31 @@ describe("redaction before retention and transfer", () => {
     expect(hidden.getActor("x:1")!.currentSnapshot!.status).toBe("unknown");
   });
 
+  it.each([{ keys: ["sourceId"] }, { paths: [["sourceId"]] }])(
+    "redacts event sources before retention with %j without changing actor routing",
+    (redaction) => {
+      const store = new ActorStore(10, logger, redaction);
+      store.registerActor({
+        type: "@xstate.actor",
+        sessionId: "x:1",
+        createdAt: "now",
+      });
+      const event = {
+        type: "@xstate.event" as const,
+        sessionId: "x:1",
+        sourceId: "private-source-id",
+        event: { type: "NEXT" },
+        createdAt: "now",
+      };
+      store.addEvent(event);
+      expect(store.getActor("x:1")!.eventHistory.toArray()[0]).toMatchObject({
+        sourceId: REDACTED,
+        event: { type: "NEXT" },
+      });
+      expect(event.sourceId).toBe("private-source-id");
+    },
+  );
+
   it.each([
     null,
     { keys: "email" },

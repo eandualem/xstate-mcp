@@ -63,8 +63,11 @@ fails startup without printing its contents. Restart to change policy.
 original payload: redaction changes inspection and returned data, not the event
 executed by the application. The echoed tool payload is redacted on success and
 failure. Free-form application ACK error details and send errors are withheld
-because they may contain application data; an adapter rejection is reported as an
-application rejection by this server version.
+because they may contain application data. Rejected adapter ACKs preserve the
+guard's fixed codes: `read_only`, `write_not_allowed`, `invalid_event`,
+`instrumentation_disabled`, `invalid_command`, `actor_not_found`, and
+`dispatch_failed`. Unknown or malformed codes are withheld, as are codes attached
+to successful ACKs. The generic application rejection message remains available.
 
 `clear_actors` remains available in application read-only mode. It discards the
 debugger's retained data, routes and pending requests; it does not stop application
@@ -91,10 +94,17 @@ const guard = createInspectionGuard({
 
 The helper defaults to disabled and read-only. It has no Node dependencies or
 network side effects. Only open your inspection WebSocket when `guard.enabled`
-is true. Call `guard.serializeInspection(preparedEnvelope)` **before** `ws.send`;
-it returns redacted JSON, or `null` when disabled or when the sanitized envelope
-lacks a supported inspection type and a non-empty top-level session ID. Do not send the original envelope
-alongside the sanitized one, or attach a second unfiltered inspector.
+is true. Serialize **before** sending and skip envelopes rejected by the guard:
+
+```typescript
+const serialized = guard.serializeInspection(preparedEnvelope);
+if (serialized !== null) ws.send(serialized);
+```
+
+The serializer returns redacted JSON, or `null` when disabled, when the inspection
+type is unsupported, or when the top-level `sessionId` is missing, invalid,
+redacted, or omitted. Do not send the original envelope alongside the sanitized
+one, or attach a second unfiltered inspector.
 
 Prepare explicit plain data from native XState inspection events. Project actor
 references to IDs and snapshots to status/value/context/output/error data as
@@ -128,10 +138,11 @@ matches one segment for each `*`, including array indices. Dots inside a segment
 are literal; paths are case-sensitive. At most 100 keys (128 characters each)
 and 100 paths (1–16 segments, 128 characters per segment) are accepted.
 
-The server sanitizes and copies actor names, definitions, snapshots and event
-payloads **before retention**. Timeline entries derive from sanitized state values
-and event types. All existing read tools, resource contents/listings, prompts and
-histories use that store, including both tool text and structured results. An
+The server sanitizes and copies actor names, definitions, snapshots, event
+payloads and event source IDs **before retention**. Timeline entries derive from
+sanitized state values and event types. All existing read tools, resource
+contents/listings, prompts and histories use that store, including both tool text
+and structured results. An
 application-side filter prevents transfer to the server; an additional server
 filter prevents retained data from reaching MCP clients. `excludeContext` and
 `contextMaxChars` remain presentation options, not privacy controls.
@@ -147,10 +158,13 @@ traversal work; it is not a total byte or retained-memory budget (#11).
 
 Redacted fields can affect static analysis and hide transitions caused only by
 sensitive data changes. Use non-sensitive state/event names and protocol IDs;
-routing IDs, timestamps, resource URIs and client-supplied lookup arguments are
-protocol metadata, not secret-bearing payload fields. Do not configure rules that
-remove required transport identifiers in an application envelope. The in-process
-store is trusted host state; hosts must not mutate its records with raw data.
+the routing session IDs, timestamps, resource URIs and client-supplied lookup
+arguments are protocol metadata, not secret-bearing payload fields. Do not
+configure rules that remove required transport identifiers in an application
+envelope. Retained event
+`sourceId` metadata can be hidden with an explicit key or path rule without
+changing actor routing. The in-process store is trusted host state; hosts must not
+mutate its records with raw data.
 
 This is a key/path filter, not a secret detector. It does not scan arbitrary text,
 encoded strings, property names or JSON embedded in other string fields. A password

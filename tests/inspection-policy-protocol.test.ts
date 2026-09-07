@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createActor, createMachine, assign } from "xstate";
+import { createActor, createMachine, assign, sendTo } from "xstate";
 import WebSocket from "ws";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -34,7 +34,7 @@ afterEach(async () => {
 async function fixture(writePolicy?: WritePolicyOptions) {
   const logger = new Logger("error");
   const store = new ActorStore(20, logger, {
-    keys: ["serverOnly", "received"],
+    keys: ["serverOnly", "received", "sourceId"],
     paths: [["customer", "email"]],
   });
   const registry = new ClientRegistry(1000, logger, { writePolicy });
@@ -87,6 +87,7 @@ async function fixture(writePolicy?: WritePolicyOptions) {
     },
     states: {
       idle: {
+        entry: sendTo(({ self }) => self, { type: "SOURCE_PROBE" }),
         on: {
           NEXT: {
             target: "ready",
@@ -135,6 +136,9 @@ async function fixture(writePolicy?: WritePolicyOptions) {
         ...(event.type === "@xstate.event" || event.type === "@xstate.snapshot"
           ? { event: event.event }
           : {}),
+        ...(event.type === "@xstate.event"
+          ? { sourceId: event.sourceRef?.sessionId }
+          : {}),
         createdAt: new Date().toISOString(),
       });
       if (text !== null) {
@@ -166,7 +170,9 @@ async function fixture(writePolicy?: WritePolicyOptions) {
   });
   actor.start();
   await expect
-    .poll(() => store.getActor(actor.sessionId)?.currentSnapshot?.value)
+    .poll(() => store.getActor(actor.sessionId)?.currentSnapshot?.value, {
+      timeout: 5000,
+    })
     .toBe("idle");
   return { actor, store, registry, client, wire, commands };
 }
@@ -253,6 +259,11 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
       arguments: { target: actor.sessionId, event: { type: "RESET" } },
     });
     expect(adapterDenied.isError).toBe(true);
+    expect(adapterDenied.structuredContent).toMatchObject({
+      success: false,
+      code: "write_not_allowed",
+      error: "Application rejected event (details withheld)",
+    });
     expect(commands).toHaveLength(2);
     expect(actor.getSnapshot().value).toBe("ready");
     const ignored = await client.callTool({
@@ -274,13 +285,26 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
       customer: { email: EMAIL },
     });
     await expect
-      .poll(() => store.getActor(actor.sessionId)?.currentSnapshot?.value)
+      .poll(() => store.getActor(actor.sessionId)?.currentSnapshot?.value, {
+        timeout: 5000,
+      })
       .toBe("ready");
     const transferred = wire.join("\n");
     expect(transferred).not.toContain(APP_ONLY);
     expect(transferred).not.toContain(PASSWORD);
     expect(transferred).toContain(SERVER_ONLY); // Independent server policy removes this.
+    expect(
+      wire
+        .map((text) => JSON.parse(text))
+        .find((event) => event.event?.type === "SOURCE_PROBE"),
+    ).toMatchObject({ sourceId: actor.sessionId });
     const record = store.getActor(actor.sessionId)!;
+    expect(record.eventHistory.toArray()).toContainEqual(
+      expect.objectContaining({
+        event: { type: "SOURCE_PROBE" },
+        sourceId: "[REDACTED]",
+      }),
+    );
     expect(record.currentSnapshot!.context).toMatchObject({
       password: "[REDACTED]",
       appOnly: "[REDACTED]",
@@ -304,6 +328,12 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
       expect(result.isError, `${name}: ${JSON.stringify(result)}`).not.toBe(
         true,
       );
+      if (name === "get_event_history") {
+        expect(JSON.stringify(result)).toContain('"sourceId":"[REDACTED]"');
+        expect(JSON.stringify(result)).not.toContain(
+          `"sourceId":"${actor.sessionId}"`,
+        );
+      }
       results.push(result);
     }
     for (const uri of [

@@ -248,5 +248,7 @@ export const sendResponseSchema = z.object({
   requestId: z.string().min(1).max(128),
   success: z.boolean(),
   error: z.string().max(4096).optional(),
+  // Validate before dispatch; the registry exposes only fixed rejection codes.
+  code: z.string().min(1).max(128).optional(),
   sessionId: z.string().optional(),
 });

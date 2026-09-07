@@ -261,6 +261,7 @@ function handleMessage(
         ack.data.requestId,
         ack.data.success,
         ack.data.error,
+        ack.data.code,
       )
     )
       health.reject(ws, "unexpected_ack");

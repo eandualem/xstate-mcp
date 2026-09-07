@@ -251,4 +251,55 @@ describe("ClientRegistry", () => {
     expect(registry.getConnectedSessionCount()).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
   });
+    it.each([
+      "read_only",
+      "invalid_event",
+      "write_not_allowed",
+      "instrumentation_disabled",
+      "invalid_command",
+      "actor_not_found",
+      "dispatch_failed",
+    ])("preserves the adapter rejection code %s", async (code) => {
+      const ws = makeMockWs();
+      const { sessionId } = register(ws);
+      const promise = registry.sendEvent(sessionId, { type: "TEST" });
+      const message = JSON.parse(ws.send.mock.calls[0][0]);
+      registry.handleResponse(ws, message.requestId, false, "private detail", code);
+      expect(await promise).toEqual({
+        success: false,
+        code,
+        error: "Application rejected event (details withheld)",
+      });
+    });
+
+    it.each(["private-code", { token: "private-code" }, 42, null])(
+      "withholds unrecognized or malformed adapter codes: %j",
+      async (code) => {
+        const ws = makeMockWs();
+        const { sessionId } = register(ws);
+        const promise = registry.sendEvent(sessionId, { type: "TEST" });
+        const message = JSON.parse(ws.send.mock.calls[0][0]);
+        registry.handleResponse(ws, message.requestId, false, undefined, code);
+        const result = await promise;
+        expect(result.code).toBeUndefined();
+        expect(result.error).toBe("Application rejected event");
+        expect(JSON.stringify(result)).not.toContain("private-code");
+      },
+    );
+
+    it("does not attach a rejection code to a successful acknowledgement", async () => {
+      const ws = makeMockWs();
+      const { sessionId } = register(ws);
+      const promise = registry.sendEvent(sessionId, { type: "TEST" });
+      const message = JSON.parse(ws.send.mock.calls[0][0]);
+      registry.handleResponse(
+        ws,
+        message.requestId,
+        true,
+        "private detail",
+        "read_only",
+      );
+      expect(await promise).toEqual({ success: true });
+    });
+
 });

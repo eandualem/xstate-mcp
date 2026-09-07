@@ -5,6 +5,18 @@ import type { WebSocket } from "ws";
 import type { ActorStore } from "./actor-store.js";
 import type { Logger } from "./logger.js";
 
+// Only the guard's fixed codes are safe to expose; arbitrary adapter strings
+// can contain the same application data as free-form error messages.
+const ADAPTER_REJECTION_CODES = new Set([
+  "read_only",
+  "write_not_allowed",
+  "invalid_event",
+  "instrumentation_disabled",
+  "invalid_command",
+  "actor_not_found",
+  "dispatch_failed",
+]);
+
 export interface SessionIdentity {
   sessionId: string;
   localSessionId: string;
@@ -194,6 +206,7 @@ export class ClientRegistry {
     requestId: string,
     success: boolean,
     error?: string,
+    code?: unknown,
   ): boolean {
     const pending = this.pending.get(requestId);
     if (!pending) {
@@ -207,7 +220,7 @@ export class ClientRegistry {
       this.logger.warn("Rejected response from non-owning connection");
       return false;
     }
-    this.settle(requestId, { success, error: success ? undefined : error === undefined ? "Application rejected event" : "Application rejected event (details withheld)" });
+    this.settle(requestId, { success, code: !success && typeof code === "string" && ADAPTER_REJECTION_CODES.has(code) ? code : undefined, error: success ? undefined : error === undefined ? "Application rejected event" : "Application rejected event (details withheld)" });
     return true;
   }
 

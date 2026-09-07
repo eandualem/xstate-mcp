@@ -216,10 +216,11 @@ export class ActorStore {
     }
 
     const sanitized = this.redactField("event", event.event);
+    const sourceId = this.redactField("sourceId", event.sourceId ?? null);
     const record: EventRecord = {
       sequence: actor.eventHistory.total + 1,
       event: sanitized && typeof sanitized === "object" ? (sanitized as Record<string, unknown>) : {type:"[OMITTED]"},
-      sourceId: event.sourceId ?? null,
+      sourceId: typeof sourceId === "string" ? sourceId : null,
       createdAt: event.createdAt,
     };
 
