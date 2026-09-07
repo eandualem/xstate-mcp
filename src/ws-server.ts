@@ -187,9 +187,9 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
       logger.info("Client disconnected");
     });
 
-    ws.on("error", (err: Error) => {
+    ws.on("error", () => {
       health.reject(ws, "transport_error");
-      logger.error(`WebSocket error: ${err.message}`);
+      logger.error("WebSocket connection error");
     });
   });
 

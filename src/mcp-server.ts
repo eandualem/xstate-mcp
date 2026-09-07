@@ -216,7 +216,7 @@ export function createMcpServer(
     {
       title: "Clear Actors",
       description:
-        "Remove all actors from the registry. Useful for resetting state between debugging sessions.",
+        "Discard retained inspection data and pending commands. Does not stop application actors. Available in application read-only mode.",
       outputSchema: clearActorsOutputSchema,
       annotations: {
         readOnlyHint: false,
@@ -337,7 +337,7 @@ export function createMcpServer(
     {
       title: "Send Event",
       description:
-        "Send an event to an XState actor via the connected browser client. Target can be a sessionId or actor name. Requires the browser to have a response handler for 'xstate-mcp.send' messages.",
+        "Send an application event (may cause destructive external side effects). Requires explicit server and adapter write permission. Target can be a sessionId or actor name. Success acknowledges dispatch only; verify the resulting state separately.",
       inputSchema: {
         target: z
           .string()
@@ -354,7 +354,7 @@ export function createMcpServer(
       outputSchema: sendEventOutputSchema,
       annotations: {
         readOnlyHint: false,
-        destructiveHint: false,
+        destructiveHint: true,
         idempotentHint: false,
         openWorldHint: true,
       },

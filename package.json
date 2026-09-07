@@ -76,6 +76,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./inspection-policy": {
+      "types": "./dist/inspection-policy.d.ts",
+      "import": "./dist/inspection-policy.js"
+    }
   }
 }

@@ -43,7 +43,9 @@ describe("clear_actors tool", () => {
   });
 
   it("clears ClientRegistry when provided", () => {
-    const registry = new ClientRegistry(1000, logger);
+    const registry = new ClientRegistry(1000, logger, {
+      writePolicy: { readOnly: false, allow: [{ actor: "*", events: ["*"] }] },
+    });
     const ws = {
       readyState: 1,
       OPEN: 1,

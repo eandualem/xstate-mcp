@@ -103,16 +103,24 @@ importable library. See [embedding, migration, and shutdown](docs/server-lifecyc
 | `XSTATE_MCP_ALLOWED_ORIGINS` | `http://localhost:*,http://127.0.0.1:*` | Comma-separated list of allowed WebSocket origins (supports `*` port wildcard) |
 | `XSTATE_MCP_REQUIRE_ORIGIN`  | `false`                                 | When `true`, reject WebSocket connections without an Origin header             |
 
+Application write settings are `XSTATE_MCP_READ_ONLY` (default `true`) and
+`XSTATE_MCP_WRITE_ALLOW` (JSON paired actor/event rules, default `[]`). Additional
+redaction is configured by `XSTATE_MCP_REDACTION` (JSON, default `{}`). See
+[the policy guide](docs/write-controls-and-redaction.md) for examples and limits.
+
 ## Browser Adapter
 
-Your XState 5 app needs to send inspection events to the WebSocket server. Two options:
+Use a development-only adapter that projects native XState inspection events into
+plain data, redacts before sending, and checks write policy immediately before
+`actor.send`. Import `createInspectionGuard` from `xstate-mcp/inspection-policy`;
+it defaults to disabled and read-only.
 
 Inspection reception is tested with **XState 5.32.6** and
 **@statelyai/inspect 0.7.2**, using a real root/child machine over WebSocket and
 MCP client queries. Stately's nullable message IDs are accepted; actor session
 IDs still require strings. The inspector integration supplies definitions,
 parent relationships, snapshots, and event history. Bidirectional commands
-still require the separate response handler described below.
+still require an application handler and the write policies described below.
 
 Incoming `createdAt` may be an integer epoch-millisecond string or an ISO
 timestamp with `Z` or an explicit timezone offset. Stored timestamps use UTC ISO
@@ -122,82 +130,22 @@ than replaced with receipt time; timezone-free dates and numeric JSON values
 are not supported. History retains receipt order rather than sorting by
 producer clocks.
 
-The minimal adapter below can still lose startup events; a complete adapter is
-tracked in [#13](https://github.com/eandualem/xstate-mcp/issues/13).
-
-### Option A: Using `@statelyai/inspect`
-
-```typescript
-import { createWebSocketInspector } from "@statelyai/inspect";
-
-const inspector = createWebSocketInspector({
-  url: "ws://127.0.0.1:7357",
-});
-
-const actor = createActor(yourMachine, {
-  inspect: inspector.inspect,
-});
-actor.start();
-```
-
-### Option B: Custom adapter (minimal)
-
-```typescript
-const ws = new WebSocket("ws://127.0.0.1:7357");
-
-const actor = createActor(yourMachine, {
-  inspect: (event) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(event));
-    }
-  },
-});
-actor.start();
-```
-
-Registration must reach the server before snapshots and events can be stored.
-The minimal example drops events while the socket is connecting and does not
-serialize machine definitions or parent metadata. Adapters must preserve local
-session IDs and replay registrations after reconnecting; see the
-[adapter requirements](docs/application-sessions.md#identifier-migration).
-The snippets illustrate connection points and do not implement buffering or
-reconnect replay. See the review before treating them as complete integrations.
+See [write controls and redaction](docs/write-controls-and-redaction.md) for the
+contract and [the runnable single-actor example](examples/policy-app.mjs). The
+example requires a built checkout; this helper is not in historical npm releases.
+The complete reconnecting adapter is tracked in #13.
 
 ### Enabling `send_event` (bidirectional)
 
-The `send_event` tool sends events from the AI agent to your running actors. Attach this handler to the same WebSocket that forwards inspection events:
+Application writes are disabled by default. Set `XSTATE_MCP_READ_ONLY=false` and
+an explicit `XSTATE_MCP_WRITE_ALLOW` array, and opt into the adapter's own policy.
+For example, `[{"actor":"*","events":["NEXT"]}]` permits only `NEXT` on any actor.
+Empty rules deny everything; read-only true overrides all rules. The server checks
+the resolved session ID even when the tool target is an actor name.
 
-```typescript
-const ws = new WebSocket("ws://127.0.0.1:7357");
+A successful acknowledgement confirms dispatch, not a completed transition. Read
+the actor state/history afterward, and verify the UI when developing a frontend.
 
-ws.addEventListener("message", (msg) => {
-  const data = JSON.parse(msg.data);
-
-  if (data.type === "xstate-mcp.send") {
-    try {
-      // data.sessionId is the original local XState ID, not the MCP ID
-      const actor = getActorBySessionId(data.sessionId); // your lookup logic
-      actor.send(data.event);
-      ws.send(
-        JSON.stringify({
-          type: "xstate-mcp.send.response",
-          requestId: data.requestId,
-          success: true,
-        }),
-      );
-    } catch (err) {
-      ws.send(
-        JSON.stringify({
-          type: "xstate-mcp.send.response",
-          requestId: data.requestId,
-          success: false,
-          error: err.message,
-        }),
-      );
-    }
-  }
-});
-```
 
 For writes, install the handler before sending a version-1 `xstate-mcp.hello` on
 that same socket and wait for its successful response. See the complete
@@ -514,7 +462,7 @@ removal/replacement, and evicted event history have distinct outcomes. See the
 
 #### `send_event`
 
-Send an event to a running actor. Target can be a sessionId or actor name. Requires the [browser-side response handler](#enabling-send_event-bidirectional).
+Send an event to a running actor. Target can be a sessionId or actor name. Requires explicit [server and adapter write permission](#enabling-send_event-bidirectional). Events may cause destructive application side effects.
 
 **Parameters:**
 
@@ -752,14 +700,16 @@ Use Node.js 24.20.0 (`.node-version`) and Bun 1.4.2 (`.bun-version` and
 
 ## Privacy
 
-xstate-mcp runs entirely on your local machine. It does not:
+The server binds to loopback by default, keeps inspection history in memory and
+implements no telemetry, persistence or uploads. The MCP client receives results
+over stdio and may forward them to its configured model provider or retain them
+in logs and conversations.
 
-- Send any data to external servers or APIs
-- Collect telemetry, analytics, or usage metrics
-- Store any data to disk (all state is in-memory and cleared on restart)
-- Make any outbound network requests
-
-The WebSocket server binds to `127.0.0.1` by default (localhost only, not reachable from other machines). The MCP transport uses stdio. Inspection data is provided to your AI coding tool, which may send tool results to its configured model provider. The server itself makes no outbound requests; the coding tool's data handling depends on your configuration.
+Redact sensitive data in the application before transfer. Server redaction applies
+before retention, so existing tools, resources, prompts and history share sanitized
+values. Default secret-key filtering can be extended with application-specific
+keys and paths through `XSTATE_MCP_REDACTION`. Context truncation is a presentation
+option; it is not a privacy policy. See the [redaction contract and limits](docs/write-controls-and-redaction.md#redaction-contract).
 
 ## License
 

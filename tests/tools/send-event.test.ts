@@ -36,7 +36,9 @@ describe("send_event tool", () => {
 
   beforeEach(() => {
     store = new ActorStore(100, logger);
-    registry = new ClientRegistry(1000, logger);
+    registry = new ClientRegistry(1000, logger, {
+      writePolicy: { readOnly: false, allow: [{ actor: "*", events: ["*"] }] },
+    });
   });
 
   it("returns error when actor not found by sessionId or name", async () => {
