@@ -61,7 +61,7 @@ describe("trace_event_flow prompt", () => {
     const result = traceEventFlow(store, "x:0");
     const text = result.messages[0].content.text;
 
-    expect(text).toContain("State Transitions");
+    expect(text).toContain("Snapshot Changes");
     expect(text).toContain("idle");
     expect(text).toContain("loading");
   });
@@ -107,7 +107,7 @@ describe("trace_event_flow prompt", () => {
     const result = traceEventFlow(store, "x:0");
     const text = result.messages[0].content.text;
 
-    expect(text).toContain("No state transitions recorded yet");
+    expect(text).toContain("No snapshot changes recorded yet");
     expect(text).toContain("No events recorded yet");
   });
 });

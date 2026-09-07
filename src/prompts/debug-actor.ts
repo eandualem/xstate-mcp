@@ -29,6 +29,8 @@ export function debugActor(store: ActorStore, sessionId: string) {
     `- Status: ${state?.status ?? "unknown"}`,
     `- Current state value: ${safeStringify(state?.value ?? null)}`,
     `- Context: ${safeStringify(state?.context ?? null, 2)}`,
+    `- Output: ${safeStringify(state?.output ?? null)}`,
+    `- Error: ${safeStringify(state?.error ?? null)}`,
     `- Parent: ${actor.parentId ?? "none (root actor)"}`,
     `- Created: ${actor.createdAt}`,
     `- Last updated: ${actor.updatedAt}`,
@@ -47,7 +49,7 @@ export function debugActor(store: ActorStore, sessionId: string) {
   if (transitions.length > 0) {
     sections.push(
       ``,
-      `## Recent State Transitions (${transitions.length} of ${actor.transitionHistory.total} total)`,
+      `## Recent Snapshot Changes (${transitions.length} of ${actor.transitionHistory.total} total)`,
       `\`\`\`json`,
       safeStringify(transitions, 2),
       `\`\`\``,
@@ -72,6 +74,7 @@ export function debugActor(store: ActorStore, sessionId: string) {
     `3. **Context validity** — Does the context data make sense for the current state? Are there stale or missing values?`,
     `4. **Event flow** — Do the events follow the expected sequence? Are there unexpected event types or missing expected ones?`,
     `5. **Stuck states** — Is the actor stuck in a state it shouldn't be in? What event would move it forward?`,
+    `6. **Lifecycle results** — Check status, output, and error before calling an actor stuck. Timeline type distinguishes state, context, and lifecycle changes; changes lists every changed field. A done, error, or stopped actor may have no state value. Missing error details may have been lost by the adapter.`,
   );
 
   return {

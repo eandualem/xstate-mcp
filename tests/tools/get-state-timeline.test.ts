@@ -80,12 +80,20 @@ describe("get_state_timeline tool", () => {
     expect(data.totalTransitions).toBe(2);
     expect(data.transitions).toHaveLength(2);
     expect(data.transitions[0]).toEqual({
+      type: "state",
+      changes: ["value"],
+      fromStatus: "active",
+      toStatus: "active",
       fromValue: "idle",
       toValue: "loading",
       event: "LOAD",
       timestamp: "2026-02-28T12:00:01.000Z",
     });
     expect(data.transitions[1]).toEqual({
+      type: "state",
+      changes: ["value"],
+      fromStatus: "active",
+      toStatus: "active",
       fromValue: "loading",
       toValue: "ready",
       event: "LOAD_SUCCESS",
@@ -93,10 +101,10 @@ describe("get_state_timeline tool", () => {
     });
   });
 
-  it("records self-transition when context changes but value stays the same", () => {
+  it("distinguishes context changes when value stays the same", () => {
     store.registerActor(makeActorEvent());
 
-    // Same value, different context — records a self-transition
+    // Same value, different context — records a context entry
     store.updateSnapshot(
       makeSnapshotEvent({
         snapshot: {
@@ -114,6 +122,8 @@ describe("get_state_timeline tool", () => {
     expect(data.transitions[0].fromValue).toBe("idle");
     expect(data.transitions[0].toValue).toBe("idle");
     expect(data.transitions[0].event).toBe("CONTEXT_UPDATE");
+    expect(data.transitions[0].type).toBe("context");
+    expect(data.transitions[0].changes).toEqual(["context"]);
   });
 
   it("respects limit parameter", () => {

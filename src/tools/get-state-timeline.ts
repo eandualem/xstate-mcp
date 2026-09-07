@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import { actorNotFoundResult, type ToolResult } from "../errors.js";
 import { safeStringify } from "../safe-stringify.js";
+import { actorErrorSchema } from "../actor-snapshot.js";
 
 export const getStateTimelineOutputSchema = {
   sessionId: z.string(),
@@ -10,8 +11,16 @@ export const getStateTimelineOutputSchema = {
   totalTransitions: z.number(),
   transitions: z.array(
     z.object({
+      type: z.enum(["state", "context", "lifecycle"]),
+      changes: z.array(
+        z.enum(["value", "context", "status", "output", "error"]),
+      ),
       fromValue: z.unknown(),
       toValue: z.unknown(),
+      fromStatus: z.string().nullable(),
+      toStatus: z.string(),
+      output: z.unknown().optional(),
+      error: actorErrorSchema.optional(),
       event: z.string(),
       timestamp: z.string(),
     }),
