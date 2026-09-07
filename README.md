@@ -340,6 +340,8 @@ Full state chart structure — states, transitions, guards, actions, invoked ser
 #### `get_event_history`
 
 Raw events that flowed through an actor (from the ring buffer). Includes full event payloads.
+Response `sessionId` and `sourceId` values are public actor IDs; inspection frames
+use the application's local IDs before the server scopes them to a connection.
 
 **Parameters:**
 
@@ -352,7 +354,7 @@ Raw events that flowed through an actor (from the ring buffer). Includes full ev
   "events": [
     {
       "event": { "type": "sys.refresh" },
-      "sourceId": "x:0",
+      "sourceId": "app-session",
       "createdAt": "2026-02-28T12:00:01.000Z"
     }
   ],
