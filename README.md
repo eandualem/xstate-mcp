@@ -17,6 +17,9 @@ examples below. The [demo plan](docs/demo-plan.md) follows the reliability fixes
 
 ## Quick Start
 
+Requires Node.js 22.23.2+ within 22.x, or 24.20.0+ within 24.x.
+See the [runtime and dependency policy](docs/runtime-support.md).
+
 ### 1. Configure your MCP client
 
 **Claude Code** — add to `.mcp.json` in your project root:
@@ -563,7 +566,7 @@ For contributors working on xstate-mcp itself:
 ```bash
 git clone https://github.com/eandualem/xstate-mcp.git
 cd xstate-mcp
-bun install           # Install dependencies
+bun install --frozen-lockfile # Install the reviewed dependency graph
 bun run dev           # Start dev server (tsx watch)
 bun run build         # Production build (tsup)
 bun run test          # Run tests (vitest)
@@ -572,7 +575,12 @@ bun run format        # Prettier
 bun run check         # Full quality gate (lint + format + types + test)
 ```
 
-Requires Node.js 20+.
+Use Node.js 24.20.0 (`.node-version`) and Bun 1.4.2 (`.bun-version` and
+`packageManager`) for contribution. Node.js 22.23.2 is also tested in CI. Keep
+`bun.lock` authoritative and use frozen installs; do not add another lockfile.
+`bun run audit:check` checks advisories with the single documented exception in
+[the dated audit](docs/dependency-audit-2026-09-07.md). The
+[runtime policy](docs/runtime-support.md) explains support and update procedures.
 
 ## Privacy
 

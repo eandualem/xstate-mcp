@@ -1,0 +1,37 @@
+name: Node compatibility
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.23.2", "24.20.0"]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+      - name: Show runtimes
+        run: |
+          node --version
+          bun --version
+      - run: bun install --frozen-lockfile
+      - name: Lint, format, types and tests (including real XState/MCP round trips)
+        run: bun run check
+      - run: bun run build
+      - name: Audit with one documented development-only exception
+        run: bun run audit:check

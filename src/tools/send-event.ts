@@ -6,7 +6,7 @@ import { safeStringify } from "../safe-stringify.js";
 
 export const sendEventOutputSchema = {
   sessionId: z.string(),
-  event: z.record(z.unknown()),
+  event: z.record(z.string(), z.unknown()),
   success: z.boolean(),
   error: z.string().optional(),
 };

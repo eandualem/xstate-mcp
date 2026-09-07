@@ -81,8 +81,7 @@ function findTransitions(
 ): string[] {
   const matched: string[] = [];
   const states = definition.states as
-    | Record<string, Record<string, unknown>>
-    | undefined;
+    Record<string, Record<string, unknown>> | undefined;
 
   if (!states) return matched;
 
@@ -161,8 +160,7 @@ function checkStateNode(
 
   // Recurse into nested states
   const nestedStates = stateNode.states as
-    | Record<string, Record<string, unknown>>
-    | undefined;
+    Record<string, Record<string, unknown>> | undefined;
   if (nestedStates) {
     if (typeof activeChildValue === "string") {
       // Simple child: e.g. value = { panel: "closed" } → activeChildValue = "closed"
