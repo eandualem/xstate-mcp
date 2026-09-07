@@ -27,10 +27,9 @@ bun run test -- tests/ws-server.test.ts
 bun run dev                   # owns a WebSocket port; use a separate port for tests
 ```
 
-Use Bun and keep `bun.lock` authoritative. Prefer a maintained Node.js LTS
-for development; the package currently declares Node.js >=20. See the review
-for the runtime/dependency modernization work. Do not change dependencies as
-a side effect of a documentation task.
+Use the pinned Bun version and keep `bun.lock` authoritative. Develop and verify
+on the supported Node.js 22 and 24 release lines declared in `package.json`.
+Do not change dependencies as a side effect of a documentation task.
 
 ## Architecture and invariants
 
@@ -54,10 +53,10 @@ a side effect of a documentation task.
 
 ## Changes and verification
 
-- Use a topic branch from the current default branch (`main` at adoption).
-  Open PRs against the repository's actual default; do not assume `develop`.
-- Keep one coherent change per PR. Conventional commit prefixes are preferred;
-  explain why and link the issue. Use `Closes #N` only for complete fixes.
+- Use a topic branch from this repository's default branch, `main`, and target
+  PRs at `main`.
+- Keep one coherent change per PR. PR and squash commit titles use a conventional
+  prefix, such as `fix:`, `feat:`, or `docs:`; explain why and link the issue.
 - Run the relevant tests, then `bun run check` and `bun run build` for code or
   dependency changes. For docs/config only, validate links, syntax, paths, and
   consistency; do not add implementation-mirroring tests.
@@ -65,8 +64,9 @@ a side effect of a documentation task.
   including failure paths. Hand-authored JSON alone cannot establish compatibility.
 - Update documentation with behavior changes. Distinguish reproduced bugs,
   source-review findings, proposals, and unverified assumptions.
-- Publishing and changes to other repositories are separate tasks. Follow the
-  user's authorization; never assume a new environment has old workspace hooks.
+- Release tags, package/registry publication, and changes to other repositories
+  require separate authorization. This boundary does not gate ordinary PR merges
+  into `main`; never assume a new environment has old workspace hooks.
 
 ## Optional backbone integration
 
