@@ -170,6 +170,20 @@ ws.addEventListener("message", (msg) => {
 });
 ```
 
+### Incoming message validation
+
+Every WebSocket message must be a JSON object with a non-empty string `type`.
+The server ignores malformed JSON, nulls, arrays, primitives, and invalid
+inspection messages while keeping the connection available for valid traffic.
+
+A `xstate-mcp.send.response` acknowledgement must include a non-empty string
+`requestId` copied from the command and a boolean `success`. Optional `error`
+must be a string; omit it when there is no error. Invalid acknowledgements leave
+the pending request intact so a valid reply can still resolve it, subject to
+the existing timeout. Unknown request IDs are ignored. Validation warnings and
+unknown-request warnings use fixed descriptions on stderr, without echoing the
+incoming payload or request ID.
+
 ## Tools
 
 ### Discovery & Orientation
