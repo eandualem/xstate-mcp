@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the tested archive (dispatch from a reviewed vX.Y.Z tag)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24.20.0"
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: .bun-version
+      - name: Check maintainer release intent and prerequisites
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        run: node scripts/release.mjs guard
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - name: Audit when the maintained dependency baseline is integrated
+        run: npm run audit:check --if-present
+      - name: Build twice, compare tarballs and test a clean consumer
+        run: bun run release:prepare
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-candidate
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 30
+
+  consumer:
+    needs: candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.23.2", "24.20.0"]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: release-candidate
+          path: artifacts
+      - run: node scripts/release.mjs verify
+      - run: node scripts/package-smoke.mjs
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: [candidate, consumer]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: npm-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24.20.0"
+          package-manager-cache: false
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: release-candidate
+          path: artifacts
+      - run: node scripts/release.mjs guard
+      - run: node scripts/release.mjs verify
+      - name: Publish exactly the verified tarball via npm trusted publishing
+        run: |
+          archive=$(node -p 'JSON.parse(require("fs").readFileSync("artifacts/release.json", "utf8")).tarball')
+          npm publish "artifacts/$archive" --ignore-scripts --access public --provenance --registry https://registry.npmjs.org/
+
+  release-notes:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: release-candidate
+          path: artifacts
+      - name: Attach the tested artifact and committed notes to the existing tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" artifacts/* --verify-tag --title "$RELEASE_TAG" --notes-file artifacts/release-notes.md

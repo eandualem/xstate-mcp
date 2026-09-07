@@ -9,3 +9,6 @@ dist/
 .tmp/
 .aider*
 !.aider.conf.yml
+
+# Local release evidence and package candidates
+artifacts/

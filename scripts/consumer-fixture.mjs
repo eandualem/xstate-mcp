@@ -1,0 +1,166 @@
+// Copied into a clean npm consumer by package-smoke.mjs; run there, never in the source tree.
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { accessSync, constants, readFileSync, realpathSync } from "node:fs";
+import { createServer } from "node:net";
+import { dirname, resolve } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { WebSocket } from "ws";
+import { createActor, createMachine } from "xstate";
+
+const packageRoot = resolve("node_modules/xstate-mcp");
+const pkg = JSON.parse(
+  readFileSync(resolve(packageRoot, "package.json"), "utf8"),
+);
+assert.equal(
+  fileURLToPath(import.meta.resolve("xstate-mcp")),
+  resolve(packageRoot, pkg.main),
+);
+assert.equal(pkg.exports["."].types, `./${pkg.types}`);
+accessSync(resolve(packageRoot, pkg.types));
+const bin = resolve("node_modules/.bin/xstate-mcp");
+accessSync(bin, constants.X_OK);
+assert.equal(
+  realpathSync(bin),
+  realpathSync(resolve(packageRoot, pkg.bin[pkg.name])),
+);
+assert(readFileSync(bin, "utf8").startsWith("#!/usr/bin/env node\n"));
+
+// Once #5 is integrated, the release smoke also enforces the import-safe library contract.
+if (pkg.bin[pkg.name] !== pkg.main) {
+  const library = await import("xstate-mcp");
+  assert.equal(typeof library.createSandboxServer, "function");
+  assert.equal(typeof library.createInspectionServer, "function");
+  assert.equal(library.default, library.createSandboxServer);
+  await library.createSandboxServer().close();
+}
+const reservation = createServer();
+reservation.listen(0, "127.0.0.1");
+await once(reservation, "listening");
+const { port } = reservation.address();
+await new Promise((done) => reservation.close(done));
+const child = spawn(bin, [], {
+  stdio: "pipe",
+  env: {
+    ...process.env,
+    NODE_PATH: "",
+    PATH: `${dirname(process.execPath)}:${process.env.PATH}`,
+    XSTATE_MCP_WS_PORT: String(port),
+    XSTATE_MCP_WS_HOST: "127.0.0.1",
+    XSTATE_MCP_LOG_LEVEL: "debug",
+    XSTATE_MCP_REQUIRE_ORIGIN: "false",
+  },
+});
+const deadline = setTimeout(() => {
+  child.kill("SIGKILL");
+  console.error("Clean consumer exceeded its 15 second protocol deadline");
+  process.exit(1);
+}, 15000);
+let stderr = "";
+let stdout = "";
+child.stderr.on("data", (data) => {
+  stderr += data;
+});
+child.stdout.on("data", (data) => {
+  stdout += data;
+});
+const closed = once(child, "close");
+const client = new Client({ name: "clean-consumer", version: "1.0.0" });
+let ws;
+let actor;
+let forwarding = true;
+const tool = async (name, args = {}) => {
+  const result = await client.callTool({ name, arguments: args });
+  assert(!result.isError, JSON.stringify(result));
+  const data = JSON.parse(result.content[0].text);
+  assert.deepEqual(data, result.structuredContent);
+  return data;
+};
+try {
+  await client.connect(new StdioServerTransport(child.stdout, child.stdin));
+  assert.equal(client.getServerVersion().version, pkg.version);
+  for (
+    let retry = 0;
+    !stderr.includes("WebSocket server listening") && retry < 100;
+    retry++
+  )
+    await delay(20);
+  assert(stderr.includes("WebSocket server listening"), stderr);
+  ws = new WebSocket(`ws://127.0.0.1:${port}`);
+  await once(ws, "open");
+  const machine = createMachine({
+    id: "release-demo",
+    initial: "idle",
+    states: { idle: { on: { RUN: "running" } }, running: {} },
+  });
+  actor = createActor(machine, {
+    inspect(event) {
+      if (!forwarding) return;
+      ws.send(
+        JSON.stringify({
+          ...event,
+          sessionId: event.actorRef.sessionId,
+          ...(event.type === "@xstate.actor"
+            ? { definition: machine.toJSON() }
+            : {}),
+        }),
+      );
+    },
+  });
+  ws.on("message", (raw) => {
+    const command = JSON.parse(raw.toString());
+    if (command.type !== "xstate-mcp.send") return;
+    const success = command.sessionId === actor.sessionId;
+    if (success) actor.send(command.event);
+    ws.send(
+      JSON.stringify({
+        type: "xstate-mcp.send.response",
+        requestId: command.requestId,
+        sessionId: command.sessionId,
+        success,
+      }),
+    );
+  });
+  actor.start();
+  const pong = once(ws, "pong");
+  ws.ping();
+  await pong;
+  const { actors } = await tool("list_actors");
+  assert.equal(actors.length, 1);
+  const sessionId = actors[0].sessionId;
+  assert.equal((await tool("get_actor_state", { sessionId })).value, "idle");
+  assert.equal(
+    (await tool("send_event", { target: sessionId, event: { type: "RUN" } }))
+      .success,
+    true,
+  );
+  assert.equal(actor.getSnapshot().value, "running");
+  assert.equal((await tool("get_actor_state", { sessionId })).value, "running");
+  const resource = await client.readResource({
+    uri: `xstate://actor/${sessionId}/snapshot`,
+  });
+  assert.equal(JSON.parse(resource.contents[0].text).value, "running");
+  console.log(
+    `Installed CLI initialize ${pkg.version}; real XState idle → RUN → running verified over MCP`,
+  );
+} finally {
+  forwarding = false;
+  actor?.stop();
+  ws?.terminate();
+  child.kill("SIGTERM");
+  const force = setTimeout(() => child.kill("SIGKILL"), 1000);
+  await closed;
+  clearTimeout(force);
+  clearTimeout(deadline);
+  await client.close();
+}
+for (const line of stdout.trim().split("\n"))
+  assert.equal(
+    JSON.parse(line).jsonrpc,
+    "2.0",
+    "stdout must contain only MCP messages",
+  );

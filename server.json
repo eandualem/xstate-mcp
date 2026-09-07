@@ -1,54 +1,56 @@
 {
-  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/registry/main/schemas/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.eandualem/xstate-mcp",
-  "description": "MCP server that bridges XState v5 inspection API to AI coding agents — live state, events, machine definitions, and bidirectional event sending.",
-  "repository": "https://github.com/eandualem/xstate-mcp",
+  "title": "XState MCP",
+  "description": "MCP server bridging XState v5 inspection API to AI coding agents",
+  "repository": {
+    "url": "https://github.com/eandualem/xstate-mcp",
+    "source": "github"
+  },
+  "version": "1.1.0-dev.0",
   "packages": [
     {
-      "registry_name": "npm",
-      "name": "xstate-mcp",
-      "version": "1.0.0",
-      "runtime": "node",
-      "transport": [
-        {
-          "type": "stdio"
-        }
-      ],
-      "environment_variables": [
+      "registryType": "npm",
+      "identifier": "xstate-mcp",
+      "version": "1.1.0-dev.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
         {
           "name": "XSTATE_MCP_WS_PORT",
           "description": "WebSocket server port for receiving XState inspection events",
-          "required": false,
+          "isRequired": false,
           "default": "7357"
         },
         {
           "name": "XSTATE_MCP_WS_HOST",
           "description": "WebSocket server bind address (localhost only by default)",
-          "required": false,
+          "isRequired": false,
           "default": "127.0.0.1"
         },
         {
           "name": "XSTATE_MCP_BUFFER_SIZE",
           "description": "Max events per actor in ring buffer",
-          "required": false,
+          "isRequired": false,
           "default": "100"
         },
         {
           "name": "XSTATE_MCP_LOG_LEVEL",
           "description": "Logging verbosity (debug, info, warn, error)",
-          "required": false,
+          "isRequired": false,
           "default": "info"
         },
         {
           "name": "XSTATE_MCP_ALLOWED_ORIGINS",
           "description": "Comma-separated list of allowed WebSocket origins (supports * port wildcard)",
-          "required": false,
+          "isRequired": false,
           "default": "http://localhost:*,http://127.0.0.1:*"
         },
         {
           "name": "XSTATE_MCP_REQUIRE_ORIGIN",
           "description": "When true, reject WebSocket connections without an Origin header",
-          "required": false,
+          "isRequired": false,
           "default": "false"
         }
       ]
