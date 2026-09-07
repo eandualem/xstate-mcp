@@ -142,7 +142,7 @@ function flush(ws: WebSocket): Promise<void> {
 }
 
 function startActor(ws: WebSocket) {
-  // Real XState 5.28.0 root actor; its default id equals its sessionId.
+  // Real XState root actor; its default id equals its sessionId.
   // Forward native inspection events without rewriting metadata or snapshots.
   const actor = createActor(
     createMachine({
@@ -156,6 +156,19 @@ function startActor(ws: WebSocket) {
   });
   actor.start();
   return actor;
+}
+
+async function discoverSessionId(client: Client, localSessionId: string) {
+  const list = await client.callTool({ name: "list_actors", arguments: {} });
+  expect(list.structuredContent).toMatchObject({
+    totalActors: 1,
+    actors: [{ localSessionId }],
+  });
+  const { actors } = list.structuredContent as {
+    actors: { sessionId: string }[];
+  };
+  expect(actors[0].sessionId).not.toBe(localSessionId);
+  return actors[0].sessionId;
 }
 
 describe("CLI WebSocket envelope validation", () => {
@@ -188,19 +201,12 @@ describe("CLI WebSocket envelope validation", () => {
     const goodClient = await cli.connectSocket();
     const actor = startActor(goodClient);
     await flush(goodClient);
-    const list = await cli.client.callTool({
-      name: "list_actors",
-      arguments: {},
-    });
-    expect(list.structuredContent).toMatchObject({
-      totalActors: 1,
-      actors: [{ sessionId: actor.sessionId }],
-    });
+    const sessionId = await discoverSessionId(cli.client, actor.sessionId);
     actor.send({ type: "NEXT" });
     await flush(goodClient);
     const state = await cli.client.callTool({
       name: "get_actor_state",
-      arguments: { sessionId: actor.sessionId },
+      arguments: { sessionId },
     });
     expect(state.structuredContent).toMatchObject({
       status: "active",
@@ -222,10 +228,11 @@ describe("CLI WebSocket envelope validation", () => {
       const ws = await cli.connectSocket();
       const actor = startActor(ws);
       await flush(ws);
+      const sessionId = await discoverSessionId(cli.client, actor.sessionId);
       const commandReceived = once(ws, "message");
       const response = cli.client.callTool({
         name: "send_event",
-        arguments: { target: actor.sessionId, event: { type: "NEXT" } },
+        arguments: { target: sessionId, event: { type: "NEXT" } },
       });
       let settled = false;
       void response.then(
@@ -238,6 +245,7 @@ describe("CLI WebSocket envelope validation", () => {
       );
       const [raw] = await commandReceived;
       const command = JSON.parse(raw.toString());
+      expect(command.sessionId).toBe(actor.sessionId);
       const base = {
         type: "xstate-mcp.send.response",
         requestId: command.requestId,
@@ -282,7 +290,7 @@ describe("CLI WebSocket envelope validation", () => {
       await flush(ws);
       const state = await cli.client.callTool({
         name: "get_actor_state",
-        arguments: { sessionId: actor.sessionId },
+        arguments: { sessionId },
       });
       expect(state.structuredContent).toMatchObject({
         value: success ? "ready" : "idle",
