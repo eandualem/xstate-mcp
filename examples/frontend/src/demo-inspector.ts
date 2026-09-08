@@ -2,13 +2,75 @@ import {
   createInspectionGuard,
   type PolicyResult,
 } from "../../../dist/inspection-policy.js";
-import type { AnyActorRef, InspectionEvent } from "xstate";
+import type {
+  AnyActorRef,
+  AnyStateNodeDefinition,
+  AnyTransitionDefinition,
+  InspectionEvent,
+} from "xstate";
 import {
   documentMachine,
   workspaceMachine,
   type DocumentContext,
   type DocumentEvent,
 } from "./model.js";
+
+// Closed-demo projection: XState's toJSON() still contains live StateNode targets.
+// Describe references and executable presence before the shared plain-data redactor.
+function implementation(value: unknown, kind: "action" | "guard") {
+  if (typeof value === "string") return value;
+  const type =
+    value && (typeof value === "function" || typeof value === "object")
+      ? Object.getOwnPropertyDescriptor(value, "type")?.value
+      : undefined;
+  return { type: typeof type === "string" ? type : `inline ${kind}` };
+}
+
+function transitionDefinition(transition: AnyTransitionDefinition) {
+  return {
+    source: transition.source.id,
+    target: transition.target?.map((target) => target.id),
+    eventType: transition.eventType,
+    reenter: transition.reenter,
+    ...(transition.guard !== undefined
+      ? { guard: implementation(transition.guard, "guard") }
+      : {}),
+    actions: transition.actions.map((action) =>
+      implementation(action, "action"),
+    ),
+  };
+}
+
+function machineDefinition(node: AnyStateNodeDefinition): unknown {
+  return {
+    id: node.id,
+    key: node.key,
+    type: node.type,
+    initial: node.initial ? transitionDefinition(node.initial) : undefined,
+    history: node.history,
+    states: Object.fromEntries(
+      Object.entries(node.states).map(([key, child]) => [
+        key,
+        machineDefinition(child),
+      ]),
+    ),
+    on: Object.fromEntries(
+      Object.entries(node.on).map(([event, transitions]) => [
+        event,
+        transitions.map(transitionDefinition),
+      ]),
+    ),
+    transitions: node.transitions.map(transitionDefinition),
+    entry: node.entry.map((action) => implementation(action, "action")),
+    exit: node.exit.map((action) => implementation(action, "action")),
+    invoke: node.invoke.map((actor) => ({
+      id: actor.id,
+      src: typeof actor.src === "string" ? actor.src : "actor logic",
+      systemId: actor.systemId,
+    })),
+    tags: node.tags,
+  };
+}
 
 export type ConnectionState =
   | "connecting"
@@ -101,8 +163,8 @@ export function createDemoInspector(
       parentId: parent ? wireId(parent.ref.sessionId) : undefined,
       definition:
         actor.name === "document"
-          ? documentMachine.toJSON()
-          : workspaceMachine.toJSON(),
+          ? machineDefinition(documentMachine.toJSON())
+          : machineDefinition(workspaceMachine.toJSON()),
       snapshot: includeSnapshot ? snapshot(actor) : undefined,
       createdAt: stamp(),
     });

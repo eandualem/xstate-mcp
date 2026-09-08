@@ -72,10 +72,53 @@ test("real MCP loop: inspect, fail, reject, retry, and verify the UI", async ({
       children: [{ sessionId: document.sessionId }],
     },
   ]);
-  for (const sessionId of [root.sessionId, document.sessionId])
-    expect(
-      (await demo.call("get_machine_definition", { sessionId })).definition,
-    ).toHaveProperty("states");
+  const workspaceDefinition = (
+    await demo.call("get_machine_definition", { sessionId: root.sessionId })
+  ).definition;
+  expect(workspaceDefinition).toMatchObject({
+    initial: { source: "workspace", target: ["workspace.open"] },
+    states: { open: { invoke: [{ id: "document", src: "document" }] } },
+  });
+  const definition = (
+    await demo.call("get_machine_definition", { sessionId: document.sessionId })
+  ).definition;
+  expect(definition).toMatchObject({
+    initial: { source: "document", target: ["document.loading"] },
+    states: {
+      editing: {
+        on: {
+          SAVE: [
+            {
+              source: "document.editing",
+              target: ["document.saving"],
+              guard: "hasTitle",
+            },
+          ],
+          CHANGE_TITLE: [{ actions: ["changeTitle"] }],
+        },
+      },
+      error: {
+        on: {
+          RETRY: [{ source: "document.error", target: ["document.saving"] }],
+        },
+      },
+      saving: {
+        on: {
+          "xstate.error.actor.saveDraft": [
+            { source: "document.saving", target: ["document.error"] },
+          ],
+          "xstate.done.actor.saveDraft": [
+            {
+              source: "document.saving",
+              target: ["document.saved"],
+              actions: [{ type: "xstate.assign" }],
+            },
+          ],
+        },
+      },
+    },
+  });
+  expect(JSON.stringify(definition)).not.toContain("[OMITTED]");
   expect(await demo.waitState(document.sessionId, "editing")).toMatchObject({
     status: "active",
     context: { draftAccessToken: "[REDACTED]" },
@@ -101,7 +144,9 @@ test("real MCP loop: inspect, fail, reject, retry, and verify the UI", async ({
     }),
   ).toMatchObject({
     canHandle: null,
-    reason: expect.any(String),
+    reason: "guard_not_evaluated",
+    analysis: "static",
+    matchedTransitions: ["editing.on.SAVE"],
   });
   expect(
     (

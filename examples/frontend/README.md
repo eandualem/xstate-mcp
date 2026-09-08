@@ -43,7 +43,8 @@ bun run check
 
 The scenarios cover:
 
-- Real actor discovery and parent/child tree, both definitions, state, eligibility,
+- Real actor discovery and parent/child tree, exact initial/SAVE/RETRY destinations
+  and named guard/action evidence in both definitions, state, eligibility,
   history/timeline, snapshot resource, and debug prompt through an SDK client.
 - Validated hello before inspection, rejection and explicit reconnect, connection
   health joined to discovered actors, independent server/adapter write denial,
@@ -124,10 +125,17 @@ behavior provides persistence or uses a production save service.
 
 ## What the evidence proves
 
-[Current integrated evidence](evidence/integrated-2026-09-08/README.md) records
+[First integrated evidence](evidence/integrated-2026-09-08/README.md) records
 both Node 22/24 runs, sanitized transcripts, browser screenshots and exact source
 and artifact hashes. The [original evidence](evidence/README.md) retains its own
-historical source pins and runtime versions unchanged. This is a **deterministic test run, not a recorded
+historical source pins and runtime versions unchanged.
+
+The first integrated capture at `5c3b2d0` exposed a definition-fidelity gap: the
+plain-data redactor omitted live XState transition targets. Its retained recordings
+show `[OMITTED]` destinations and must not be used as proof of complete definitions.
+The corrected adapter explicitly projects source/target IDs and guard/action markers
+before redaction; the real MCP/browser test asserts those exact destinations and
+`guard_not_evaluated` for SAVE. New corrected captures are recorded separately. This is a **deterministic test run, not a recorded
 model/agent session**. The separate Design Studio coding-agent demonstration is tracked in #18.
 
 Fresh runs produce `test-results/**/sanitized-transcript.json` and numbered PNGs.
