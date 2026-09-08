@@ -75,6 +75,9 @@ const client = new Client({ name: "clean-consumer", version: "1.0.0" });
 let ws;
 let actor;
 let forwarding = true;
+let commandCount = 0;
+let receivedTarget;
+let exitResult;
 const tool = async (name, args = {}) => {
   const result = await client.callTool({ name, arguments: args });
   assert(!result.isError, JSON.stringify(result));
@@ -94,6 +97,22 @@ try {
   assert(stderr.includes("WebSocket server listening"), stderr);
   ws = new WebSocket(`ws://127.0.0.1:${port}`);
   await once(ws, "open");
+  const helloResponse = once(ws, "message", {
+    signal: AbortSignal.timeout(2000),
+  });
+  ws.send(
+    JSON.stringify({
+      type: "xstate-mcp.hello",
+      protocolVersion: 1,
+      application: { name: "release-consumer" },
+      adapter: { name: "release-fixture", version: "1.0.0" },
+      capabilities: { commands: ["send_event"] },
+    }),
+  );
+  const hello = JSON.parse((await helloResponse)[0].toString());
+  assert.equal(hello.type, "xstate-mcp.hello.response");
+  assert.equal(hello.success, true);
+  assert.deepEqual(hello.commands, ["send_event"]);
   const machine = createMachine({
     id: "release-demo",
     initial: "idle",
@@ -116,6 +135,8 @@ try {
   ws.on("message", (raw) => {
     const command = JSON.parse(raw.toString());
     if (command.type !== "xstate-mcp.send") return;
+    commandCount++;
+    receivedTarget = command.sessionId;
     const success = command.sessionId === actor.sessionId;
     if (success) actor.send(command.event);
     ws.send(
@@ -134,12 +155,37 @@ try {
   const { actors } = await tool("list_actors");
   assert.equal(actors.length, 1);
   const sessionId = actors[0].sessionId;
-  assert.equal((await tool("get_actor_state", { sessionId })).value, "idle");
+  assert.notEqual(sessionId, actor.sessionId);
+  assert.equal(actors[0].localSessionId, actor.sessionId);
+  assert.equal(actors[0].connectionId, hello.connectionId);
+  const health = await tool("get_connection_health");
+  assert.equal(health.connections[0].connectionId, hello.connectionId);
+  assert.equal(health.connections[0].negotiation, "negotiated");
+  assert.equal(health.connections[0].actorCount, 1);
+  const before = await tool("get_actor_state", { sessionId });
+  assert.equal(before.value, "idle");
   assert.equal(
     (await tool("send_event", { target: sessionId, event: { type: "RUN" } }))
       .success,
     true,
   );
+  const state = await tool("wait_for_state", {
+    sessionId,
+    state: "running",
+    after: before.cursor,
+    timeoutMs: 2000,
+  });
+  assert.equal(state.outcome, "matched");
+  assert.equal(state.snapshot.value, "running");
+  const event = await tool("wait_for_event", {
+    sessionId,
+    eventType: "RUN",
+    after: before.cursor,
+    timeoutMs: 2000,
+  });
+  assert.equal(event.outcome, "matched");
+  assert.equal(commandCount, 1);
+  assert.equal(receivedTarget, actor.sessionId);
   assert.equal(actor.getSnapshot().value, "running");
   assert.equal((await tool("get_actor_state", { sessionId })).value, "running");
   const resource = await client.readResource({
@@ -147,19 +193,30 @@ try {
   });
   assert.equal(JSON.parse(resource.contents[0].text).value, "running");
   console.log(
-    `Installed CLI initialize ${pkg.version}; real XState idle → RUN → running verified over MCP`,
+    `Installed CLI initialize ${pkg.version}; negotiated real XState idle → RUN → running verified with MCP waits`,
   );
 } finally {
   forwarding = false;
   actor?.stop();
   ws?.terminate();
-  child.kill("SIGTERM");
+  child.stdin.end();
   const force = setTimeout(() => child.kill("SIGKILL"), 1000);
-  await closed;
+  exitResult = await closed;
   clearTimeout(force);
   clearTimeout(deadline);
   await client.close();
 }
+assert.deepEqual(
+  exitResult,
+  [0, null],
+  "Installed CLI exits cleanly on stdin EOF",
+);
+const released = createServer();
+await new Promise((done, reject) => {
+  released.once("error", reject);
+  released.listen(port, "127.0.0.1", done);
+});
+await new Promise((done) => released.close(done));
 for (const line of stdout.trim().split("\n"))
   assert.equal(
     JSON.parse(line).jsonrpc,
