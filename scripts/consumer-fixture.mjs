@@ -30,14 +30,16 @@ assert.equal(
 );
 assert(readFileSync(bin, "utf8").startsWith("#!/usr/bin/env node\n"));
 
-// Once #5 is integrated, the release smoke also enforces the import-safe library contract.
-if (pkg.bin[pkg.name] !== pkg.main) {
-  const library = await import("xstate-mcp");
-  assert.equal(typeof library.createSandboxServer, "function");
-  assert.equal(typeof library.createInspectionServer, "function");
-  assert.equal(library.default, library.createSandboxServer);
-  await library.createSandboxServer().close();
-}
+assert.notEqual(
+  pkg.bin[pkg.name],
+  pkg.main,
+  "Library and CLI entries are separate",
+);
+const library = await import("xstate-mcp");
+assert.equal(typeof library.createSandboxServer, "function");
+assert.equal(typeof library.createInspectionServer, "function");
+assert.equal(library.default, library.createSandboxServer);
+await library.createSandboxServer().close();
 const reservation = createServer();
 reservation.listen(0, "127.0.0.1");
 await once(reservation, "listening");
