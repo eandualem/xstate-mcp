@@ -1,12 +1,14 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, rmSync } from "node:fs";
 import {
   createServer as createHttpServer,
   type Server as HttpServer,
+  request as httpRequest,
 } from "node:http";
 import { createServer } from "node:net";
 import { resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -359,6 +361,104 @@ it("reports an already-listening external HTTP server without taking ownership o
   expect(external.listening).toBe(true);
   const response = await fetch(`http://127.0.0.1:${address.port}`);
   expect(await response.text()).toBe("external-server");
+});
+
+it("follows external HTTP close, failed rebind and a new listening endpoint", async () => {
+  const external = createHttpServer();
+  const occupied = createHttpServer();
+  onTestFinished(() => {
+    external.closeAllConnections();
+    external.close();
+    occupied.close();
+  });
+  external.listen(0, "127.0.0.1");
+  occupied.listen(0, "127.0.0.1");
+  await Promise.all([once(external, "listening"), once(occupied, "listening")]);
+  const next = occupied.address();
+  if (!next || typeof next === "string") throw new Error("Missing address");
+  const h = await harness({ server: external });
+  const closeObservers = external.listenerCount("close");
+  await new Promise<void>((resolve) => external.close(() => resolve()));
+  expect.soft((await status(h.client)).listener).toEqual({
+    state: "closed",
+    endpoint: null,
+    errorCode: null,
+  });
+  const failed = once(external, "error");
+  external.listen(next.port, "127.0.0.1");
+  expect((await failed)[0]).toMatchObject({ code: "EADDRINUSE" });
+  expect.soft((await status(h.client)).listener).toEqual({
+    state: "error",
+    endpoint: null,
+    errorCode: "EADDRINUSE",
+  });
+  await new Promise<void>((resolve) => occupied.close(() => resolve()));
+  external.listen(next.port, "127.0.0.1");
+  await once(external, "listening");
+  expect((await status(h.client)).listener).toEqual({
+    state: "listening",
+    endpoint: {
+      host: "127.0.0.1",
+      port: next.port,
+      url: `ws://127.0.0.1:${next.port}`,
+    },
+    errorCode: null,
+  });
+  const ws = await h.connect();
+  await hello(ws);
+  const producer = h.producer(ws);
+  await flush(ws);
+  expect((await status(h.client)).totals.registeredSessions).toBe(1);
+  producer.stop();
+  const socketClosed = once([...h.wss().clients][0], "close");
+  ws.close();
+  await socketClosed;
+  await new Promise<void>((resolve) => h.wss().close(() => resolve()));
+  expect(external.listening).toBe(true);
+  expect(external.listenerCount("close")).toBe(closeObservers - 1);
+  await new Promise<void>((resolve) => external.close(() => resolve()));
+  external.listen(0, "127.0.0.1");
+  await once(external, "listening");
+  expect((await status(h.client)).listener.state).toBe("closed");
+});
+
+it("reports a live external Unix socket without inventing a TCP endpoint", async () => {
+  const directory = mkdtempSync(resolve(tmpdir(), "xmcp-socket-"));
+  const path = resolve(directory, "inspection.sock");
+  const external = createHttpServer((_request, response) =>
+    response.end("unix-http"),
+  );
+  onTestFinished(async () => {
+    external.closeAllConnections();
+    await new Promise<void>((done) => external.close(() => done()));
+    rmSync(directory, { recursive: true, force: true });
+  });
+  external.listen(path);
+  await once(external, "listening");
+  const h = await harness({ server: external });
+  expect((await status(h.client)).listener).toEqual({
+    state: "listening",
+    endpoint: null,
+    errorCode: null,
+  });
+  external.emit("error", new Error("Active Unix listener error"));
+  expect((await status(h.client)).listener.state).toBe("listening");
+  await new Promise<void>((done) => h.wss().close(() => done()));
+  expect(external.listening).toBe(true);
+  const body = await new Promise<string>((done, reject) => {
+    httpRequest({ socketPath: path, path: "/" }, (response) => {
+      let data = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk) => {
+        data += chunk;
+      });
+      response.on("end", () => done(data));
+      response.on("error", reject);
+    })
+      .on("error", reject)
+      .end();
+  });
+  expect(body).toBe("unix-http");
 });
 
 it("keeps a live endpoint after server errors and reports its eventual closure", async () => {

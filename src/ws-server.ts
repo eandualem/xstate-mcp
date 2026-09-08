@@ -67,11 +67,11 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
   const health = clientRegistry.health;
   health.setListener("starting");
   let wss: WebSocketServer;
-  let hasListened = false;
+  let listenerListening = false;
   const listenerError = (err: unknown) => {
-    // After startup, an error alone does not mean the listener has stopped.
-    // Keep its endpoint until close; only startup failures replace it with error.
-    if (hasListened) return;
+    // An error on a currently active listener does not mean it has stopped.
+    if (options.server?.listening ?? listenerListening) return;
+    listenerListening = false;
     const code =
       err && typeof err === "object" && "code" in err
         ? String(err.code)
@@ -126,10 +126,22 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
 
   wss.once("close", unsubscribeClear);
 
+  const listenerClosed = () => {
+    listenerListening = false;
+    if (clientRegistry.getHealth(1).listener.state !== "error")
+      health.setListener("closed");
+  };
   const listenerReady = () => {
-    if (hasListened) return;
-    hasListened = true;
+    if (listenerListening) return;
     const address = wss.address();
+    if (!address) return;
+    listenerListening = true;
+    // Unix socket listeners are live but have no TCP endpoint to advertise.
+    if (typeof address === "string") {
+      health.setListener("listening");
+      logger.info("WebSocket server listening on external socket");
+      return;
+    }
     if (address && typeof address !== "string") {
       const endpointHost =
         address.family === "IPv6" ? `[${address.address}]` : address.address;
@@ -144,7 +156,8 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
     }
   };
   wss.on("listening", listenerReady);
-  // ws forwards future listening events but does not replay an external server's.
+  // ws forwards listening/error events, but neither replays readiness nor forwards close.
+  options.server?.on("close", listenerClosed);
   if (options.server?.listening) listenerReady();
 
   wss.on("connection", (ws: WebSocket, request) => {
@@ -196,8 +209,8 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
   heartbeat.unref();
   wss.on("close", () => {
     clearInterval(heartbeat);
-    if (clientRegistry.getHealth(1).listener.state !== "error")
-      health.setListener("closed");
+    options.server?.off("close", listenerClosed);
+    listenerClosed();
   });
 
   return wss;

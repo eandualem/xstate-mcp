@@ -17,14 +17,17 @@ XState/Stately inspection format version.
    including the assigned port when a library host requests port zero. Attaching
    `createWsServer` to an already-listening external HTTP server reports that
    server's current endpoint immediately; closing the WebSocket server leaves the
-   external HTTP server under its host's ownership. A factory
-   used only for capability scanning shows `not_started`. `starting` means binding
+   external HTTP server under its host's ownership. While attached, health follows
+   that host's close and re-listen events, including a changed TCP port. A Unix
+   socket listener reports `listening` with `endpoint: null`, because it has no TCP
+   endpoint. A factory used only for capability scanning shows `not_started`. `starting` means binding
    is pending, `closed` means the listener stopped, and `error` means startup
    failed, with a bounded `errorCode`, such as `EADDRINUSE`. Choose a free port for
    that error. If MCP itself cannot initialize, inspect the CLI's stderr first;
-   a failed process cannot
-   answer a health tool call. Errors after startup are logged to stderr and do
-   not clear an established endpoint; the close event records `closed`.
+   a failed process cannot answer a health tool call. Errors while listening
+   are logged to stderr and preserve the active endpoint; a failed rebind records
+   `error`. Closing the listener records `closed`, while cleanup after a failed
+   bind preserves that error.
 2. If `totals.connectedClients` is `0`, open the development application and check
    its WebSocket URL. `totals.rejectedConnections > 0` records origin-policy
    rejections since this server started. Configure the exact development origin;
