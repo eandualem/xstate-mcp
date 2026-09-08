@@ -127,8 +127,10 @@ model/agent session**. A future Design Studio coding-agent demonstration is #18.
 Fresh runs produce `test-results/**/sanitized-transcript.json` and numbered PNGs.
 The transcript records tool calls/results, elapsed times, browser checkpoint
 labels and screenshot filenames. Public session IDs, local IDs and connection
-IDs are replaced consistently with per-tab aliases. Source hashes identify the
-exact runtime and test files; the
+IDs are replaced consistently with per-tab aliases. Fresh transcripts separately
+hash the frontend sources, all server TypeScript sources and configuration, and
+the built server JavaScript actually exercised. They record the installed server
+dependency versions as well as the frontend toolchain. The
 source commit identifies the code checkout used when capturing the evidence.
 Failures retain a Playwright trace for local diagnosis. CI uploads the report and
 evidence with a 14-day retention period.

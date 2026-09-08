@@ -5,7 +5,7 @@ import { createServer as createViteServer } from "vite";
 import { createServer } from "node:net";
 import { once } from "node:events";
 import { execFileSync } from "node:child_process";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve, join, basename } from "node:path";
 import { createHash } from "node:crypto";
 import { finishDemoRun } from "./teardown.js";
@@ -279,8 +279,40 @@ export const test = base.extend<{ demo: Harness }>({
           const packageJson = JSON.parse(
             await readFile(join(frontend, "package.json"), "utf8"),
           );
+          const hashFiles = async (directory: string, files: string[]) =>
+            Object.fromEntries(
+              await Promise.all(
+                files.sort().map(async (file) => [
+                  file,
+                  createHash("sha256")
+                    .update(await readFile(join(directory, file)))
+                    .digest("hex"),
+                ]),
+              ),
+            );
+          const serverSources = (
+            await readdir(join(repository, "src"), { recursive: true })
+          )
+            .filter((file) => file.endsWith(".ts"))
+            .map((file) => `src/${file}`);
+          const artifacts = (await readdir(join(repository, "dist")))
+            .filter((file) => file.endsWith(".js"))
+            .map((file) => `dist/${file}`);
+          const serverDependencies = Object.fromEntries(
+            await Promise.all(
+              Object.keys(pkg.dependencies).map(async (name) => {
+                const installed = JSON.parse(
+                  await readFile(
+                    join(repository, "node_modules", name, "package.json"),
+                    "utf8",
+                  ),
+                );
+                return [name, installed.version];
+              }),
+            ),
+          );
           const transcript = {
-            schemaVersion: 2,
+            schemaVersion: 3,
             scenario: info.title,
             generator:
               "Deterministic test client; not a live model/agent session",
@@ -289,6 +321,14 @@ export const test = base.extend<{ demo: Harness }>({
                 ? observations.sourceCommit.value
                 : null,
             sourceHashes: sources,
+            serverSourceHashes: await hashFiles(repository, [
+              ...serverSources,
+              "package.json",
+              "bun.lock",
+              "tsup.config.ts",
+            ]),
+            serverArtifactHashes: await hashFiles(repository, artifacts),
+            serverDependencies,
             runtime: {
               node: process.version,
               browser: browser.version(),
