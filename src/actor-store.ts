@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   ActorRecord,
   ActorSnapshot,
@@ -17,7 +18,17 @@ export type ActorRemovedCallback = (sessionId: string) => void;
 export type SnapshotUpdatedCallback = (sessionId: string) => void;
 export type StoreCleared = () => void;
 
+export type ActorStoreChange =
+  | { type: "registered" | "snapshot" | "event"; actor: ActorRecord }
+  | {
+      type: "removed";
+      actor: ActorRecord;
+      reason: "actor_removed" | "disconnected";
+    }
+  | { type: "cleared" };
+
 export class ActorStore {
+  private changeListeners = new Set<(change: ActorStoreChange) => void>();
   private actors = new Map<string, ActorRecord>();
   private onRegisterCallbacks: ActorRegisteredCallback[] = [];
   private onRemovedCallbacks: ActorRemovedCallback[] = [];
@@ -28,6 +39,18 @@ export class ActorStore {
     private bufferSize: number,
     private logger: Logger,
   ) {}
+
+  subscribe(cb: (change: ActorStoreChange) => void): () => void {
+    const listener = (change: ActorStoreChange) => cb(change);
+    this.changeListeners.add(listener);
+    return () => {
+      this.changeListeners.delete(listener);
+    };
+  }
+
+  private emit(change: ActorStoreChange): void {
+    for (const cb of [...this.changeListeners]) cb(change);
+  }
 
   onActorRegistered(cb: ActorRegisteredCallback): () => void {
     const listener: ActorRegisteredCallback = (sessionId) => cb(sessionId);
@@ -100,6 +123,8 @@ export class ActorStore {
     }
 
     const record: ActorRecord = {
+      generation: randomUUID(),
+      snapshotVersion: currentSnapshot ? 1 : 0,
       connectionId: event.connectionId ?? null,
       localSessionId: event.localSessionId ?? sessionId,
       applicationName: event.applicationName ?? null,
@@ -118,6 +143,7 @@ export class ActorStore {
     this.actors.set(sessionId, record);
     this.logger.debug(`Registered actor: ${sessionId} (${record.name})`);
     for (const cb of this.onRegisterCallbacks) cb(sessionId);
+    this.emit({ type: "registered", actor: record });
   }
 
   updateSnapshot(event: SnapshotEvent): void {
@@ -128,6 +154,7 @@ export class ActorStore {
     }
 
     if (event.snapshot && typeof event.snapshot === "object") {
+      actor.snapshotVersion++;
       const previous = actor.currentSnapshot;
       const next = readSnapshot(event.snapshot, previous);
       actor.currentSnapshot = next;
@@ -162,6 +189,7 @@ export class ActorStore {
 
     actor.updatedAt = event.createdAt;
     for (const cb of this.onSnapshotCallbacks) cb(event.sessionId);
+    this.emit({ type: "snapshot", actor });
   }
 
   addEvent(event: XStateEvent): void {
@@ -172,6 +200,7 @@ export class ActorStore {
     }
 
     const record: EventRecord = {
+      sequence: actor.eventHistory.total + 1,
       event: (event.event as Record<string, unknown>) ?? { type: "unknown" },
       sourceId: event.sourceId ?? null,
       createdAt: event.createdAt,
@@ -179,13 +208,19 @@ export class ActorStore {
 
     actor.eventHistory.push(record);
     actor.updatedAt = event.createdAt;
+    this.emit({ type: "event", actor });
   }
 
-  removeActor(sessionId: string): boolean {
+  removeActor(
+    sessionId: string,
+    reason: "actor_removed" | "disconnected" = "actor_removed",
+  ): boolean {
+    const actor = this.actors.get(sessionId);
     const deleted = this.actors.delete(sessionId);
     if (deleted) {
       this.logger.debug(`Removed actor: ${sessionId}`);
       for (const cb of this.onRemovedCallbacks) cb(sessionId);
+      if (actor) this.emit({ type: "removed", actor, reason });
     }
     return deleted;
   }
@@ -212,6 +247,7 @@ export class ActorStore {
     this.actors.clear();
     this.logger.info("Actor store cleared");
     for (const cb of this.onClearCallbacks) cb();
+    this.emit({ type: "cleared" });
   }
 
   get size(): number {

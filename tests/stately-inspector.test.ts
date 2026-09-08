@@ -162,6 +162,7 @@ it("exposes real Stately actors, hierarchy, definitions and events through MCP",
   ).toMatchObject({
     events: expect.arrayContaining([
       {
+        sequence: 2,
         event: { type: "PING", message: "from parent" },
         sourceId: rootSessionId,
         createdAt: expect.stringMatching(isoTimestamp),

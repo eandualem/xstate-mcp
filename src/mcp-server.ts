@@ -37,6 +37,12 @@ import { explainMachine } from "./prompts/explain-machine.js";
 import { traceEventFlow } from "./prompts/trace-event-flow.js";
 import { safeStringify } from "./safe-stringify.js";
 import { actorSnapshotData } from "./actor-snapshot.js";
+import {
+  ActorWaits,
+  waitForStateInputSchema,
+  waitForEventInputSchema,
+  waitOutputSchema,
+} from "./actor-waits.js";
 
 const READ_ONLY_ANNOTATIONS = {
   readOnlyHint: true,
@@ -54,6 +60,7 @@ export function createMcpServer(
     name: "xstate-mcp",
     version: "1.0.0",
   });
+  const waits = new ActorWaits(store);
 
   // --- Tools ---
 
@@ -263,6 +270,31 @@ export function createMcpServer(
       logger.debug(`Tool called: get_state_timeline(${sessionId}, ${limit})`);
       return getStateTimeline(store, sessionId, limit);
     },
+  );
+
+  server.registerTool(
+    "wait_for_state",
+    {
+      title: "Wait for Actor State",
+      description:
+        "Wait for an exact state value, status, or both. Provide at least one predicate. With an after cursor, only a newer snapshot can match; otherwise the current snapshot may match immediately. No guards/actions or sends are executed.",
+      inputSchema: waitForStateInputSchema,
+      outputSchema: waitOutputSchema,
+      annotations: { ...READ_ONLY_ANNOTATIONS, idempotentHint: false },
+    },
+    (input, extra) => waits.waitForState(input, extra.signal),
+  );
+  server.registerTool(
+    "wait_for_event",
+    {
+      title: "Wait for Actor Event",
+      description:
+        "Wait for an exact event type observed after a cursor. Without after, only future events match. With after, retained history is checked first; evicted history returns history_lost. Observing an event does not prove a transition.",
+      inputSchema: waitForEventInputSchema,
+      outputSchema: waitOutputSchema,
+      annotations: { ...READ_ONLY_ANNOTATIONS, idempotentHint: false },
+    },
+    (input, extra) => waits.waitForEvent(input, extra.signal),
   );
 
   // --- Tier 3 tools ---
@@ -476,7 +508,9 @@ export function createMcpServer(
     if (!disposed && server.isConnected()) {
       void server.server
         .sendResourceListChanged()
-        .catch(() => logger.debug("Resource notification transport closed"));
+        .catch(() =>
+          logger.debug("Resource-list notification could not be delivered"),
+        );
     }
   };
   const unsubscribe = [
@@ -491,6 +525,7 @@ export function createMcpServer(
   const dispose = () => {
     if (disposed) return;
     disposed = true;
+    waits.dispose();
     for (const remove of unsubscribe) remove();
   };
   const originalClose = server.close.bind(server);
@@ -555,7 +590,7 @@ export function createMcpServer(
   );
 
   logger.info(
-    "MCP server created with 9 tools, 3 resources, and 3 prompts registered",
+    "MCP server created with 11 tools, 3 resources, and 3 prompts registered",
   );
   return server;
 }

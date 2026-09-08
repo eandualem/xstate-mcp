@@ -115,7 +115,7 @@ export class ClientRegistry {
       if (session?.client !== ws) continue;
       this.sessions.delete(sessionId);
       if (store?.getActor(sessionId)?.connectionId === session.connectionId) {
-        store.removeActor(sessionId);
+        store.removeActor(sessionId, "disconnected");
       }
     }
     this.clientToSessions.delete(ws);

@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
 import { actorNotFoundResult, type ToolResult } from "../errors.js";
 import { safeStringify } from "../safe-stringify.js";
+import { actorCursor, actorCursorSchema } from "../types.js";
 
 const DEFAULT_LIMIT = 20;
 
@@ -9,6 +10,7 @@ export const getEventHistoryOutputSchema = {
   sessionId: z.string(),
   events: z.array(
     z.object({
+      sequence: z.number().int().positive().safe(),
       event: z.record(z.string(), z.unknown()),
       sourceId: z.string().nullable(),
       createdAt: z.string(),
@@ -16,6 +18,7 @@ export const getEventHistoryOutputSchema = {
   ),
   totalInBuffer: z.number(),
   bufferCapacity: z.number(),
+  cursor: actorCursorSchema,
 };
 
 export function getEventHistory(
@@ -37,6 +40,7 @@ export function getEventHistory(
     events,
     totalInBuffer: actor.eventHistory.size,
     bufferCapacity: actor.eventHistory.capacity,
+    cursor: actorCursor(actor),
   };
 
   return {

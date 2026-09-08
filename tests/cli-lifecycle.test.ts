@@ -359,7 +359,7 @@ it("uses the packed library exports, type declarations, and executable", async (
     const client = new Client({ name: 'packed-scanner', version: '1' });
     const [ct, st] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(st), client.connect(ct)]);
-    assert.equal((await client.listTools()).tools.length, 9);
+    assert.equal((await client.listTools()).tools.length, 11);
     assert.equal((await client.listPrompts()).prompts.length, 3);
     await client.close(); await server.close();
     const bridge = createInspectionServer({ wsPort: 0, logLevel: 'error' });
@@ -410,7 +410,7 @@ it("uses the packed library exports, type declarations, and executable", async (
     port,
     client,
   } = await runningCli(executable);
-  expect((await client.listTools()).tools).toHaveLength(9);
+  expect((await client.listTools()).tools).toHaveLength(11);
   child.stdin.end();
   expect(await within(cliExited)).toMatchObject({ code: 0, signal: null });
   await assertReusable(port);

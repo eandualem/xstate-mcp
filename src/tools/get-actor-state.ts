@@ -1,3 +1,4 @@
+import { actorCursorSchema } from "../types.js";
 import { actorIdentityOutputSchema } from "../actor-identity.js";
 import { z } from "zod";
 import type { ActorStore } from "../actor-store.js";
@@ -16,6 +17,7 @@ export const getActorStateOutputSchema = {
   error: actorErrorSchema.nullable(),
   parentId: z.string().nullable(),
   updatedAt: z.string(),
+  cursor: actorCursorSchema,
 };
 
 export interface GetActorStateOptions {

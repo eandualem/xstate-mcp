@@ -78,7 +78,7 @@ Confirm the server works before wiring up your app:
 npx -y @modelcontextprotocol/inspector npx -y xstate-mcp
 ```
 
-This opens a web UI at `http://localhost:6274`. The server exposes 9 tools, 1 fixed resource, 2 resource templates, and 3 prompts. `list_actors` returns an empty actor list when no application is connected. This verifies MCP discovery only; it does not verify that the application inspection connection works.
+This opens a web UI at `http://localhost:6274`. The server exposes 11 tools, 1 fixed resource, 2 resource templates, and 3 prompts. `list_actors` returns an empty actor list when no application is connected. This verifies MCP discovery only; it does not verify that the application inspection connection works.
 
 ## Library and lifecycle
 
@@ -324,7 +324,12 @@ and adapter requirements.
   "output": null,
   "error": null,
   "parentId": "app-session",
-  "updatedAt": "2026-02-28T12:00:01.500Z"
+  "updatedAt": "2026-02-28T12:00:01.500Z",
+  "cursor": {
+    "generation": "5d2727b8-c095-4b22-946e-464b5e3f7f64",
+    "snapshot": 3,
+    "event": 1
+  }
 }
 ```
 
@@ -369,13 +374,19 @@ use the application's local IDs before the server scopes them to a connection.
   "sessionId": "agents-session",
   "events": [
     {
+      "sequence": 1,
       "event": { "type": "sys.refresh" },
       "sourceId": "app-session",
       "createdAt": "2026-02-28T12:00:01.000Z"
     }
   ],
   "totalInBuffer": 1,
-  "bufferCapacity": 100
+  "bufferCapacity": 100,
+  "cursor": {
+    "generation": "5d2727b8-c095-4b22-946e-464b5e3f7f64",
+    "snapshot": 3,
+    "event": 1
+  }
 }
 ```
 
@@ -458,6 +469,24 @@ match does not guarantee a runtime transition. See the
 }
 ```
 
+#### `wait_for_state` and `wait_for_event`
+
+Wait for observed state or events after an action, with bounded timeouts and
+cancellation. Neither tool sends events or executes guards/actions.
+
+- `wait_for_state`: `sessionId`, exact `state` and/or `status`, optional `after`
+  cursor, and optional `timeoutMs`. Both predicates must match when supplied.
+- `wait_for_event`: `sessionId`, exact `eventType`, optional `after` cursor,
+  and optional `timeoutMs`. Without a cursor, only future events match.
+- Timeouts default to 5000 ms, accept integers from 0 to 30000, and zero checks
+  once. Each server allows at most 100 pending waits.
+
+Capture the cursor from `get_actor_state`, `get_event_history`, or a snapshot
+resource before triggering the action. A result includes an `outcome`, timing,
+and the matched snapshot/event when successful. Timeouts, disconnects, actor
+removal/replacement, and evicted event history have distinct outcomes. See the
+[verification contract and examples](docs/verification-waits.md).
+
 ### Actions
 
 #### `send_event`
@@ -477,7 +506,9 @@ Send an event to a running actor. Target can be a sessionId or actor name. Requi
 }
 ```
 
-Follow up with `get_state_timeline` or `get_actor_state` to verify the transition.
+Capture a cursor before sending, then use `wait_for_state` or `wait_for_event`
+to verify asynchronous work. Use `get_state_timeline` or `get_actor_state` for
+additional diagnostics.
 
 #### `clear_actors`
 
@@ -663,7 +694,7 @@ createActor(machine, {              WebSocket Server :7357         MCP Client
                                     ↓
                     xstate-mcp.send ◄────────────────────────────► send_event
                                     ↓
-                                    McpServer (stdio)  ──────────► 9 tools, 3 resources, 3 prompts
+                                    McpServer (stdio)  ──────────► 11 tools, 3 resources, 3 prompts
 ```
 
 - **MCP transport:** stdio (standard for Claude Code MCP servers)
