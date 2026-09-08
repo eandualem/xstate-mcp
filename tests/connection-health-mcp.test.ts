@@ -1,6 +1,10 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { readFileSync } from "node:fs";
+import {
+  createServer as createHttpServer,
+  type Server as HttpServer,
+} from "node:http";
 import { createServer } from "node:net";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -102,6 +106,7 @@ function produce(ws: WebSocket, id = "doctor") {
 async function harness(
   options: {
     health?: ConnectionHealth;
+    server?: HttpServer;
     port?: number;
     listen?: boolean;
     allowedOrigins?: string[];
@@ -134,12 +139,13 @@ async function harness(
   const listen = async (port = options.port ?? 0) => {
     wss = createWsServer({
       port,
+      server: options.server,
       store,
       clientRegistry: registry,
       logger,
       allowedOrigins: options.allowedOrigins,
     });
-    await once(wss, "listening");
+    if (!options.server?.listening) await once(wss, "listening");
     return wss;
   };
   if (options.listen !== false) await listen();
@@ -304,6 +310,55 @@ it("counts wrong-socket acknowledgements without consuming the owner's pending c
     connectionId: actors[0].connectionId,
     counters: { rejectedFrames: 0, commandTimeouts: 0 },
   });
+});
+
+it("reports an already-listening external HTTP server without taking ownership of it", async () => {
+  const external = createHttpServer((_request, response) =>
+    response.end("external-server"),
+  );
+  onTestFinished(() => {
+    external.closeAllConnections();
+    external.close();
+  });
+  external.listen(0, "127.0.0.1");
+  await once(external, "listening");
+  const address = external.address();
+  if (!address || typeof address === "string")
+    throw new Error("Missing address");
+  const h = await harness({ server: external });
+  const endpoint = {
+    host: "127.0.0.1",
+    port: address.port,
+    url: `ws://127.0.0.1:${address.port}`,
+  };
+  expect((await status(h.client)).listener).toEqual({
+    state: "listening",
+    endpoint,
+    errorCode: null,
+  });
+  const ws = await h.connect();
+  const reply = await hello(ws);
+  const producer = h.producer(ws);
+  await flush(ws);
+  const { actors } = await tool(h.client, "list_actors");
+  expect(actors[0].connectionId).toBe(reply.connectionId);
+  expect((await status(h.client)).totals.registeredSessions).toBe(1);
+
+  external.emit("error", new Error("Post-attachment listener error"));
+  expect((await status(h.client)).listener).toEqual({
+    state: "listening",
+    endpoint,
+    errorCode: null,
+  });
+  producer.stop();
+  const socketClosed = once([...h.wss().clients][0], "close");
+  ws.close();
+  await socketClosed;
+  await new Promise<void>((resolve) => h.wss().close(() => resolve()));
+  expect((await status(h.client)).listener.state).toBe("closed");
+  expect(external.listening).toBe(true);
+  const response = await fetch(`http://127.0.0.1:${address.port}`);
+  expect(await response.text()).toBe("external-server");
 });
 
 it("keeps a live endpoint after server errors and reports its eventual closure", async () => {

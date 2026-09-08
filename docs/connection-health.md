@@ -14,7 +14,10 @@ XState/Stately inspection format version.
 
 1. Call `get_connection_health` with `{}`. A running CLI should show
    `listener.state: "listening"` and the actual bound `listener.endpoint.url`,
-   including the assigned port when a library host requests port zero. A factory
+   including the assigned port when a library host requests port zero. Attaching
+   `createWsServer` to an already-listening external HTTP server reports that
+   server's current endpoint immediately; closing the WebSocket server leaves the
+   external HTTP server under its host's ownership. A factory
    used only for capability scanning shows `not_started`. `starting` means binding
    is pending, `closed` means the listener stopped, and `error` means startup
    failed, with a bounded `errorCode`, such as `EADDRINUSE`. Choose a free port for

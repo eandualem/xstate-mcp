@@ -126,7 +126,8 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
 
   wss.once("close", unsubscribeClear);
 
-  wss.on("listening", () => {
+  const listenerReady = () => {
+    if (hasListened) return;
     hasListened = true;
     const address = wss.address();
     if (address && typeof address !== "string") {
@@ -141,7 +142,10 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
         `WebSocket server listening on ${endpointHost}:${address.port}`,
       );
     }
-  });
+  };
+  wss.on("listening", listenerReady);
+  // ws forwards future listening events but does not replay an external server's.
+  if (options.server?.listening) listenerReady();
 
   wss.on("connection", (ws: WebSocket, request) => {
     if (options.signal?.aborted || clientRegistry.isClosed) {
