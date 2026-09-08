@@ -17,6 +17,10 @@ let paused = false;
 function showConnection(state: ConnectionState) {
   element("connection-label").textContent = `Inspection ${state}`;
   element("connection-dot").dataset.state = state;
+  if (state === "rejected") {
+    paused = true;
+    connectionToggle.textContent = "Reconnect inspection";
+  }
 }
 const inspector = import.meta.env.DEV
   ? createDemoInspector(showConnection)

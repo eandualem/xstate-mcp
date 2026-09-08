@@ -9,7 +9,7 @@ export interface DocumentContext extends Draft {
   attempts: number;
   revision: number;
   error: string | null;
-  // Deliberate fixture secret: the inspection projection must omit this field.
+  // Deliberate fixture secret: inspection must never transfer this raw value.
   draftAccessToken: string;
 }
 export type DocumentEvent =

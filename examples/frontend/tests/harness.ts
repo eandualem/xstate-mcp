@@ -100,6 +100,22 @@ export class Harness {
     this.aliases.set(root.localSessionId, `${label}/local/workspace`);
     this.aliases.set(document.localSessionId, `${label}/local/document`);
     this.aliases.set(root.connectionId!, `${label}/connection`);
+    expect(
+      await this.call("get_connection_health", {
+        connectionId: root.connectionId,
+      }),
+    ).toMatchObject({
+      listener: { state: "listening" },
+      connections: [
+        {
+          connectionId: root.connectionId,
+          negotiation: "negotiated",
+          protocolVersion: 1,
+          commands: ["send_event"],
+          actorCount: 2,
+        },
+      ],
+    });
     return { root, document };
   }
   async waitState(
@@ -191,6 +207,8 @@ export const test = base.extend<{ demo: Harness }>({
         ...env,
         XSTATE_MCP_WS_PORT: String(port),
         XSTATE_MCP_READ_ONLY: "false",
+        XSTATE_MCP_REDACTION: '{"keys":["draftAccessToken"]}',
+        XSTATE_MCP_LOG_LEVEL: "info",
         XSTATE_MCP_WRITE_ALLOW:
           '[{"actor":"*","events":["CHANGE_TITLE","CHANGE_BODY","SAVE","RETRY"]}]',
       },
@@ -224,6 +242,8 @@ export const test = base.extend<{ demo: Harness }>({
         throw new Error("Missing frontend address");
       harness = new Harness(client, `http://127.0.0.1:${address.port}`);
       const tools = await client.listTools();
+      expect(tools.tools).toHaveLength(12);
+      expect(client.getServerVersion()?.version).toBe(pkg.version);
       for (const tool of tools.tools) harness.available.add(tool.name);
       harness.record("initialize", {
         server: client.getServerVersion(),

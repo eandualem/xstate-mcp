@@ -29,7 +29,7 @@ profiles and ephemeral loopback ports. They never attach to an existing MCP serv
 or reuse a developer's browser session.
 
 `demo:verify` builds the **current repository CLI**, builds the frontend, and runs
-four real browser/MCP scenarios plus a teardown failure regression. It starts and
+five real browser/MCP scenarios plus a teardown failure regression. It starts and
 cleans up its own processes. Each
 MCP request has a five-second limit; `wait_for_state` and `wait_for_event`
 use four-second server bounds, with observation cursors for SAVE and RETRY. A successful command ACK is followed by state and browser
@@ -45,6 +45,9 @@ The scenarios cover:
 
 - Real actor discovery and parent/child tree, both definitions, state, eligibility,
   history/timeline, snapshot resource, and debug prompt through an SDK client.
+- Validated hello before inspection, rejection and explicit reconnect, connection
+  health joined to discovered actors, independent server/adapter write denial,
+  and shared guard redaction before transfer.
 - Edit the UI, send `SAVE` through MCP, observe the intentional failure, reject
   `DELETE_EVERYTHING`, send `RETRY`, then confirm the saved snapshot and UI.
 - Disconnect inspection, edit while disconnected, reconnect with fresh registration
@@ -80,8 +83,9 @@ Build the root server with `bun run build`. Configure your MCP client to launch
 
 The test harness discovers the executable from the root `package.json`
 `bin.xstate-mcp` entry. `dist/index.js` is the importable library. The write
-environment prepares for #32; this checkpoint ignores it and the demo adapter
-enforces its own narrow command policy.
+environment opts into the four listed events. Writes require both the server
+policy and the demo adapter's document-only policy, plus negotiated command support.
+Defaults remain read-only.
 
 Start the frontend in another terminal:
 
@@ -97,7 +101,8 @@ same server port in the MCP client. Restart Vite after changing that setting.
 
 Give any coding agent [the task brief](AGENT_TASK.md). A manual verification loop:
 
-1. Discover `workspace` and `document` with `list_actors` (SDK clients send
+1. Call `get_connection_health`; require a negotiated connection with `send_event`.
+   Discover `workspace` and `document` with `list_actors` (SDK clients send
    `arguments: {}` for this discovery call).
    Use the returned public `sessionId` in MCP requests; `localSessionId` belongs
    to the application adapter. The two actors share a `connectionId`, and each
@@ -122,7 +127,7 @@ behavior provides persistence or uses a production save service.
 [Evidence and screenshot guide](evidence/README.md) includes a sanitized transcript
 captured from the actual test client, screenshots of those browser states, source
 hashes and runtime versions. This is a **deterministic test run, not a recorded
-model/agent session**. A future Design Studio coding-agent demonstration is #18.
+model/agent session**. The separate Design Studio coding-agent demonstration is tracked in #18.
 
 Fresh runs produce `test-results/**/sanitized-transcript.json` and numbered PNGs.
 The transcript records tool calls/results, elapsed times, browser checkpoint
@@ -147,14 +152,17 @@ and a deliberate fake access token off the wire. Tests check both WebSocket fram
 and MCP results for that token before the transcript sanitizer runs. The mock
 service never makes a network request. The development inspector **does** transmit
 draft contents to the MCP server; your coding client may forward them to its model
-provider or retain them. Use demo data. General configurable redaction is #15 / #32.
+provider or retain them. Use demo data. The shared browser guard and server support
+configurable key/path redaction; see [the policy guide](../../docs/write-controls-and-redaction.md).
 
 ## Deliberate scope and integration
 
 The frontend uses plain TypeScript/DOM and XState; there is no framework or hidden
 host workspace. `src/model.ts` contains the deterministic machines/services,
 `src/main.ts` renders/subscribes and sends UI events, and `src/demo-inspector.ts`
-bridges inspection/commands on one socket. The adapter is specific to this closed
+bridges inspection/commands on one socket using the built browser-safe
+`dist/inspection-policy.js` entry from this checkout. Build the root server before
+starting or type-checking the frontend; no published package is substituted. The adapter is specific to this closed
 demo and only tracks its two persistent actors. Invoked mock-service promise
 actors are intentionally not exported.
 
@@ -168,26 +176,27 @@ and gives MCP callers scoped public actor IDs. The adapter continues using its
 local IDs on the wire. The reusable adapter, React Strict Mode support and
 authentication are outside this example's scope.
 
-It sends the proposed protocol-v1 hello before inspection. The pinned server base ignores
-that message; #31 negotiates it. Explicit handshake rejection closes the socket
-without falling back to writes. A connection label means a socket is open, not
-proof that capabilities were negotiated. Server write authorization and capability
-negotiation remain separate checks when #31/#32 are integrated.
+The adapter waits for a valid protocol-v1 hello response and `send_event`
+capability before registering actors, replaying observations or dispatching commands.
+The connection label means negotiation succeeded. A five-second negotiation deadline
+closes an unresponsive socket and retries; an explicit invalid/rejected reply requires
+the visible reconnect action. Every reconnect gets a fresh namespace and handshake.
+Server write authorization and adapter policy remain independent checks.
 
-This integration preparation uses server base `64bd2822bca4371a58c42d6c3a072c36e99d05f5`,
-which includes dependency, producer/envelope validation, scoped identity, managed
-CLI lifecycle, actor results/history, event eligibility, and bounded waits.
-This is a checkpoint before connection negotiation, write/redaction policy and
-release metadata are combined. The checked-in captures retain their original
-source pins; fresh `test-results/` transcripts identify each tested checkout.
-
-This checkpoint exposes eleven tools. Verification uses server waits for observed
-states and SAVE/RETRY events; discovery and actor removal still use bounded client
-polling because those are actor-list observations. A declared guarded SAVE yields
-`canHandle: null`; actual eligibility is checked by the application's
+This checkout integrates connection negotiation, write/redaction policy, scoped
+identity, managed CLI lifecycle, actor results/history, event eligibility, bounded
+waits, and current release metadata. It exposes twelve tools. Verification uses
+server waits for states and SAVE/RETRY events; discovery and actor removal use bounded
+client polling because those are actor-list observations. A declared guarded SAVE
+yields `canHandle: null`; actual eligibility is checked by the application's
 `snapshot.can(event)`, then verified through observed state and the browser.
 The frontend workflow adds real MCP/browser gates on Node 22/24; broader contract
-CI remains #7. Keep these scenarios when integrating the remaining core changes.
+CI remains #7 and general adapter work remains #13.
+
+Original captures retain their source pins under the remote
+`archive/demo-evidence/frontend-source-84a84cd` branch. New integrated captures are
+recorded separately with exact source/artifact hashes; they do not revise the
+historical recording or turn the deterministic verifier into a live coding agent.
 
 Exact frontend versions: XState **5.32.6**, Vite **8.2.2**, Playwright **1.63.0**,
 MCP client SDK **1.30.0**, TypeScript **5.9.3**, Node types **22.20.1**, Prettier

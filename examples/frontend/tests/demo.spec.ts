@@ -76,7 +76,13 @@ test("real MCP loop: inspect, fail, reject, retry, and verify the UI", async ({
     expect(
       (await demo.call("get_machine_definition", { sessionId })).definition,
     ).toHaveProperty("states");
-  await demo.waitState(document.sessionId, "editing");
+  expect(await demo.waitState(document.sessionId, "editing")).toMatchObject({
+    status: "active",
+    context: { draftAccessToken: "[REDACTED]" },
+  });
+  expect(
+    await demo.call("get_actor_state", { sessionId: document.sessionId }),
+  ).toMatchObject({ output: null, error: null });
   await demo.screenshot(
     page,
     info.outputPath("01-editor.png"),
@@ -128,14 +134,29 @@ test("real MCP loop: inspect, fail, reject, retry, and verify the UI", async ({
     "MCP confirms failed save; draft and retry remain visible",
   );
   expect(
-    (
-      await demo.call(
-        "send_event",
-        { target: document.sessionId, event: { type: "DELETE_EVERYTHING" } },
-        true,
-      )
-    ).success,
-  ).toBe(false);
+    await demo.call(
+      "send_event",
+      {
+        target: document.sessionId,
+        event: {
+          type: "DELETE_EVERYTHING",
+          password: "fixture-only-never-transfer-17",
+        },
+      },
+      true,
+    ),
+  ).toMatchObject({
+    success: false,
+    code: "write_not_allowed",
+    event: { password: "[REDACTED]" },
+  });
+  expect(
+    await demo.call(
+      "send_event",
+      { target: root.sessionId, event: { type: "SAVE" } },
+      true,
+    ),
+  ).toMatchObject({ success: false, code: "actor_not_found" });
   expect(
     (await demo.waitState(document.sessionId, "error")).context,
   ).toMatchObject({ attempts: 1 });
@@ -195,9 +216,12 @@ test("real MCP loop: inspect, fail, reject, retry, and verify the UI", async ({
   demo.record("prompt", { name: "debug_actor", result: prompt });
   expect(JSON.stringify(prompt)).toContain(revisedTitle);
   expect(frames.join("\n")).not.toContain("fixture-only-never-transfer-17");
-  expect(JSON.stringify(demo.rows)).not.toContain(
-    "fixture-only-never-transfer-17",
-  );
+  expect(
+    JSON.stringify(demo.rows.map(({ arguments: _arguments, ...row }) => row)),
+  ).not.toContain("fixture-only-never-transfer-17");
+  expect(
+    frames.some((frame) => frame.includes('"draftAccessToken":"[REDACTED]"')),
+  ).toBe(true);
   expect(pageErrors).toEqual([]);
   await page.close();
   await expect.poll(async () => (await demo.actors()).length).toBe(0);
@@ -352,4 +376,78 @@ test("mobile recovery works through visible controls and production has no inspe
       ),
     );
   }
+});
+
+test("inspection waits for validated negotiation and recovers after rejection", async ({
+  page,
+  demo,
+}) => {
+  const health = await demo.call("get_connection_health");
+  const endpoint = (health.listener as { endpoint: { url: string } }).endpoint
+    .url;
+  let reply: (() => void) | undefined;
+  let rejectFirst = true;
+  const outgoing: string[] = [];
+  await page.routeWebSocket(endpoint, (route) => {
+    const server = route.connectToServer();
+    route.onMessage((message) => {
+      outgoing.push(String(message));
+      server.send(message);
+    });
+    server.onMessage((message) => {
+      const response = JSON.parse(String(message));
+      if (response.type === "xstate-mcp.hello.response") {
+        reply = () =>
+          route.send(
+            rejectFirst
+              ? JSON.stringify({ ...response, protocolVersion: 2 })
+              : message,
+          );
+      } else route.send(message);
+    });
+  });
+  await page.goto(demo.url);
+  await expect.poll(() => !!reply).toBe(true);
+  await expect(page.locator("#connection-label")).toHaveText(
+    "Inspection connecting",
+  );
+  await page
+    .getByLabel("TITLE", { exact: true })
+    .fill("Draft while negotiation waits");
+  await expect(page.locator("#preview-title")).toHaveText(
+    "Draft while negotiation waits",
+  );
+  expect(await demo.actors()).toHaveLength(0);
+  expect(outgoing.map((frame) => JSON.parse(frame).type)).toEqual([
+    "xstate-mcp.hello",
+  ]);
+  reply!();
+  await expect(page.locator("#connection-label")).toHaveText(
+    "Inspection rejected",
+  );
+  await expect
+    .poll(async () => (await demo.call("get_connection_health")).totals)
+    .toMatchObject({ connectedClients: 0 });
+  expect(await demo.actors()).toHaveLength(0);
+  reply = undefined;
+  rejectFirst = false;
+  await page
+    .getByRole("button", { name: "Reconnect inspection", exact: true })
+    .click();
+  await expect.poll(() => !!reply).toBe(true);
+  expect(await demo.actors()).toHaveLength(0);
+  reply!();
+  const { document } = await demo.discover("negotiated-tab");
+  await expect(page.locator("#connection-label")).toHaveText(
+    "Inspection connected",
+  );
+  expect(
+    (await demo.waitState(document.sessionId, "editing")).context,
+  ).toMatchObject({ title: "Draft while negotiation waits" });
+  demo.record("negotiation", {
+    observation:
+      "No inspection before accepted hello; rejected protocol closes the socket, explicit reconnect preserves the live draft",
+  });
+  await page.close();
+  await expect.poll(async () => (await demo.actors()).length).toBe(0);
 });

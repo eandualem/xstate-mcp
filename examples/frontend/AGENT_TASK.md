@@ -8,7 +8,7 @@ The checked-in example includes a reference recovery UI. A useful follow-on task
 to improve it: show the last successful revision beside the current draft, with an
 accessible explanation when they differ. Preserve the existing save/retry behavior.
 
-Before editing, run the example, discover its workspace/document actors, and read
+Before editing, run the example, confirm negotiated connection health, discover its workspace/document actors, and read
 the document definition and snapshot. The local mock deliberately fails the first
 save and succeeds on retry. This is fixture behavior, not a real service outage.
 
@@ -29,4 +29,4 @@ Acceptance:
 
 The supplied evidence is produced by a deterministic MCP client and Playwright.
 Do not present it as a transcript of a model thinking or writing frontend code.
-A future #18 recording should show the coding agent's actual edits and decisions.
+The separate #18 demonstration records the coding agent's actual edits and decisions.

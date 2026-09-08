@@ -1,3 +1,7 @@
+import {
+  createInspectionGuard,
+  type PolicyResult,
+} from "../../../dist/inspection-policy.js";
 import type { AnyActorRef, InspectionEvent } from "xstate";
 import {
   documentMachine,
@@ -26,12 +30,27 @@ interface CapturedEvent {
 export function createDemoInspector(
   onConnection: (state: ConnectionState) => void,
 ) {
+  const guard = createInspectionGuard({
+    enabled: import.meta.env.DEV,
+    writePolicy: {
+      readOnly: false,
+      allow: [
+        {
+          actor: "*",
+          events: ["SAVE", "RETRY", "CHANGE_TITLE", "CHANGE_BODY"],
+        },
+      ],
+    },
+    redaction: { keys: ["draftAccessToken"] },
+  });
   const actors = new Map<string, TrackedActor>();
   const recent: CapturedEvent[] = [];
   let ws: WebSocket | undefined;
   let epoch = "";
   let retry: ReturnType<typeof setTimeout> | undefined;
   let retryDelay = 150;
+  let negotiated = false;
+  let negotiationDeadline: ReturnType<typeof setTimeout> | undefined;
   let disposed = false;
   let paused = false;
   let rejected = false;
@@ -39,8 +58,14 @@ export function createDemoInspector(
   const wireId = (id: string) => `${epoch}.${id.replace(/:/g, "_")}`;
   const root = () =>
     Array.from(actors.values()).find((actor) => actor.name === "workspace");
+  const control = (value: unknown) => {
+    if (guard.enabled && ws?.readyState === WebSocket.OPEN)
+      ws.send(JSON.stringify(value));
+  };
   const emit = (value: unknown) => {
-    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(value));
+    if (!negotiated || ws?.readyState !== WebSocket.OPEN) return;
+    const serialized = guard.serializeInspection(value);
+    if (serialized !== null) ws.send(serialized);
   };
   const stamp = () => new Date().toISOString();
 
@@ -50,7 +75,7 @@ export function createDemoInspector(
     return {
       status: value.status,
       value: value.value,
-      // Explicit projection prevents live actor refs and the fixture token from leaving the page.
+      // Project plain data; the shared guard redacts the fixture token before transfer.
       context:
         actor.name === "document"
           ? {
@@ -60,6 +85,7 @@ export function createDemoInspector(
               attempts: context.attempts,
               revision: context.revision,
               error: context.error,
+              draftAccessToken: context.draftAccessToken,
             }
           : {},
     };
@@ -121,29 +147,43 @@ export function createDemoInspector(
       (actor) => wireId(actor.ref.sessionId) === data.sessionId,
     );
     const event = commandEvent(data.event);
-    let error: string | undefined;
+    let result: PolicyResult;
     if (!actor || actor.name !== "document")
-      error = "This demo permits commands only to the document actor";
-    else if (!event) error = "Event is not allowed by the demo policy";
+      result = {
+        success: false,
+        code: "actor_not_found",
+        error: "This demo permits commands only to the document actor",
+      };
+    else if (!event)
+      result = {
+        success: false,
+        code: "write_not_allowed",
+        error: "Event is not allowed by the demo policy",
+      };
     else if (!actor.ref.getSnapshot().can(event))
-      error = "Event is not enabled in the current state";
-    else {
-      try {
-        actor.ref.send(event);
-      } catch {
-        error = "Demo event dispatch failed";
-      }
-    }
-    emit({
+      result = {
+        success: false,
+        code: "invalid_event",
+        error: "Event is not enabled in the current state",
+      };
+    else
+      result = guard.dispatch(
+        {
+          sessionId: wireId(actor.ref.sessionId),
+          send: () => actor.ref.send(event),
+        },
+        { ...data, event },
+      );
+    control({
       type: "xstate-mcp.send.response",
       requestId: data.requestId,
-      success: !error,
-      ...(error ? { error } : {}),
+      ...result,
     });
   }
 
   function connect() {
     if (
+      !guard.enabled ||
       disposed ||
       paused ||
       rejected ||
@@ -152,6 +192,8 @@ export function createDemoInspector(
     )
       return;
     clearTimeout(retry);
+    clearTimeout(negotiationDeadline);
+    negotiated = false;
     epoch = crypto.randomUUID(); // Producer IDs are unique across tabs and connection generations.
     onConnection("connecting");
     let socket: WebSocket;
@@ -164,25 +206,21 @@ export function createDemoInspector(
     }
     ws = socket;
     socket.addEventListener("open", () => {
-      if (socket !== ws || disposed) {
+      if (socket !== ws || disposed || paused) {
         socket.close();
         return;
       }
-      retryDelay = 150;
-      // Main ignores this proposal. PR #31 accepts it before processing subsequent frames.
-      emit({
+      // Bound an unresponsive peer without treating an open socket as negotiation.
+      negotiationDeadline = setTimeout(() => {
+        if (socket === ws && !negotiated) socket.close();
+      }, 5000);
+      control({
         type: "xstate-mcp.hello",
         protocolVersion: 1,
         application: { name: "Release note demo" },
         adapter: { name: "frontend-demo", version: "1" },
         capabilities: { commands: ["send_event"] },
       });
-      for (const actor of Array.from(actors.values()).sort((a) =>
-        a.name === "workspace" ? -1 : 1,
-      ))
-        register(actor);
-      for (const event of recent.splice(0)) sendCaptured(event);
-      onConnection("connected");
     });
     socket.addEventListener("message", (message) => {
       if (socket !== ws || disposed || paused) return;
@@ -194,19 +232,41 @@ export function createDemoInspector(
       }
       if (!data || typeof data !== "object" || Array.isArray(data)) return;
       const record = data as Record<string, unknown>;
-      if (
-        record.type === "xstate-mcp.hello.response" &&
-        record.success !== true
-      ) {
-        rejected = true;
-        onConnection("rejected");
-        socket.close();
+      if (record.type === "xstate-mcp.hello.response") {
+        if (negotiated) return;
+        clearTimeout(negotiationDeadline);
+        if (
+          record.success !== true ||
+          record.protocolVersion !== 1 ||
+          typeof record.connectionId !== "string" ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            record.connectionId,
+          ) ||
+          !Array.isArray(record.commands) ||
+          !record.commands.includes("send_event")
+        ) {
+          rejected = true;
+          onConnection("rejected");
+          socket.close();
+          return;
+        }
+        negotiated = true;
+        retryDelay = 150;
+        for (const actor of Array.from(actors.values()).sort((a) =>
+          a.name === "workspace" ? -1 : 1,
+        ))
+          register(actor);
+        for (const event of recent.splice(0)) sendCaptured(event);
+        onConnection("connected");
         return;
       }
-      if (record.type === "xstate-mcp.send") handleCommand(record);
+      if (negotiated && record.type === "xstate-mcp.send")
+        handleCommand(record);
     });
     socket.addEventListener("close", () => {
       if (socket !== ws || disposed) return;
+      clearTimeout(negotiationDeadline);
+      negotiated = false;
       ws = undefined;
       if (rejected) return;
       onConnection("disconnected");
@@ -248,7 +308,8 @@ export function createDemoInspector(
           event: commandEvent(event.event) ?? { type: event.event.type },
           createdAt: stamp(),
         };
-        if (ws?.readyState === WebSocket.OPEN) sendCaptured(captured);
+        if (negotiated && ws?.readyState === WebSocket.OPEN)
+          sendCaptured(captured);
         else {
           recent.push(captured);
           if (recent.length > 50) recent.shift();
@@ -259,6 +320,8 @@ export function createDemoInspector(
     pause() {
       paused = true;
       clearTimeout(retry);
+      clearTimeout(negotiationDeadline);
+      negotiated = false;
       ws?.close();
       onConnection("disconnected");
     },
@@ -266,6 +329,8 @@ export function createDemoInspector(
       if (disposed) return;
       paused = false;
       rejected = false;
+      clearTimeout(negotiationDeadline);
+      negotiated = false;
       if (ws) {
         ws.close();
         ws = undefined;
@@ -275,6 +340,8 @@ export function createDemoInspector(
     dispose() {
       disposed = true;
       clearTimeout(retry);
+      clearTimeout(negotiationDeadline);
+      negotiated = false;
       ws?.close();
       ws = undefined;
       actors.clear();
