@@ -314,8 +314,8 @@ export function createDemoInspector(
         }
         negotiated = true;
         retryDelay = 150;
-        for (const actor of Array.from(actors.values()).sort((a) =>
-          a.name === "workspace" ? -1 : 1,
+        for (const actor of Array.from(actors.values()).sort((a, b) =>
+          a.name === b.name ? 0 : a.name === "workspace" ? -1 : 1,
         ))
           register(actor);
         for (const event of recent.splice(0)) sendCaptured(event);

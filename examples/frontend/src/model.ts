@@ -1,5 +1,7 @@
 import { assign, fromPromise, setup } from "xstate";
 
+export const FIXTURE_ACCESS_TOKEN = "fixture-only-never-transfer-17";
+
 export interface Draft {
   title: string;
   body: string;
@@ -77,7 +79,7 @@ export const documentMachine = setup({
     attempts: 0,
     revision: 0,
     error: null,
-    draftAccessToken: "fixture-only-never-transfer-17",
+    draftAccessToken: FIXTURE_ACCESS_TOKEN,
   },
   states: {
     loading: {

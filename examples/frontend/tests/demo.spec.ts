@@ -1,3 +1,4 @@
+import { FIXTURE_ACCESS_TOKEN } from "../src/model.js";
 import { test, expect } from "./harness.js";
 import { preview } from "vite";
 import { resolve } from "node:path";
@@ -185,7 +186,7 @@ test("real MCP loop: inspect, fail, reject, retry, and verify the UI", async ({
         target: document.sessionId,
         event: {
           type: "DELETE_EVERYTHING",
-          password: "fixture-only-never-transfer-17",
+          password: FIXTURE_ACCESS_TOKEN,
         },
       },
       true,
@@ -260,10 +261,10 @@ test("real MCP loop: inspect, fail, reject, retry, and verify the UI", async ({
   });
   demo.record("prompt", { name: "debug_actor", result: prompt });
   expect(JSON.stringify(prompt)).toContain(revisedTitle);
-  expect(frames.join("\n")).not.toContain("fixture-only-never-transfer-17");
+  expect(frames.join("\n")).not.toContain(FIXTURE_ACCESS_TOKEN);
   expect(
     JSON.stringify(demo.rows.map(({ arguments: _arguments, ...row }) => row)),
-  ).not.toContain("fixture-only-never-transfer-17");
+  ).not.toContain(FIXTURE_ACCESS_TOKEN);
   expect(
     frames.some((frame) => frame.includes('"draftAccessToken":"[REDACTED]"')),
   ).toBe(true);

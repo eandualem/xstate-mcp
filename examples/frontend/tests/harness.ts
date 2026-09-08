@@ -1,3 +1,4 @@
+import { FIXTURE_ACCESS_TOKEN } from "../src/model.js";
 import { test as base, expect, type Page } from "@playwright/test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -162,10 +163,7 @@ export class Harness {
   }
   sanitized(value: unknown): unknown {
     if (typeof value === "string") {
-      let result = value.replaceAll(
-        "fixture-only-never-transfer-17",
-        "[REDACTED]",
-      );
+      let result = value.replaceAll(FIXTURE_ACCESS_TOKEN, "[REDACTED]");
       // Replace full public IDs before their embedded local/connection IDs.
       for (const [id, alias] of [...this.aliases].sort(
         ([left], [right]) => right.length - left.length,
@@ -369,7 +367,7 @@ export const test = base.extend<{ demo: Harness }>({
           });
         },
       });
-      expect(logs).not.toContain("fixture-only-never-transfer-17");
+      expect(logs).not.toContain(FIXTURE_ACCESS_TOKEN);
       for (const result of Object.values(teardown.cleanup))
         expect(result).toMatchObject({ status: "fulfilled" });
       expect(teardown.portReleased, JSON.stringify(teardown.portProbe)).toBe(
