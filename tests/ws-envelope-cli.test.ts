@@ -1,15 +1,17 @@
-import { execFile } from "node:child_process";
 import { once } from "node:events";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { beforeAll, describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { WebSocket } from "ws";
 import { createActor, createMachine } from "xstate";
 
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
+const cliEntry: string = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+).bin["xstate-mcp"];
 const privateMarker = "APPLICATION_PAYLOAD_MUST_NOT_BE_LOGGED";
 const malformedFrames = [
   "null",
@@ -58,7 +60,7 @@ async function startCli() {
   const port = await availablePort();
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: ["dist/index.js"],
+    args: [cliEntry],
     cwd: repoRoot,
     stderr: "pipe",
     env: {
@@ -77,7 +79,7 @@ async function startCli() {
     exited = true;
   };
   onTestFinished(async () => {
-    // The CLI keeps its WS listener open on stdin EOF; stop our own subprocess.
+    // Stop our subprocess through the CLI's graceful signal shutdown path.
     if (transport.pid !== null) process.kill(transport.pid, "SIGTERM");
     await client.close();
   });
@@ -172,18 +174,6 @@ async function discoverSessionId(client: Client, localSessionId: string) {
 }
 
 describe("CLI WebSocket envelope validation", () => {
-  beforeAll(async () => {
-    // Build current sources so the subprocess cannot accidentally test stale dist/.
-    await promisify(execFile)(
-      process.execPath,
-      ["node_modules/tsup/dist/cli-default.js"],
-      {
-        cwd: repoRoot,
-        timeout: 30000,
-      },
-    );
-  }, 35000);
-
   it("survives malformed frames and lets a second real actor client use MCP", async () => {
     const cli = await startCli();
     const badClient = await cli.connectSocket();

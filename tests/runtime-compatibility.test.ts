@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:net";
@@ -9,23 +9,11 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { WebSocket } from "ws";
 import * as current from "xstate";
 import * as compatible from "xstate-compat";
-import { beforeAll, describe, expect, it, onTestFinished } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-let cli: string;
-beforeAll(() => {
-  // Build and execute with the matrix's Node, regardless of the package manager.
-  execFileSync(
-    process.execPath,
-    [resolve(root, "node_modules/tsup/dist/cli-default.js")],
-    {
-      cwd: root,
-      stdio: "pipe",
-    },
-  );
-  const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
-  cli = resolve(root, pkg.bin["xstate-mcp"]);
-}, 30000);
+const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+const cli = resolve(root, pkg.bin["xstate-mcp"]);
 
 async function startCli() {
   const reservation = createServer();

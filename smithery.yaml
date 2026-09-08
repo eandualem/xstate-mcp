@@ -32,7 +32,7 @@ startCommand:
     |-
     (config) => ({
       command: 'node',
-      args: ['dist/index.js'],
+      args: ['dist/cli.js'],
       env: {
         XSTATE_MCP_WS_PORT: String(config.wsPort ?? 7357),
         XSTATE_MCP_WS_HOST: config.wsHost ?? '127.0.0.1',

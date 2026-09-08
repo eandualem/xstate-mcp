@@ -473,26 +473,49 @@ export function createMcpServer(
 
   // --- Resource subscription notifications ---
 
-  store.onActorRegistered((sessionId) => {
-    server.sendResourceListChanged();
-    void server.server.sendResourceUpdated({
-      uri: `xstate://actor/${sessionId}/snapshot`,
-    });
-  });
-
-  store.onSnapshotUpdated((sessionId) => {
-    void server.server.sendResourceUpdated({
-      uri: `xstate://actor/${sessionId}/snapshot`,
-    });
-  });
-
-  store.onActorRemoved(() => {
-    server.sendResourceListChanged();
-  });
-
-  store.onCleared(() => {
-    server.sendResourceListChanged();
-  });
+  let disposed = false;
+  const notifySnapshot = (sessionId: string) => {
+    if (disposed || !server.isConnected()) return;
+    void server.server
+      .sendResourceUpdated({
+        uri: `xstate://actor/${sessionId}/snapshot`,
+      })
+      .catch(() => logger.debug("Resource notification transport closed"));
+  };
+  const notifyList = () => {
+    if (!disposed && server.isConnected()) {
+      void server.server
+        .sendResourceListChanged()
+        .catch(() => logger.debug("Resource notification transport closed"));
+    }
+  };
+  const unsubscribe = [
+    store.onActorRegistered((sessionId) => {
+      notifyList();
+      notifySnapshot(sessionId);
+    }),
+    store.onSnapshotUpdated(notifySnapshot),
+    store.onActorRemoved(notifyList),
+    store.onCleared(notifyList),
+  ];
+  const dispose = () => {
+    if (disposed) return;
+    disposed = true;
+    for (const remove of unsubscribe) remove();
+  };
+  const originalClose = server.close.bind(server);
+  let closing: Promise<void> | undefined;
+  server.close = () => {
+    dispose();
+    return (closing ??= Promise.resolve().then(originalClose));
+  };
+  const originalConnect = server.connect.bind(server);
+  server.connect = async (transport) => {
+    if (disposed)
+      throw new Error("MCP server is closed; create a new instance");
+    await originalConnect(transport);
+  };
+  server.server.onclose = dispose;
 
   // --- Prompts ---
 

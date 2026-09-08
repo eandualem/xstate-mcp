@@ -221,4 +221,32 @@ describe("ClientRegistry", () => {
     expect(await second).toMatchObject({ success: true });
     expect(vi.getTimerCount()).toBe(0);
   });
+
+  it("keeps scoped registration and commands terminal after close and clear", async () => {
+    const ws = makeMockWs();
+    const { sessionId } = register(ws);
+    const pending = registry.sendEvent(sessionId, { type: "TEST" });
+    registry.close();
+    registry.close();
+    registry.clear();
+    expect(await pending).toEqual({
+      success: false,
+      error: "Server shutting down",
+    });
+    expect(() => registry.registerClient(ws)).toThrow(
+      "Client registry is closed",
+    );
+    expect(() => registry.registerSession(ws, "x:0")).toThrow(
+      "Client registry is closed",
+    );
+    expect(registry.getSession(ws, "x:0")).toBeUndefined();
+    expect(await registry.sendEvent(sessionId, { type: "LATE" })).toEqual({
+      success: false,
+      error: "Server shutting down",
+    });
+    expect(ws.send).toHaveBeenCalledOnce();
+    expect(registry.getConnectedClientCount()).toBe(0);
+    expect(registry.getConnectedSessionCount()).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });
