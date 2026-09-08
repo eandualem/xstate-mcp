@@ -6,7 +6,7 @@ while preserving the draft. The preview and status messages render the document
 snapshot. Nothing is published, uploaded by the mock service, or persisted across
 page reloads. No model, API key, account or other repository is required.
 
-![A recovered save in the editor](evidence/integrated-2026-09-08/03-recovered.png)
+![A recovered save in the editor](evidence/integrated-definitions-2026-09-08/03-recovered.png)
 
 ## Clean-clone verification
 
@@ -125,18 +125,21 @@ behavior provides persistence or uses a production save service.
 
 ## What the evidence proves
 
-[First integrated evidence](evidence/integrated-2026-09-08/README.md) records
-both Node 22/24 runs, sanitized transcripts, browser screenshots and exact source
-and artifact hashes. The [original evidence](evidence/README.md) retains its own
-historical source pins and runtime versions unchanged.
+[Corrected integrated evidence](evidence/integrated-definitions-2026-09-08/README.md)
+records both Node 22/24 runs at source `5ce9f7f`, sanitized transcripts, browser
+screenshots and exact source/artifact hashes. The
+[first integrated evidence](evidence/integrated-2026-09-08/README.md) and
+[original evidence](evidence/README.md) retain their own source pins and files unchanged.
 
 The first integrated capture at `5c3b2d0` exposed a definition-fidelity gap: the
 plain-data redactor omitted live XState transition targets. Its retained recordings
 show `[OMITTED]` destinations and must not be used as proof of complete definitions.
-The corrected adapter explicitly projects source/target IDs and guard/action markers
-before redaction; the real MCP/browser test asserts those exact destinations and
-`guard_not_evaluated` for SAVE. New corrected captures are recorded separately. This is a **deterministic test run, not a recorded
-model/agent session**. The separate Design Studio coding-agent demonstration is tracked in #18.
+The corrected adapter projects source/target IDs and guard/action markers before
+redaction. The real MCP/browser test asserts exact initial, SAVE, RETRY and invoked
+save-success/error destinations, the named SAVE guard, and its
+`guard_not_evaluated` static eligibility result. These are **deterministic test
+runs, not recorded model/agent sessions**. The separate Design Studio coding-agent
+demonstration is tracked in #18.
 
 Fresh runs produce `test-results/**/sanitized-transcript.json` and numbered PNGs.
 The transcript records tool calls/results, elapsed times, browser checkpoint
