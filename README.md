@@ -677,7 +677,8 @@ event history — it's a server-side failure, not a state machine bug.
 ```
 User: I'm new to this codebase. Can you explain the session machine?
 
-Agent uses prompt: explain_machine("x:0:sessions")
+Agent uses: list_actors → finds "sessionsMachine" at sessionId "sessions-session"
+Agent uses prompt: explain_machine("sessions-session")
 
 Agent: The sessions machine manages WebSocket connection lifecycle. It has 4 states:
 - disconnected (initial) — waiting for a connect event
