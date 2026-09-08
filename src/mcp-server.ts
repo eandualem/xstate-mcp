@@ -36,6 +36,7 @@ import { debugActor } from "./prompts/debug-actor.js";
 import { explainMachine } from "./prompts/explain-machine.js";
 import { traceEventFlow } from "./prompts/trace-event-flow.js";
 import { safeStringify } from "./safe-stringify.js";
+import { actorSnapshotData } from "./actor-snapshot.js";
 
 const READ_ONLY_ANNOTATIONS = {
   readOnlyHint: true,
@@ -88,7 +89,7 @@ export function createMcpServer(
     {
       title: "Get Actor State",
       description:
-        "Get the full current snapshot for a specific XState actor, including state value, context, and status.",
+        "Get the current snapshot for a specific XState actor, including state value, context, status, output, and sanitized error details.",
       inputSchema: {
         sessionId: z
           .string()
@@ -243,7 +244,7 @@ export function createMcpServer(
     {
       title: "Get State Timeline",
       description:
-        "Get the history of state transitions for an actor, showing from/to state values and triggering events.",
+        "Get bounded history of state, context, and lifecycle changes for an actor, including changed fields, from/to statuses, results, and triggering events.",
       inputSchema: {
         sessionId: z
           .string()
@@ -382,18 +383,7 @@ export function createMcpServer(
           {
             uri: `xstate://actor/${sessionId}/snapshot`,
             mimeType: "application/json",
-            text: safeStringify(
-              {
-                sessionId: actor.sessionId,
-                ...actorIdentity(actor),
-                name: actor.name,
-                status: actor.currentSnapshot?.status ?? "unknown",
-                value: actor.currentSnapshot?.value ?? null,
-                context: actor.currentSnapshot?.context ?? null,
-                updatedAt: actor.updatedAt,
-              },
-              2,
-            ),
+            text: safeStringify(actorSnapshotData(actor), 2),
           },
         ],
       };

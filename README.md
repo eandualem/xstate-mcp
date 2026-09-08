@@ -303,7 +303,9 @@ See the parent-child hierarchy. Useful when your app has nested or parallel acto
 
 #### `get_actor_state`
 
-Drill into one actor — full state value, context, and status.
+Drill into one actor — state value, context, status, completion output, and sanitized
+error details. See [lifecycle diagnostics](docs/lifecycle.md) for field semantics
+and adapter requirements.
 
 **Parameters:**
 
@@ -319,6 +321,8 @@ Drill into one actor — full state value, context, and status.
   "status": "active",
   "value": "idle",
   "context": { "entities": [], "selectedId": null },
+  "output": null,
+  "error": null,
   "parentId": "app-session",
   "updatedAt": "2026-02-28T12:00:01.500Z"
 }
@@ -377,7 +381,11 @@ use the application's local IDs before the server scopes them to a connection.
 
 #### `get_state_timeline`
 
-State transition history — from/to values, triggering event, and timestamps. Higher level than event history.
+History of state, context, and lifecycle changes — from/to values and statuses,
+triggering event, and timestamps. `type` distinguishes state changes from context
+updates and lifecycle results; `changes` lists every changed field. The existing
+`transitions` and `totalTransitions` fields count all three types. See
+[timeline semantics](docs/lifecycle.md#timeline-entries).
 
 **Parameters:**
 
@@ -392,14 +400,22 @@ State transition history — from/to values, triggering event, and timestamps. H
   "totalTransitions": 4,
   "transitions": [
     {
+      "type": "state",
+      "changes": ["value"],
       "fromValue": "idle",
       "toValue": "loading",
+      "fromStatus": "active",
+      "toStatus": "active",
       "event": "sys.refresh",
       "timestamp": "2026-02-28T12:00:01.000Z"
     },
     {
+      "type": "state",
+      "changes": ["value"],
       "fromValue": "loading",
       "toValue": "idle",
+      "fromStatus": "active",
+      "toStatus": "active",
       "event": "xstate.done.actor.0.agents.loading",
       "timestamp": "2026-02-28T12:00:01.500Z"
     }
@@ -549,6 +565,9 @@ Template resources support autocomplete — type a partial sessionId or actor na
 
 Pre-built analysis prompts that assemble actor data into structured context for the LLM.
 
+All three include current status, output, and sanitized error details. Debugging
+and tracing prompts distinguish state, context, and lifecycle timeline entries.
+
 #### `debug_actor`
 
 Pulls state, event history, transitions, and machine definition for an actor and asks the LLM to check for state consistency issues, missed transitions, stuck states, and context validity.
@@ -632,7 +651,7 @@ createActor(machine, {              WebSocket Server :7357         MCP Client
 - **WebSocket:** receives the XState inspection stream from the browser; also sends `send_event` commands back
 - **Storage:** in-memory only — actors re-register on page load, no persistence across restarts
 - **Event history:** ring buffer per actor (bounded, configurable — default 100 events)
-- **State timeline:** separate ring buffer tracking state value transitions
+- **State timeline:** separate ring buffer tracking state, context, and lifecycle changes
 
 ## Development
 

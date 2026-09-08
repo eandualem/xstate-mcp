@@ -25,6 +25,8 @@ export function explainMachine(store: ActorStore, sessionId: string) {
     `## Actor: ${actor.name} (${actor.sessionId})`,
     `- Current state: ${safeStringify(state?.value ?? null)}`,
     `- Status: ${state?.status ?? "unknown"}`,
+    `- Output: ${safeStringify(state?.output ?? null)}`,
+    `- Error: ${safeStringify(state?.error ?? null)}`,
   ];
 
   if (actor.definition) {
@@ -60,6 +62,7 @@ export function explainMachine(store: ActorStore, sessionId: string) {
     `3. **Transitions** — For each state, what events cause transitions and where do they go?`,
     `4. **Guards** — What conditions gate transitions? What do they check?`,
     `5. **Current position** — Where is the machine right now (state: ${safeStringify(state?.value ?? null)})? What can happen next from here?`,
+    `6. **Lifecycle results** — Explain any completion output or error. Actors such as promises and callbacks may have no machine definition or state value; interpret their status instead. Missing error details may have been lost by the adapter.`,
   );
 
   return {

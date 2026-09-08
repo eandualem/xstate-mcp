@@ -10,6 +10,7 @@ import type {
 import { RingBuffer } from "./types.js";
 import type { Logger } from "./logger.js";
 import { safeStringify } from "./safe-stringify.js";
+import { readSnapshot } from "./actor-snapshot.js";
 
 export type ActorRegisteredCallback = (sessionId: string) => void;
 export type ActorRemovedCallback = (sessionId: string) => void;
@@ -95,13 +96,7 @@ export class ActorStore {
 
     let currentSnapshot: ActorSnapshot | null = null;
     if (snapshot && typeof snapshot === "object") {
-      const s = snapshot as Record<string, unknown>;
-      currentSnapshot = {
-        status: (s.status as string) ?? "active",
-        value: s.value ?? null,
-        context: s.context ?? null,
-        output: s.output,
-      };
+      currentSnapshot = readSnapshot(snapshot);
     }
 
     const record: ActorRecord = {
@@ -133,31 +128,32 @@ export class ActorStore {
     }
 
     if (event.snapshot && typeof event.snapshot === "object") {
-      const s = event.snapshot as Record<string, unknown>;
-      const previousValue = actor.currentSnapshot?.value ?? null;
-      const previousContext = actor.currentSnapshot?.context ?? null;
-      const newValue = s.value ?? actor.currentSnapshot?.value ?? null;
-      const newContext = s.context ?? actor.currentSnapshot?.context ?? null;
+      const previous = actor.currentSnapshot;
+      const next = readSnapshot(event.snapshot, previous);
+      actor.currentSnapshot = next;
 
-      actor.currentSnapshot = {
-        status:
-          (s.status as string) ?? actor.currentSnapshot?.status ?? "active",
-        value: newValue,
-        context: newContext,
-        output: s.output,
-      };
-
-      // Track transition when value OR context changes
-      const valueChanged =
-        safeStringify(previousValue) !== safeStringify(newValue);
-      const contextChanged =
-        safeStringify(previousContext) !== safeStringify(newContext);
-      if (newValue !== null && (valueChanged || contextChanged)) {
+      const fields = ["value", "context", "status", "output", "error"] as const;
+      const changes = fields.filter(
+        (field) =>
+          safeStringify(previous?.[field] ?? null) !==
+          safeStringify(next[field] ?? null),
+      );
+      if (changes.length > 0) {
         const eventType = (event.event as Record<string, unknown> | undefined)
           ?.type;
         actor.transitionHistory.push({
-          fromValue: previousValue,
-          toValue: newValue,
+          type: changes.includes("value")
+            ? "state"
+            : changes.some((field) => field !== "context")
+              ? "lifecycle"
+              : "context",
+          changes,
+          fromValue: previous?.value ?? null,
+          toValue: next.value,
+          fromStatus: previous?.status ?? null,
+          toStatus: next.status,
+          ...(next.output !== undefined ? { output: next.output } : {}),
+          ...(next.error !== undefined ? { error: next.error } : {}),
           event: typeof eventType === "string" ? eventType : "unknown",
           timestamp: event.createdAt,
         });

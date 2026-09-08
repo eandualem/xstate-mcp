@@ -126,10 +126,22 @@ export interface EventRecord {
 }
 
 export interface TransitionRecord {
+  type: "state" | "context" | "lifecycle";
+  changes: ("value" | "context" | "status" | "output" | "error")[];
   fromValue: unknown;
   toValue: unknown;
+  fromStatus: string | null;
+  toStatus: string;
+  output?: unknown;
+  error?: ActorError;
   event: string;
   timestamp: string;
+}
+
+export interface ActorError {
+  message: string;
+  name?: string;
+  code?: string | number;
 }
 
 export interface ActorSnapshot {
@@ -137,6 +149,7 @@ export interface ActorSnapshot {
   value: unknown;
   context: unknown;
   output?: unknown;
+  error?: ActorError;
 }
 
 export interface ActorRecord {

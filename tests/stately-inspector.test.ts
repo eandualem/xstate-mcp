@@ -174,12 +174,16 @@ it("exposes real Stately actors, hierarchy, definitions and events through MCP",
     }),
   ).toMatchObject({
     transitions: expect.arrayContaining([
-      {
+      expect.objectContaining({
+        type: "state",
+        changes: ["value", "context"],
         fromValue: "idle",
         toValue: "working",
+        fromStatus: "active",
+        toStatus: "active",
         event: "PING",
         timestamp: expect.stringMatching(isoTimestamp),
-      },
+      }),
     ]),
   });
 
