@@ -6,7 +6,7 @@ while preserving the draft. The preview and status messages render the document
 snapshot. Nothing is published, uploaded by the mock service, or persisted across
 page reloads. No model, API key, account or other repository is required.
 
-![A recovered save in the editor](evidence/03-recovered.png)
+![A recovered save in the editor](evidence/integrated-2026-09-08/03-recovered.png)
 
 ## Clean-clone verification
 
@@ -124,9 +124,10 @@ behavior provides persistence or uses a production save service.
 
 ## What the evidence proves
 
-[Evidence and screenshot guide](evidence/README.md) includes a sanitized transcript
-captured from the actual test client, screenshots of those browser states, source
-hashes and runtime versions. This is a **deterministic test run, not a recorded
+[Current integrated evidence](evidence/integrated-2026-09-08/README.md) records
+both Node 22/24 runs, sanitized transcripts, browser screenshots and exact source
+and artifact hashes. The [original evidence](evidence/README.md) retains its own
+historical source pins and runtime versions unchanged. This is a **deterministic test run, not a recorded
 model/agent session**. The separate Design Studio coding-agent demonstration is tracked in #18.
 
 Fresh runs produce `test-results/**/sanitized-transcript.json` and numbered PNGs.
