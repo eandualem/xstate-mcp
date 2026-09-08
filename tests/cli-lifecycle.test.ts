@@ -134,7 +134,9 @@ describe("built library and CLI lifecycle", () => {
         },
       }) + "\n",
     );
-    const result = await within(exited);
+    // Includes cold process/module startup under parallel test load; the CLI
+    // shutdown deadline is tested separately and remains 1500ms.
+    const result = await within(exited, 5000);
     expect(result.code).toBe(1);
     expect(result.stdout).toBe("");
     expect(result.stderr).toContain("EADDRINUSE");
