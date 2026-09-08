@@ -12,3 +12,6 @@ dist/
 
 # Local release evidence and package candidates
 artifacts/
+# Generated frontend verification output (curated evidence is tracked separately)
+examples/frontend/test-results/
+examples/frontend/playwright-report/

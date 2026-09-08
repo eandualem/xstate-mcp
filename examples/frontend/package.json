@@ -1,0 +1,28 @@
+{
+  "name": "xstate-mcp-frontend-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "check": "tsc --noEmit && prettier --check 'src/**/*' 'tests/**/*.ts' '*.ts' index.html",
+    "format": "prettier --write 'src/**/*' 'tests/**/*.ts' '*.ts' index.html",
+    "browser:install": "playwright install chromium",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "xstate": "5.32.6"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.20.1",
+    "prettier": "3.8.2",
+    "typescript": "5.9.3",
+    "vite": "8.2.2"
+  },
+  "engines": {
+    "node": "^22.23.2 || ^24.20.0"
+  }
+}

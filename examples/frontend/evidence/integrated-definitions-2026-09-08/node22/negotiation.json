@@ -1,0 +1,546 @@
+{
+  "schemaVersion": 3,
+  "scenario": "inspection waits for validated negotiation and recovers after rejection",
+  "generator": "Deterministic test client; not a live model/agent session",
+  "sourceCommit": "5ce9f7f95db94eeee648e5ee352c54575bc08731",
+  "sourceHashes": {
+    "src/model.ts": "9cfd5ecbfdaa9aebe6e842af41786492b99fecd802e7a79ae01ce36b47059cf5",
+    "src/demo-inspector.ts": "ce3af3008eb5442e13624be07ef6886266019eb531ca645d18a87f7d340355b3",
+    "src/main.ts": "0ad606530b6e242daf4d982a5d2815b9cd30012cd2152f62e941c983b01f7ac6",
+    "src/style.css": "de600e958443531b99d08c602ab580300ddeedbb56e793435eb8c4ca7f55e1e0",
+    "index.html": "6158d8387c77045956d1037f3ace58d769752dc0992f6540f53a39a2b85151e6",
+    "tests/harness.ts": "2ebc89394003f590d9f63f9ab8e7e911f5add261bbe1adaeea7cb47d9aa4e3f2",
+    "tests/demo.spec.ts": "1ba869a2550b3188baa6412363fabad100bc256e87c0c1989e648c97e604a38a",
+    "tests/teardown.ts": "4ba7fc5970f09a2d4636ec29b4ec592e29c31bc2acad6c05c646d76c0980f5d4",
+    "tests/teardown.spec.ts": "c038d66da4f6f1a1db1e860b0740f42f49c66deb4578ab64cbe5bec7e3072789"
+  },
+  "serverSourceHashes": {
+    "bun.lock": "452f18d56c6582b0c1aadd6493a646036a1126ef96d57580f4229ab8e5ad9f5c",
+    "package.json": "c5ae02c41f2c709271aca42e8969c7d088f4bf1d49c0f95795146d98cc1603d3",
+    "src/actor-identity.ts": "838fbd015192d0c12f9e4f88e671fe04d51ade765312aed726b162759ad9c995",
+    "src/actor-snapshot.ts": "ed7a70c9475fc8ff3e645d866053facecbd6446432050cdd472162756e56a1e0",
+    "src/actor-store.ts": "dcbd01a875197d1b9203ed41fe3eb2cf1ea422fc6f55e98fbe93cbcfd1929f98",
+    "src/actor-waits.ts": "2a3b79b72410440f08059b3101ab4b20fc213ec1f36142f0a8efc69bfc1403f2",
+    "src/cli.ts": "079857d2c40b17cfbde9b832c8c9fbb842f5adf84dfd43df4002ed28e4c24139",
+    "src/client-registry.ts": "f152eda0b6fbcbe98e5cb0d97588ad867d7820ad5266cd5f549db160498cce5a",
+    "src/config.ts": "f1075c92578c30b53a12f65b69715d35741f52f2af3c190d19bf8ecc82a996f2",
+    "src/connection-health.ts": "05a7dc88428ed05fb9ec8f14f0e19778c0f4baeb33ab7e401091ca03fa7ecd74",
+    "src/errors.ts": "0349461d6cd8b66d046c33f47901fea9ff7ead20ad2f70beeee2163633ab629d",
+    "src/event-eligibility.ts": "79ccbd67676d56d56c850387e214876dca0b12f29874c24a4318ac2b95fd631e",
+    "src/index.ts": "3f3ba17c1fc0039672cce926af45aa2dc2acc4d80f22bc230742f6fa5ca4a6a3",
+    "src/inspection-policy.ts": "32dfda159d61f58039e97ebbb355bb17f394c741490b1a868d1be122ed9193cc",
+    "src/inspection-server.ts": "37c3f1ccaa708b0e7d157f1d13cef3f5672c0edbe39de344919d1ed330e9a0a2",
+    "src/logger.ts": "48e51b73b571c9fddca2496f49f865b0f4e3b8de0ff44581717f7f7d407138b6",
+    "src/mcp-server.ts": "e72c10e4624f9be7c451a70852a22963b4b7cef4a99d8035f39c85464e864973",
+    "src/prompts/debug-actor.ts": "58f81d189a7b4aa82c4497fd2eebfb2a32bee54cace7b09840373154378e07c1",
+    "src/prompts/explain-machine.ts": "ab994420ab8c3ed28584bb34f875ae8b5c01aed957cdf17812afea62b4e58e3c",
+    "src/prompts/trace-event-flow.ts": "e4764a523d8324353fb8d75aa82185ed2dffe614754db5f059eefff1a97869b1",
+    "src/safe-stringify.ts": "37589d09e791982c42d8285976b22ff955521a2b28afea1b5b4219d2e3765e63",
+    "src/tools/can-handle-event.ts": "cde16fcf20910fcc641e89f2f60d8b743ebdc3c787a6021a8479f9084b41f20c",
+    "src/tools/clear-actors.ts": "0a098506b643dbce586c2e612afc5bbf2b1a6222cdce2edbbd9406b583a12046",
+    "src/tools/get-actor-state.ts": "0f0c91c967512db2ab856b833b6599cadb0ff1540da4e2d892141d9aab777a8d",
+    "src/tools/get-actor-tree.ts": "b7081565c95a76f573854401c8baf2e01ea1fc41dc6752e0a501f472692f3e04",
+    "src/tools/get-event-history.ts": "357e1826988a428114d32f0b51ac447781de226fbdf9e67772d040a6451bc4a4",
+    "src/tools/get-machine-definition.ts": "55951c24dfbd6a773f0775136ffc0020a953fa270c996b4ed400c0a721fb4dfd",
+    "src/tools/get-state-timeline.ts": "e114bd0ab2e79a7587eb6a250572e60070eba0e9a631a88d60a68c6657170067",
+    "src/tools/list-actors.ts": "c541ef316a6a9ebf0011f16d36a0c7f457766e40357644383ceb4ce9487049bc",
+    "src/tools/send-event.ts": "032afe8a657684d20ba80d539a21c8ee25f4e96c82567cb22662ab1fa5da539b",
+    "src/types.ts": "67a931664d9e838182e15ab7e3d78e1eac7022b95793bbc278c664a77ab2d4cf",
+    "src/version.ts": "284e034ece2e10b1b7f2079693b51689184321ddf5c502394491dcc147f594b6",
+    "src/ws-server.ts": "5381a243e0516fb5731dfd84ec25fa5f4f138af6c6efe9d79248b043fbe6153c",
+    "tsup.config.ts": "1effe59a2b9d97067c742b92fc9f3364dd574ba62bbe322335e6125328f4cafe"
+  },
+  "serverArtifactHashes": {
+    "dist/cli.js": "1c33903ade1f8669eda5b51868ec3497cace488c24647b17505b79efa4b0473c",
+    "dist/index.js": "067ee591ab00103f658ccd0943eeca08853a0c518353ef899844ce45d1e38e3c",
+    "dist/inspection-policy.js": "55736a2b1b435d2c7558b2399cf51734265cd6df3efc845ec52b99ae82d02961"
+  },
+  "serverDependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "ws": "8.21.3",
+    "zod": "4.5.4"
+  },
+  "runtime": {
+    "node": "v22.23.2",
+    "browser": "153.0.8010.12",
+    "xstate": "5.32.6",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.20.1",
+    "prettier": "3.8.2",
+    "typescript": "5.9.3",
+    "vite": "8.2.2"
+  },
+  "teardown": {
+    "cleanup": {
+      "client": {
+        "status": "fulfilled"
+      },
+      "transport": {
+        "status": "fulfilled"
+      },
+      "vite": {
+        "status": "fulfilled"
+      }
+    },
+    "portReleased": true,
+    "portProbe": {
+      "status": "fulfilled"
+    },
+    "sourceCommit": {
+      "status": "fulfilled",
+      "value": "5ce9f7f95db94eeee648e5ee352c54575bc08731"
+    }
+  },
+  "steps": [
+    {
+      "step": 1,
+      "elapsedMs": 12,
+      "kind": "initialize",
+      "server": {
+        "name": "xstate-mcp",
+        "version": "1.1.0-dev.0"
+      },
+      "tools": [
+        "get_connection_health",
+        "list_actors",
+        "get_actor_state",
+        "get_event_history",
+        "get_machine_definition",
+        "clear_actors",
+        "get_actor_tree",
+        "can_handle_event",
+        "get_state_timeline",
+        "wait_for_state",
+        "wait_for_event",
+        "send_event"
+      ],
+      "verification": "Real MCP stdio client with bounded state/event waits and browser assertions; no model calls"
+    },
+    {
+      "step": 2,
+      "elapsedMs": 14,
+      "kind": "mcp",
+      "tool": "get_connection_health",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sampledAt\": \"2026-09-08T05:11:20.423Z\",\n  \"supportedProtocolVersions\": [\n    1\n  ],\n  \"heartbeatIntervalMs\": 15000,\n  \"staleAfterMs\": 45000,\n  \"listener\": {\n    \"state\": \"listening\",\n    \"endpoint\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 63425,\n      \"url\": \"ws://127.0.0.1:63425\"\n    },\n    \"errorCode\": null\n  },\n  \"totals\": {\n    \"connectedClients\": 0,\n    \"clientsWithActors\": 0,\n    \"staleClients\": 0,\n    \"registeredSessions\": 0,\n    \"acceptedConnections\": 0,\n    \"closedConnections\": 0,\n    \"rejectedConnections\": 0,\n    \"lastDisconnectedAt\": null\n  },\n  \"counters\": {\n    \"receivedFrames\": 0,\n    \"acceptedInspectionFrames\": 0,\n    \"rejectedFrames\": 0,\n    \"ignoredFrames\": 0,\n    \"transportErrors\": 0,\n    \"unsupportedCommands\": 0,\n    \"commandTimeouts\": 0\n  },\n  \"connections\": [],\n  \"omittedConnections\": 0,\n  \"nextOffset\": null\n}"
+          }
+        ],
+        "structuredContent": {
+          "sampledAt": "2026-09-08T05:11:20.423Z",
+          "supportedProtocolVersions": [
+            1
+          ],
+          "heartbeatIntervalMs": 15000,
+          "staleAfterMs": 45000,
+          "listener": {
+            "state": "listening",
+            "endpoint": {
+              "host": "127.0.0.1",
+              "port": 63425,
+              "url": "ws://127.0.0.1:63425"
+            },
+            "errorCode": null
+          },
+          "totals": {
+            "connectedClients": 0,
+            "clientsWithActors": 0,
+            "staleClients": 0,
+            "registeredSessions": 0,
+            "acceptedConnections": 0,
+            "closedConnections": 0,
+            "rejectedConnections": 0,
+            "lastDisconnectedAt": null
+          },
+          "counters": {
+            "receivedFrames": 0,
+            "acceptedInspectionFrames": 0,
+            "rejectedFrames": 0,
+            "ignoredFrames": 0,
+            "transportErrors": 0,
+            "unsupportedCommands": 0,
+            "commandTimeouts": 0
+          },
+          "connections": [],
+          "omittedConnections": 0,
+          "nextOffset": null
+        }
+      }
+    },
+    {
+      "step": 3,
+      "elapsedMs": 253,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [],\n  \"totalActors\": 0\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [],
+          "totalActors": 0
+        }
+      }
+    },
+    {
+      "step": 4,
+      "elapsedMs": 257,
+      "kind": "mcp",
+      "tool": "get_connection_health",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sampledAt\": \"2026-09-08T05:11:20.667Z\",\n  \"supportedProtocolVersions\": [\n    1\n  ],\n  \"heartbeatIntervalMs\": 15000,\n  \"staleAfterMs\": 45000,\n  \"listener\": {\n    \"state\": \"listening\",\n    \"endpoint\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 63425,\n      \"url\": \"ws://127.0.0.1:63425\"\n    },\n    \"errorCode\": null\n  },\n  \"totals\": {\n    \"connectedClients\": 0,\n    \"clientsWithActors\": 0,\n    \"staleClients\": 0,\n    \"registeredSessions\": 0,\n    \"acceptedConnections\": 1,\n    \"closedConnections\": 1,\n    \"rejectedConnections\": 0,\n    \"lastDisconnectedAt\": \"2026-09-08T05:11:20.666Z\"\n  },\n  \"counters\": {\n    \"receivedFrames\": 1,\n    \"acceptedInspectionFrames\": 0,\n    \"rejectedFrames\": 0,\n    \"ignoredFrames\": 0,\n    \"transportErrors\": 0,\n    \"unsupportedCommands\": 0,\n    \"commandTimeouts\": 0\n  },\n  \"connections\": [],\n  \"omittedConnections\": 0,\n  \"nextOffset\": null\n}"
+          }
+        ],
+        "structuredContent": {
+          "sampledAt": "2026-09-08T05:11:20.667Z",
+          "supportedProtocolVersions": [
+            1
+          ],
+          "heartbeatIntervalMs": 15000,
+          "staleAfterMs": 45000,
+          "listener": {
+            "state": "listening",
+            "endpoint": {
+              "host": "127.0.0.1",
+              "port": 63425,
+              "url": "ws://127.0.0.1:63425"
+            },
+            "errorCode": null
+          },
+          "totals": {
+            "connectedClients": 0,
+            "clientsWithActors": 0,
+            "staleClients": 0,
+            "registeredSessions": 0,
+            "acceptedConnections": 1,
+            "closedConnections": 1,
+            "rejectedConnections": 0,
+            "lastDisconnectedAt": "2026-09-08T05:11:20.666Z"
+          },
+          "counters": {
+            "receivedFrames": 1,
+            "acceptedInspectionFrames": 0,
+            "rejectedFrames": 0,
+            "ignoredFrames": 0,
+            "transportErrors": 0,
+            "unsupportedCommands": 0,
+            "commandTimeouts": 0
+          },
+          "connections": [],
+          "omittedConnections": 0,
+          "nextOffset": null
+        }
+      }
+    },
+    {
+      "step": 5,
+      "elapsedMs": 258,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [],\n  \"totalActors\": 0\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [],
+          "totalActors": 0
+        }
+      }
+    },
+    {
+      "step": 6,
+      "elapsedMs": 464,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [],\n  \"totalActors\": 0\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [],
+          "totalActors": 0
+        }
+      }
+    },
+    {
+      "step": 7,
+      "elapsedMs": 465,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [],\n  \"totalActors\": 0\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [],
+          "totalActors": 0
+        }
+      }
+    },
+    {
+      "step": 8,
+      "elapsedMs": 568,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [\n    {\n      \"sessionId\": \"negotiated-tab/workspace\",\n      \"connectionId\": \"negotiated-tab/connection\",\n      \"localSessionId\": \"negotiated-tab/local/workspace\",\n      \"applicationName\": null,\n      \"name\": \"workspace\",\n      \"currentState\": \"open\",\n      \"status\": \"active\",\n      \"childCount\": 1\n    },\n    {\n      \"sessionId\": \"negotiated-tab/document\",\n      \"connectionId\": \"negotiated-tab/connection\",\n      \"localSessionId\": \"negotiated-tab/local/document\",\n      \"applicationName\": null,\n      \"name\": \"document\",\n      \"currentState\": \"editing\",\n      \"status\": \"active\",\n      \"childCount\": 0\n    }\n  ],\n  \"totalActors\": 2\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [
+            {
+              "sessionId": "negotiated-tab/workspace",
+              "connectionId": "negotiated-tab/connection",
+              "localSessionId": "negotiated-tab/local/workspace",
+              "applicationName": null,
+              "name": "workspace",
+              "currentState": "open",
+              "status": "active",
+              "childCount": 1
+            },
+            {
+              "sessionId": "negotiated-tab/document",
+              "connectionId": "negotiated-tab/connection",
+              "localSessionId": "negotiated-tab/local/document",
+              "applicationName": null,
+              "name": "document",
+              "currentState": "editing",
+              "status": "active",
+              "childCount": 0
+            }
+          ],
+          "totalActors": 2
+        }
+      }
+    },
+    {
+      "step": 9,
+      "elapsedMs": 569,
+      "kind": "mcp",
+      "tool": "get_connection_health",
+      "arguments": {
+        "connectionId": "negotiated-tab/connection"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sampledAt\": \"2026-09-08T05:11:20.978Z\",\n  \"supportedProtocolVersions\": [\n    1\n  ],\n  \"heartbeatIntervalMs\": 15000,\n  \"staleAfterMs\": 45000,\n  \"listener\": {\n    \"state\": \"listening\",\n    \"endpoint\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 63425,\n      \"url\": \"ws://127.0.0.1:63425\"\n    },\n    \"errorCode\": null\n  },\n  \"totals\": {\n    \"connectedClients\": 1,\n    \"clientsWithActors\": 1,\n    \"staleClients\": 0,\n    \"registeredSessions\": 2,\n    \"acceptedConnections\": 2,\n    \"closedConnections\": 1,\n    \"rejectedConnections\": 0,\n    \"lastDisconnectedAt\": \"2026-09-08T05:11:20.666Z\"\n  },\n  \"counters\": {\n    \"receivedFrames\": 8,\n    \"acceptedInspectionFrames\": 6,\n    \"rejectedFrames\": 0,\n    \"ignoredFrames\": 0,\n    \"transportErrors\": 0,\n    \"unsupportedCommands\": 0,\n    \"commandTimeouts\": 0\n  },\n  \"connections\": [\n    {\n      \"connectionId\": \"negotiated-tab/connection\",\n      \"application\": {\n        \"name\": \"Release note demo\"\n      },\n      \"adapter\": {\n        \"name\": \"frontend-demo\",\n        \"version\": \"1\"\n      },\n      \"negotiation\": \"negotiated\",\n      \"offeredProtocolVersion\": 1,\n      \"protocolVersion\": 1,\n      \"commands\": [\n        \"send_event\"\n      ],\n      \"actorCount\": 2,\n      \"connectedAt\": \"2026-09-08T05:11:20.773Z\",\n      \"lastActivityAt\": \"2026-09-08T05:11:20.879Z\",\n      \"lastInspectionAt\": \"2026-09-08T05:11:20.879Z\",\n      \"activityAgeMs\": 99.66633300000001,\n      \"inspectionAgeMs\": 99.64724999999999,\n      \"freshness\": \"fresh\",\n      \"counters\": {\n        \"receivedFrames\": 7,\n        \"acceptedInspectionFrames\": 6,\n        \"rejectedFrames\": 0,\n        \"ignoredFrames\": 0,\n        \"transportErrors\": 0,\n        \"unsupportedCommands\": 0,\n        \"commandTimeouts\": 0\n      },\n      \"lastRejection\": null,\n      \"lastRejectedAt\": null\n    }\n  ],\n  \"omittedConnections\": 0,\n  \"nextOffset\": null\n}"
+          }
+        ],
+        "structuredContent": {
+          "sampledAt": "2026-09-08T05:11:20.978Z",
+          "supportedProtocolVersions": [
+            1
+          ],
+          "heartbeatIntervalMs": 15000,
+          "staleAfterMs": 45000,
+          "listener": {
+            "state": "listening",
+            "endpoint": {
+              "host": "127.0.0.1",
+              "port": 63425,
+              "url": "ws://127.0.0.1:63425"
+            },
+            "errorCode": null
+          },
+          "totals": {
+            "connectedClients": 1,
+            "clientsWithActors": 1,
+            "staleClients": 0,
+            "registeredSessions": 2,
+            "acceptedConnections": 2,
+            "closedConnections": 1,
+            "rejectedConnections": 0,
+            "lastDisconnectedAt": "2026-09-08T05:11:20.666Z"
+          },
+          "counters": {
+            "receivedFrames": 8,
+            "acceptedInspectionFrames": 6,
+            "rejectedFrames": 0,
+            "ignoredFrames": 0,
+            "transportErrors": 0,
+            "unsupportedCommands": 0,
+            "commandTimeouts": 0
+          },
+          "connections": [
+            {
+              "connectionId": "negotiated-tab/connection",
+              "application": {
+                "name": "Release note demo"
+              },
+              "adapter": {
+                "name": "frontend-demo",
+                "version": "1"
+              },
+              "negotiation": "negotiated",
+              "offeredProtocolVersion": 1,
+              "protocolVersion": 1,
+              "commands": [
+                "send_event"
+              ],
+              "actorCount": 2,
+              "connectedAt": "2026-09-08T05:11:20.773Z",
+              "lastActivityAt": "2026-09-08T05:11:20.879Z",
+              "lastInspectionAt": "2026-09-08T05:11:20.879Z",
+              "activityAgeMs": 99.66633300000001,
+              "inspectionAgeMs": 99.64724999999999,
+              "freshness": "fresh",
+              "counters": {
+                "receivedFrames": 7,
+                "acceptedInspectionFrames": 6,
+                "rejectedFrames": 0,
+                "ignoredFrames": 0,
+                "transportErrors": 0,
+                "unsupportedCommands": 0,
+                "commandTimeouts": 0
+              },
+              "lastRejection": null,
+              "lastRejectedAt": null
+            }
+          ],
+          "omittedConnections": 0,
+          "nextOffset": null
+        }
+      }
+    },
+    {
+      "step": 10,
+      "elapsedMs": 572,
+      "kind": "mcp",
+      "tool": "wait_for_state",
+      "arguments": {
+        "sessionId": "negotiated-tab/document",
+        "state": "editing",
+        "timeoutMs": 4000
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"negotiated-tab/document\",\n  \"outcome\": \"matched\",\n  \"startedAt\": \"2026-09-08T05:11:20.981Z\",\n  \"completedAt\": \"2026-09-08T05:11:20.981Z\",\n  \"elapsedMs\": 0,\n  \"cursor\": {\n    \"generation\": \"067b1d7e-1336-41b0-8ba4-ac3d5f8d6daa\",\n    \"snapshot\": 1,\n    \"event\": 3\n  },\n  \"snapshot\": {\n    \"status\": \"active\",\n    \"value\": \"editing\",\n    \"context\": {\n      \"title\": \"Draft while negotiation waits\",\n      \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n      \"saved\": null,\n      \"attempts\": 0,\n      \"revision\": 0,\n      \"error\": null,\n      \"draftAccessToken\": \"[REDACTED]\"\n    }\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "negotiated-tab/document",
+          "outcome": "matched",
+          "startedAt": "2026-09-08T05:11:20.981Z",
+          "completedAt": "2026-09-08T05:11:20.981Z",
+          "elapsedMs": 0,
+          "cursor": {
+            "generation": "067b1d7e-1336-41b0-8ba4-ac3d5f8d6daa",
+            "snapshot": 1,
+            "event": 3
+          },
+          "snapshot": {
+            "status": "active",
+            "value": "editing",
+            "context": {
+              "title": "Draft while negotiation waits",
+              "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing.",
+              "saved": null,
+              "attempts": 0,
+              "revision": 0,
+              "error": null,
+              "draftAccessToken": "[REDACTED]"
+            }
+          }
+        },
+        "isError": false
+      }
+    },
+    {
+      "step": 11,
+      "elapsedMs": 572,
+      "kind": "negotiation",
+      "observation": "No inspection before accepted hello; rejected protocol closes the socket, explicit reconnect preserves the live draft"
+    },
+    {
+      "step": 12,
+      "elapsedMs": 574,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [\n    {\n      \"sessionId\": \"negotiated-tab/workspace\",\n      \"connectionId\": \"negotiated-tab/connection\",\n      \"localSessionId\": \"negotiated-tab/local/workspace\",\n      \"applicationName\": null,\n      \"name\": \"workspace\",\n      \"currentState\": \"open\",\n      \"status\": \"active\",\n      \"childCount\": 1\n    },\n    {\n      \"sessionId\": \"negotiated-tab/document\",\n      \"connectionId\": \"negotiated-tab/connection\",\n      \"localSessionId\": \"negotiated-tab/local/document\",\n      \"applicationName\": null,\n      \"name\": \"document\",\n      \"currentState\": \"editing\",\n      \"status\": \"active\",\n      \"childCount\": 0\n    }\n  ],\n  \"totalActors\": 2\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [
+            {
+              "sessionId": "negotiated-tab/workspace",
+              "connectionId": "negotiated-tab/connection",
+              "localSessionId": "negotiated-tab/local/workspace",
+              "applicationName": null,
+              "name": "workspace",
+              "currentState": "open",
+              "status": "active",
+              "childCount": 1
+            },
+            {
+              "sessionId": "negotiated-tab/document",
+              "connectionId": "negotiated-tab/connection",
+              "localSessionId": "negotiated-tab/local/document",
+              "applicationName": null,
+              "name": "document",
+              "currentState": "editing",
+              "status": "active",
+              "childCount": 0
+            }
+          ],
+          "totalActors": 2
+        }
+      }
+    },
+    {
+      "step": 13,
+      "elapsedMs": 676,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [],\n  \"totalActors\": 0\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [],
+          "totalActors": 0
+        }
+      }
+    }
+  ]
+}

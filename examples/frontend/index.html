@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#172b27" />
+    <title>Fieldnotes — Release editor</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23172b27'/%3E%3Cpath d='M10 24V8h13v3H13v4h8v3h-8v6' fill='%23d5e4ad'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="/" aria-label="Fieldnotes home"
+          ><span class="brand-mark">f.</span> fieldnotes</a
+        >
+        <div class="workspace-label">THE EVERYDAY STUDIO <span>⌄</span></div>
+        <nav aria-label="Workspace">
+          <a class="active" href="#editor"
+            ><span>▤</span> Release notes <span class="nav-count">01</span></a
+          ><span class="nav-static"
+            ><span>◷</span> A space for what’s next</span
+          >
+        </nav>
+        <div class="sidebar-note">
+          <span class="tiny-star">✳</span>
+          <p>Good things start<br />with a small note.</p>
+          <span>A little clarity goes a long way.</span>
+        </div>
+        <div class="profile">
+          <span class="avatar">ES</span>
+          <div>Everyday Studio<small>Example workspace</small></div>
+          <span class="profile-dot"></span>
+        </div>
+      </aside>
+      <main id="editor">
+        <header class="topbar">
+          <div>
+            <span class="breadcrumb">Workspace</span
+            ><span class="slash">/</span>Release notes
+          </div>
+          <span class="demo-pill"><span></span> DETERMINISTIC DEMO</span>
+        </header>
+        <section class="page-heading">
+          <div>
+            <p class="eyebrow">MAKE SOMETHING WORTH SHARING</p>
+            <h1>A note for what’s new.</h1>
+            <p class="subtitle">
+              Shape your next update. Keep your voice. Share it when it’s ready.
+            </p>
+          </div>
+          <span class="edition">ISSUE 001<br /><b>THE BEGINNING</b></span>
+        </section>
+        <div class="editor-grid">
+          <section class="editor-card" aria-labelledby="draft-heading">
+            <div class="card-heading">
+              <div>
+                <span class="section-number">01</span>
+                <h2 id="draft-heading">Your draft</h2>
+              </div>
+              <span id="draft-status" class="status-badge" aria-live="polite"
+                >Loading draft</span
+              >
+            </div>
+            <div class="form-fields">
+              <div class="label-row">
+                <label for="title">TITLE</label
+                ><span id="title-count">0 / 120</span>
+              </div>
+              <input
+                id="title"
+                name="title"
+                maxlength="120"
+                placeholder="Give your idea a name"
+                disabled
+              />
+              <div class="label-row body-label">
+                <label for="body">THE STORY</label
+                ><span>Plain text · your words</span>
+              </div>
+              <textarea
+                id="body"
+                name="body"
+                maxlength="4000"
+                placeholder="What’s new? Tell the story."
+                disabled
+              ></textarea>
+              <p class="field-hint">
+                A clear title and a few thoughtful words are a great start.
+              </p>
+            </div>
+            <div
+              id="error-panel"
+              class="feedback error-feedback"
+              role="alert"
+              hidden
+            >
+              <span class="feedback-icon">!</span>
+              <div>
+                <strong>Your draft hasn’t been saved yet.</strong>
+                <p id="error-message"></p>
+                <button id="retry" class="text-button" type="button">
+                  Try saving again <span aria-hidden="true">↗</span>
+                </button>
+              </div>
+            </div>
+            <div
+              id="success-panel"
+              class="feedback success-feedback"
+              role="status"
+              hidden
+            >
+              <span class="feedback-icon">✓</span>
+              <div>
+                <strong>Saved. Ready for what’s next.</strong>
+                <p>Your words are safe in this demo session.</p>
+              </div>
+            </div>
+            <footer class="editor-footer">
+              <span id="save-detail" aria-live="polite"
+                >Opening your draft…</span
+              ><button id="save" class="primary-button" type="button" disabled>
+                Save note <span aria-hidden="true">↗</span>
+              </button>
+            </footer>
+          </section>
+          <section class="preview-card" aria-labelledby="preview-heading">
+            <div class="preview-heading">
+              <h2 id="preview-heading">A little preview</h2>
+              <span>↗</span>
+            </div>
+            <div class="preview-art" aria-hidden="true">
+              <div class="art-circle"></div>
+              <div class="art-stem"></div>
+              <div class="art-leaf leaf-one"></div>
+              <div class="art-leaf leaf-two"></div>
+              <span>ROOM TO GROW.</span>
+            </div>
+            <div class="preview-copy">
+              <span class="preview-category"
+                >FROM THE STUDIO <span>•</span> PRODUCT UPDATE</span
+              >
+              <h3 id="preview-title">Your next good idea</h3>
+              <p id="preview-body">Your story will appear here.</p>
+              <div class="preview-signature">
+                <span class="mini-mark">f.</span>
+                <div>
+                  The Everyday Studio<small
+                    >Made with a little intention.</small
+                  >
+                </div>
+              </div>
+            </div>
+            <p class="preview-caption">
+              Preview only · nothing is published or uploaded
+            </p>
+          </section>
+        </div>
+        <section class="demo-explainer" aria-label="How the demo works">
+          <span class="demo-symbol">↻</span>
+          <div>
+            <strong>A small setback. A clear way forward.</strong>
+            <p>
+              The local mock service fails the first save. Retry succeeds. Your
+              draft stays intact throughout.
+            </p>
+          </div>
+          <span class="no-api">NO ACCOUNTS. NO API KEYS.</span>
+        </section>
+        <footer class="inspection-bar" aria-label="Development inspection">
+          <div>
+            <span id="connection-dot" class="connection-dot"></span
+            ><span id="connection-label">Inspection connecting</span
+            ><span class="inspection-divider">/</span
+            ><span id="actor-state">document · loading</span>
+          </div>
+          <div>
+            <span id="attempt-count">0 save attempts</span
+            ><button id="connection-toggle" type="button">
+              Disconnect inspection
+            </button>
+          </div>
+        </footer>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

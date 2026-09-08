@@ -1,0 +1,857 @@
+{
+  "schemaVersion": 1,
+  "scenario": "refresh, reconnect and two tabs keep actor state isolated",
+  "generator": "Deterministic test client; not a live model/agent session",
+  "sourceCommit": "84a84cd77ed14201c6d12209966af6d543ee46cf",
+  "sourceHashes": {
+    "src/model.ts": "a01ffa3e319243f733db6c376834a3a23444c28474036abfdecbe7e276178d32",
+    "src/demo-inspector.ts": "f98bcc9c2d30055f22c3c95e48121653e0c8f0a421c2a661b6a9ad68e030e451",
+    "src/main.ts": "01b1706160fbc5fbf5839dcb2361d22e748572d556389124331df81c18a49cd1",
+    "src/style.css": "5f840f2febac8d72baa807b0ec5997636e151248c467020bca7dca06a9c3a648",
+    "index.html": "6158d8387c77045956d1037f3ace58d769752dc0992f6540f53a39a2b85151e6",
+    "tests/harness.ts": "1458ad81a4112b5f5179ffc285257c3d1f5627db8aa2fec0b072ead24285cae2",
+    "tests/demo.spec.ts": "ab1939b3b857fa795dedefcdb3cabc51c45947024041c8baf666eae6da6e5b5e"
+  },
+  "runtime": {
+    "node": "v24.20.0",
+    "browser": "153.0.8010.12",
+    "xstate": "5.32.6",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.20.1",
+    "prettier": "3.8.2",
+    "typescript": "5.9.3",
+    "vite": "8.2.2"
+  },
+  "teardown": "MCP transport and Vite closed; former WS port successfully rebound",
+  "steps": [
+    {
+      "step": 1,
+      "elapsedMs": 7,
+      "kind": "initialize",
+      "server": {
+        "name": "xstate-mcp",
+        "version": "1.0.0"
+      },
+      "tools": [
+        "list_actors",
+        "get_actor_state",
+        "get_event_history",
+        "get_machine_definition",
+        "clear_actors",
+        "get_actor_tree",
+        "can_handle_event",
+        "get_state_timeline",
+        "send_event"
+      ],
+      "verification": "Real MCP stdio client with bounded get_actor_state polling; no model calls"
+    },
+    {
+      "step": 2,
+      "elapsedMs": 56,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [\n    {\n      \"sessionId\": \"tab-1/workspace\",\n      \"name\": \"workspace\",\n      \"currentState\": \"open\",\n      \"status\": \"active\",\n      \"childCount\": 1\n    },\n    {\n      \"sessionId\": \"tab-1/document\",\n      \"name\": \"document\",\n      \"currentState\": \"loading\",\n      \"status\": \"active\",\n      \"childCount\": 0\n    }\n  ],\n  \"totalActors\": 2\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [
+            {
+              "sessionId": "tab-1/workspace",
+              "name": "workspace",
+              "currentState": "open",
+              "status": "active",
+              "childCount": 1
+            },
+            {
+              "sessionId": "tab-1/document",
+              "name": "document",
+              "currentState": "loading",
+              "status": "active",
+              "childCount": 0
+            }
+          ],
+          "totalActors": 2
+        }
+      }
+    },
+    {
+      "step": 3,
+      "elapsedMs": 57,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-1/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"loading\",\n  \"context\": {\n    \"title\": \"\",\n    \"body\": \"\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-1/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:02.608Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "name": "document",
+          "status": "active",
+          "value": "loading",
+          "context": {
+            "title": "",
+            "body": "",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-1/workspace",
+          "updatedAt": "2026-09-07T18:17:02.608Z"
+        }
+      }
+    },
+    {
+      "step": 4,
+      "elapsedMs": 89,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-1/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"loading\",\n  \"context\": {\n    \"title\": \"\",\n    \"body\": \"\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-1/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:02.608Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "name": "document",
+          "status": "active",
+          "value": "loading",
+          "context": {
+            "title": "",
+            "body": "",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-1/workspace",
+          "updatedAt": "2026-09-07T18:17:02.608Z"
+        }
+      }
+    },
+    {
+      "step": 5,
+      "elapsedMs": 151,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-1/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"loading\",\n  \"context\": {\n    \"title\": \"\",\n    \"body\": \"\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-1/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:02.608Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "name": "document",
+          "status": "active",
+          "value": "loading",
+          "context": {
+            "title": "",
+            "body": "",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-1/workspace",
+          "updatedAt": "2026-09-07T18:17:02.608Z"
+        }
+      }
+    },
+    {
+      "step": 6,
+      "elapsedMs": 253,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-1/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"editing\",\n  \"context\": {\n    \"title\": \"A little room for good ideas\",\n    \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-1/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:02.805Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "name": "document",
+          "status": "active",
+          "value": "editing",
+          "context": {
+            "title": "A little room for good ideas",
+            "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing.",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-1/workspace",
+          "updatedAt": "2026-09-07T18:17:02.805Z"
+        }
+      }
+    },
+    {
+      "step": 7,
+      "elapsedMs": 417,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [],\n  \"totalActors\": 0\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [],
+          "totalActors": 0
+        }
+      }
+    },
+    {
+      "step": 8,
+      "elapsedMs": 503,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [],\n  \"totalActors\": 0\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [],
+          "totalActors": 0
+        }
+      }
+    },
+    {
+      "step": 9,
+      "elapsedMs": 604,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [\n    {\n      \"sessionId\": \"tab-1-reconnected/workspace\",\n      \"name\": \"workspace\",\n      \"currentState\": \"open\",\n      \"status\": \"active\",\n      \"childCount\": 1\n    },\n    {\n      \"sessionId\": \"tab-1-reconnected/document\",\n      \"name\": \"document\",\n      \"currentState\": \"editing\",\n      \"status\": \"active\",\n      \"childCount\": 0\n    }\n  ],\n  \"totalActors\": 2\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [
+            {
+              "sessionId": "tab-1-reconnected/workspace",
+              "name": "workspace",
+              "currentState": "open",
+              "status": "active",
+              "childCount": 1
+            },
+            {
+              "sessionId": "tab-1-reconnected/document",
+              "name": "document",
+              "currentState": "editing",
+              "status": "active",
+              "childCount": 0
+            }
+          ],
+          "totalActors": 2
+        }
+      }
+    },
+    {
+      "step": 10,
+      "elapsedMs": 605,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-1-reconnected/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1-reconnected/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"editing\",\n  \"context\": {\n    \"title\": \"Edited while disconnected\",\n    \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-1-reconnected/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:02.995Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1-reconnected/document",
+          "name": "document",
+          "status": "active",
+          "value": "editing",
+          "context": {
+            "title": "Edited while disconnected",
+            "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing.",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-1-reconnected/workspace",
+          "updatedAt": "2026-09-07T18:17:02.995Z"
+        }
+      }
+    },
+    {
+      "step": 11,
+      "elapsedMs": 663,
+      "kind": "browser",
+      "label": "Live actors replay their latest snapshot after reconnect",
+      "screenshot": "04-reconnected.png",
+      "state": "document · editing",
+      "title": "Edited while disconnected"
+    },
+    {
+      "step": 12,
+      "elapsedMs": 691,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [\n    {\n      \"sessionId\": \"tab-1-refreshed/workspace\",\n      \"name\": \"workspace\",\n      \"currentState\": \"open\",\n      \"status\": \"active\",\n      \"childCount\": 1\n    },\n    {\n      \"sessionId\": \"tab-1-refreshed/document\",\n      \"name\": \"document\",\n      \"currentState\": \"loading\",\n      \"status\": \"active\",\n      \"childCount\": 0\n    }\n  ],\n  \"totalActors\": 2\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [
+            {
+              "sessionId": "tab-1-refreshed/workspace",
+              "name": "workspace",
+              "currentState": "open",
+              "status": "active",
+              "childCount": 1
+            },
+            {
+              "sessionId": "tab-1-refreshed/document",
+              "name": "document",
+              "currentState": "loading",
+              "status": "active",
+              "childCount": 0
+            }
+          ],
+          "totalActors": 2
+        }
+      }
+    },
+    {
+      "step": 13,
+      "elapsedMs": 691,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [\n    {\n      \"sessionId\": \"tab-1-refreshed/workspace\",\n      \"name\": \"workspace\",\n      \"currentState\": \"open\",\n      \"status\": \"active\",\n      \"childCount\": 1\n    },\n    {\n      \"sessionId\": \"tab-1-refreshed/document\",\n      \"name\": \"document\",\n      \"currentState\": \"loading\",\n      \"status\": \"active\",\n      \"childCount\": 0\n    }\n  ],\n  \"totalActors\": 2\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [
+            {
+              "sessionId": "tab-1-refreshed/workspace",
+              "name": "workspace",
+              "currentState": "open",
+              "status": "active",
+              "childCount": 1
+            },
+            {
+              "sessionId": "tab-1-refreshed/document",
+              "name": "document",
+              "currentState": "loading",
+              "status": "active",
+              "childCount": 0
+            }
+          ],
+          "totalActors": 2
+        }
+      }
+    },
+    {
+      "step": 14,
+      "elapsedMs": 692,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-1-refreshed/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1-refreshed/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"loading\",\n  \"context\": {\n    \"title\": \"\",\n    \"body\": \"\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-1-refreshed/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:03.257Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1-refreshed/document",
+          "name": "document",
+          "status": "active",
+          "value": "loading",
+          "context": {
+            "title": "",
+            "body": "",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-1-refreshed/workspace",
+          "updatedAt": "2026-09-07T18:17:03.257Z"
+        }
+      }
+    },
+    {
+      "step": 15,
+      "elapsedMs": 723,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-1-refreshed/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1-refreshed/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"loading\",\n  \"context\": {\n    \"title\": \"\",\n    \"body\": \"\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-1-refreshed/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:03.257Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1-refreshed/document",
+          "name": "document",
+          "status": "active",
+          "value": "loading",
+          "context": {
+            "title": "",
+            "body": "",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-1-refreshed/workspace",
+          "updatedAt": "2026-09-07T18:17:03.257Z"
+        }
+      }
+    },
+    {
+      "step": 16,
+      "elapsedMs": 785,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-1-refreshed/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1-refreshed/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"loading\",\n  \"context\": {\n    \"title\": \"\",\n    \"body\": \"\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-1-refreshed/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:03.257Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1-refreshed/document",
+          "name": "document",
+          "status": "active",
+          "value": "loading",
+          "context": {
+            "title": "",
+            "body": "",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-1-refreshed/workspace",
+          "updatedAt": "2026-09-07T18:17:03.257Z"
+        }
+      }
+    },
+    {
+      "step": 17,
+      "elapsedMs": 887,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-1-refreshed/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1-refreshed/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"editing\",\n  \"context\": {\n    \"title\": \"A little room for good ideas\",\n    \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-1-refreshed/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:03.455Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1-refreshed/document",
+          "name": "document",
+          "status": "active",
+          "value": "editing",
+          "context": {
+            "title": "A little room for good ideas",
+            "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing.",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-1-refreshed/workspace",
+          "updatedAt": "2026-09-07T18:17:03.455Z"
+        }
+      }
+    },
+    {
+      "step": 18,
+      "elapsedMs": 1011,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [\n    {\n      \"sessionId\": \"tab-1-refreshed/workspace\",\n      \"name\": \"workspace\",\n      \"currentState\": \"open\",\n      \"status\": \"active\",\n      \"childCount\": 1\n    },\n    {\n      \"sessionId\": \"tab-1-refreshed/document\",\n      \"name\": \"document\",\n      \"currentState\": \"editing\",\n      \"status\": \"active\",\n      \"childCount\": 0\n    },\n    {\n      \"sessionId\": \"tab-2/workspace\",\n      \"name\": \"workspace\",\n      \"currentState\": \"open\",\n      \"status\": \"active\",\n      \"childCount\": 1\n    },\n    {\n      \"sessionId\": \"tab-2/document\",\n      \"name\": \"document\",\n      \"currentState\": \"loading\",\n      \"status\": \"active\",\n      \"childCount\": 0\n    }\n  ],\n  \"totalActors\": 4\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [
+            {
+              "sessionId": "tab-1-refreshed/workspace",
+              "name": "workspace",
+              "currentState": "open",
+              "status": "active",
+              "childCount": 1
+            },
+            {
+              "sessionId": "tab-1-refreshed/document",
+              "name": "document",
+              "currentState": "editing",
+              "status": "active",
+              "childCount": 0
+            },
+            {
+              "sessionId": "tab-2/workspace",
+              "name": "workspace",
+              "currentState": "open",
+              "status": "active",
+              "childCount": 1
+            },
+            {
+              "sessionId": "tab-2/document",
+              "name": "document",
+              "currentState": "loading",
+              "status": "active",
+              "childCount": 0
+            }
+          ],
+          "totalActors": 4
+        }
+      }
+    },
+    {
+      "step": 19,
+      "elapsedMs": 1012,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-2/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-2/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"loading\",\n  \"context\": {\n    \"title\": \"\",\n    \"body\": \"\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-2/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:03.539Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-2/document",
+          "name": "document",
+          "status": "active",
+          "value": "loading",
+          "context": {
+            "title": "",
+            "body": "",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-2/workspace",
+          "updatedAt": "2026-09-07T18:17:03.539Z"
+        }
+      }
+    },
+    {
+      "step": 20,
+      "elapsedMs": 1044,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-2/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-2/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"loading\",\n  \"context\": {\n    \"title\": \"\",\n    \"body\": \"\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-2/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:03.539Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-2/document",
+          "name": "document",
+          "status": "active",
+          "value": "loading",
+          "context": {
+            "title": "",
+            "body": "",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-2/workspace",
+          "updatedAt": "2026-09-07T18:17:03.539Z"
+        }
+      }
+    },
+    {
+      "step": 21,
+      "elapsedMs": 1106,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-2/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-2/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"loading\",\n  \"context\": {\n    \"title\": \"\",\n    \"body\": \"\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-2/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:03.539Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-2/document",
+          "name": "document",
+          "status": "active",
+          "value": "loading",
+          "context": {
+            "title": "",
+            "body": "",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-2/workspace",
+          "updatedAt": "2026-09-07T18:17:03.539Z"
+        }
+      }
+    },
+    {
+      "step": 22,
+      "elapsedMs": 1208,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-2/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-2/document\",\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"editing\",\n  \"context\": {\n    \"title\": \"A little room for good ideas\",\n    \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null\n  },\n  \"parentId\": \"tab-2/workspace\",\n  \"updatedAt\": \"2026-09-07T18:17:03.748Z\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-2/document",
+          "name": "document",
+          "status": "active",
+          "value": "editing",
+          "context": {
+            "title": "A little room for good ideas",
+            "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing.",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null
+          },
+          "parentId": "tab-2/workspace",
+          "updatedAt": "2026-09-07T18:17:03.748Z"
+        }
+      }
+    },
+    {
+      "step": 23,
+      "elapsedMs": 1209,
+      "kind": "mcp",
+      "tool": "send_event",
+      "arguments": {
+        "target": "document",
+        "event": {
+          "type": "SAVE"
+        }
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"error\": \"Ambiguous actor name: \\\"document\\\" matches 2 actors\",\n  \"matches\": [\n    {\n      \"sessionId\": \"tab-1-refreshed/document\",\n      \"name\": \"document\"\n    },\n    {\n      \"sessionId\": \"tab-2/document\",\n      \"name\": \"document\"\n    }\n  ],\n  \"suggestion\": \"Use a specific sessionId instead of the actor name.\"\n}"
+          }
+        ],
+        "isError": true
+      }
+    },
+    {
+      "step": 24,
+      "elapsedMs": 1230,
+      "kind": "mcp",
+      "tool": "send_event",
+      "arguments": {
+        "target": "tab-2/document",
+        "event": {
+          "type": "CHANGE_TITLE",
+          "value": "Only the second tab changes"
+        }
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-2/document\",\n  \"event\": {\n    \"type\": \"CHANGE_TITLE\",\n    \"value\": \"Only the second tab changes\"\n  },\n  \"success\": true\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-2/document",
+          "event": {
+            "type": "CHANGE_TITLE",
+            "value": "Only the second tab changes"
+          },
+          "success": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "step": 25,
+      "elapsedMs": 1329,
+      "kind": "browser",
+      "label": "Exact actor target changes only the second tab",
+      "screenshot": "05-second-tab.png",
+      "state": "document · editing",
+      "title": "Only the second tab changes"
+    },
+    {
+      "step": 26,
+      "elapsedMs": 1331,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [\n    {\n      \"sessionId\": \"tab-1-refreshed/workspace\",\n      \"name\": \"workspace\",\n      \"currentState\": \"open\",\n      \"status\": \"active\",\n      \"childCount\": 1\n    },\n    {\n      \"sessionId\": \"tab-1-refreshed/document\",\n      \"name\": \"document\",\n      \"currentState\": \"editing\",\n      \"status\": \"active\",\n      \"childCount\": 0\n    }\n  ],\n  \"totalActors\": 2\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [
+            {
+              "sessionId": "tab-1-refreshed/workspace",
+              "name": "workspace",
+              "currentState": "open",
+              "status": "active",
+              "childCount": 1
+            },
+            {
+              "sessionId": "tab-1-refreshed/document",
+              "name": "document",
+              "currentState": "editing",
+              "status": "active",
+              "childCount": 0
+            }
+          ],
+          "totalActors": 2
+        }
+      }
+    },
+    {
+      "step": 27,
+      "elapsedMs": 1331,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [\n    {\n      \"sessionId\": \"tab-1-refreshed/workspace\",\n      \"name\": \"workspace\",\n      \"currentState\": \"open\",\n      \"status\": \"active\",\n      \"childCount\": 1\n    },\n    {\n      \"sessionId\": \"tab-1-refreshed/document\",\n      \"name\": \"document\",\n      \"currentState\": \"editing\",\n      \"status\": \"active\",\n      \"childCount\": 0\n    }\n  ],\n  \"totalActors\": 2\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [
+            {
+              "sessionId": "tab-1-refreshed/workspace",
+              "name": "workspace",
+              "currentState": "open",
+              "status": "active",
+              "childCount": 1
+            },
+            {
+              "sessionId": "tab-1-refreshed/document",
+              "name": "document",
+              "currentState": "editing",
+              "status": "active",
+              "childCount": 0
+            }
+          ],
+          "totalActors": 2
+        }
+      }
+    },
+    {
+      "step": 28,
+      "elapsedMs": 1333,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [],\n  \"totalActors\": 0\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [],
+          "totalActors": 0
+        }
+      }
+    }
+  ]
+}

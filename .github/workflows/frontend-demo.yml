@@ -1,0 +1,46 @@
+name: Frontend MCP loop
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  frontend:
+    name: Frontend / Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.23.2", "24.20.0"]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - run: bun run demo:install
+      - name: Root quality gate
+        run: bun run check
+      - name: Frontend and browser test types and formatting
+        working-directory: examples/frontend
+        run: bun run check
+      - name: Install pinned Chromium and Linux browser dependencies
+        working-directory: examples/frontend
+        run: bun run browser:install --with-deps
+      - name: Build actual CLI and frontend, then verify real MCP and UI behavior
+        run: bun run demo:verify
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: frontend-evidence-node-${{ matrix.node }}
+          path: |
+            examples/frontend/test-results/
+            examples/frontend/playwright-report/
+          retention-days: 14

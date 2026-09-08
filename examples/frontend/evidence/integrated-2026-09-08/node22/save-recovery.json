@@ -1,0 +1,1719 @@
+{
+  "schemaVersion": 3,
+  "scenario": "real MCP loop: inspect, fail, reject, retry, and verify the UI",
+  "generator": "Deterministic test client; not a live model/agent session",
+  "sourceCommit": "5c3b2d0f8cfbcf133613b6f38a7fa778ed298662",
+  "sourceHashes": {
+    "src/model.ts": "452747448b121b2fadb194acf1a56c09482b824d720c202d881423ad31bcd67e",
+    "src/demo-inspector.ts": "4c454ca33d8bf891d1253ff3b6bece84d3b724e41f2067e421f3079d442fc39c",
+    "src/main.ts": "0ad606530b6e242daf4d982a5d2815b9cd30012cd2152f62e941c983b01f7ac6",
+    "src/style.css": "de600e958443531b99d08c602ab580300ddeedbb56e793435eb8c4ca7f55e1e0",
+    "index.html": "6158d8387c77045956d1037f3ace58d769752dc0992f6540f53a39a2b85151e6",
+    "tests/harness.ts": "81d823d37bda5794163cd61493e0cbe9476dc78ed3c60beab00dd1bfad9f3b86",
+    "tests/demo.spec.ts": "162e0f1322765f152032efbfde2479002f25d628fab80b1523d028dc530dee85",
+    "tests/teardown.ts": "4ba7fc5970f09a2d4636ec29b4ec592e29c31bc2acad6c05c646d76c0980f5d4",
+    "tests/teardown.spec.ts": "c038d66da4f6f1a1db1e860b0740f42f49c66deb4578ab64cbe5bec7e3072789"
+  },
+  "serverSourceHashes": {
+    "bun.lock": "452f18d56c6582b0c1aadd6493a646036a1126ef96d57580f4229ab8e5ad9f5c",
+    "package.json": "c5ae02c41f2c709271aca42e8969c7d088f4bf1d49c0f95795146d98cc1603d3",
+    "src/actor-identity.ts": "838fbd015192d0c12f9e4f88e671fe04d51ade765312aed726b162759ad9c995",
+    "src/actor-snapshot.ts": "ed7a70c9475fc8ff3e645d866053facecbd6446432050cdd472162756e56a1e0",
+    "src/actor-store.ts": "dcbd01a875197d1b9203ed41fe3eb2cf1ea422fc6f55e98fbe93cbcfd1929f98",
+    "src/actor-waits.ts": "2a3b79b72410440f08059b3101ab4b20fc213ec1f36142f0a8efc69bfc1403f2",
+    "src/cli.ts": "079857d2c40b17cfbde9b832c8c9fbb842f5adf84dfd43df4002ed28e4c24139",
+    "src/client-registry.ts": "f152eda0b6fbcbe98e5cb0d97588ad867d7820ad5266cd5f549db160498cce5a",
+    "src/config.ts": "f1075c92578c30b53a12f65b69715d35741f52f2af3c190d19bf8ecc82a996f2",
+    "src/connection-health.ts": "05a7dc88428ed05fb9ec8f14f0e19778c0f4baeb33ab7e401091ca03fa7ecd74",
+    "src/errors.ts": "0349461d6cd8b66d046c33f47901fea9ff7ead20ad2f70beeee2163633ab629d",
+    "src/event-eligibility.ts": "79ccbd67676d56d56c850387e214876dca0b12f29874c24a4318ac2b95fd631e",
+    "src/index.ts": "3f3ba17c1fc0039672cce926af45aa2dc2acc4d80f22bc230742f6fa5ca4a6a3",
+    "src/inspection-policy.ts": "32dfda159d61f58039e97ebbb355bb17f394c741490b1a868d1be122ed9193cc",
+    "src/inspection-server.ts": "37c3f1ccaa708b0e7d157f1d13cef3f5672c0edbe39de344919d1ed330e9a0a2",
+    "src/logger.ts": "48e51b73b571c9fddca2496f49f865b0f4e3b8de0ff44581717f7f7d407138b6",
+    "src/mcp-server.ts": "e72c10e4624f9be7c451a70852a22963b4b7cef4a99d8035f39c85464e864973",
+    "src/prompts/debug-actor.ts": "58f81d189a7b4aa82c4497fd2eebfb2a32bee54cace7b09840373154378e07c1",
+    "src/prompts/explain-machine.ts": "ab994420ab8c3ed28584bb34f875ae8b5c01aed957cdf17812afea62b4e58e3c",
+    "src/prompts/trace-event-flow.ts": "e4764a523d8324353fb8d75aa82185ed2dffe614754db5f059eefff1a97869b1",
+    "src/safe-stringify.ts": "37589d09e791982c42d8285976b22ff955521a2b28afea1b5b4219d2e3765e63",
+    "src/tools/can-handle-event.ts": "cde16fcf20910fcc641e89f2f60d8b743ebdc3c787a6021a8479f9084b41f20c",
+    "src/tools/clear-actors.ts": "0a098506b643dbce586c2e612afc5bbf2b1a6222cdce2edbbd9406b583a12046",
+    "src/tools/get-actor-state.ts": "0f0c91c967512db2ab856b833b6599cadb0ff1540da4e2d892141d9aab777a8d",
+    "src/tools/get-actor-tree.ts": "b7081565c95a76f573854401c8baf2e01ea1fc41dc6752e0a501f472692f3e04",
+    "src/tools/get-event-history.ts": "357e1826988a428114d32f0b51ac447781de226fbdf9e67772d040a6451bc4a4",
+    "src/tools/get-machine-definition.ts": "55951c24dfbd6a773f0775136ffc0020a953fa270c996b4ed400c0a721fb4dfd",
+    "src/tools/get-state-timeline.ts": "e114bd0ab2e79a7587eb6a250572e60070eba0e9a631a88d60a68c6657170067",
+    "src/tools/list-actors.ts": "c541ef316a6a9ebf0011f16d36a0c7f457766e40357644383ceb4ce9487049bc",
+    "src/tools/send-event.ts": "032afe8a657684d20ba80d539a21c8ee25f4e96c82567cb22662ab1fa5da539b",
+    "src/types.ts": "67a931664d9e838182e15ab7e3d78e1eac7022b95793bbc278c664a77ab2d4cf",
+    "src/version.ts": "284e034ece2e10b1b7f2079693b51689184321ddf5c502394491dcc147f594b6",
+    "src/ws-server.ts": "5381a243e0516fb5731dfd84ec25fa5f4f138af6c6efe9d79248b043fbe6153c",
+    "tsup.config.ts": "1effe59a2b9d97067c742b92fc9f3364dd574ba62bbe322335e6125328f4cafe"
+  },
+  "serverArtifactHashes": {
+    "dist/cli.js": "1c33903ade1f8669eda5b51868ec3497cace488c24647b17505b79efa4b0473c",
+    "dist/index.js": "067ee591ab00103f658ccd0943eeca08853a0c518353ef899844ce45d1e38e3c",
+    "dist/inspection-policy.js": "55736a2b1b435d2c7558b2399cf51734265cd6df3efc845ec52b99ae82d02961"
+  },
+  "serverDependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "ws": "8.21.3",
+    "zod": "4.5.4"
+  },
+  "runtime": {
+    "node": "v22.23.2",
+    "browser": "153.0.8010.12",
+    "xstate": "5.32.6",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.20.1",
+    "prettier": "3.8.2",
+    "typescript": "5.9.3",
+    "vite": "8.2.2"
+  },
+  "teardown": {
+    "cleanup": {
+      "client": {
+        "status": "fulfilled"
+      },
+      "transport": {
+        "status": "fulfilled"
+      },
+      "vite": {
+        "status": "fulfilled"
+      }
+    },
+    "portReleased": true,
+    "portProbe": {
+      "status": "fulfilled"
+    },
+    "sourceCommit": {
+      "status": "fulfilled",
+      "value": "5c3b2d0f8cfbcf133613b6f38a7fa778ed298662"
+    }
+  },
+  "steps": [
+    {
+      "step": 1,
+      "elapsedMs": 14,
+      "kind": "initialize",
+      "server": {
+        "name": "xstate-mcp",
+        "version": "1.1.0-dev.0"
+      },
+      "tools": [
+        "get_connection_health",
+        "list_actors",
+        "get_actor_state",
+        "get_event_history",
+        "get_machine_definition",
+        "clear_actors",
+        "get_actor_tree",
+        "can_handle_event",
+        "get_state_timeline",
+        "wait_for_state",
+        "wait_for_event",
+        "send_event"
+      ],
+      "verification": "Real MCP stdio client with bounded state/event waits and browser assertions; no model calls"
+    },
+    {
+      "step": 2,
+      "elapsedMs": 366,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [\n    {\n      \"sessionId\": \"tab-1/workspace\",\n      \"connectionId\": \"tab-1/connection\",\n      \"localSessionId\": \"tab-1/local/workspace\",\n      \"applicationName\": null,\n      \"name\": \"workspace\",\n      \"currentState\": \"open\",\n      \"status\": \"active\",\n      \"childCount\": 1\n    },\n    {\n      \"sessionId\": \"tab-1/document\",\n      \"connectionId\": \"tab-1/connection\",\n      \"localSessionId\": \"tab-1/local/document\",\n      \"applicationName\": null,\n      \"name\": \"document\",\n      \"currentState\": \"editing\",\n      \"status\": \"active\",\n      \"childCount\": 0\n    }\n  ],\n  \"totalActors\": 2\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [
+            {
+              "sessionId": "tab-1/workspace",
+              "connectionId": "tab-1/connection",
+              "localSessionId": "tab-1/local/workspace",
+              "applicationName": null,
+              "name": "workspace",
+              "currentState": "open",
+              "status": "active",
+              "childCount": 1
+            },
+            {
+              "sessionId": "tab-1/document",
+              "connectionId": "tab-1/connection",
+              "localSessionId": "tab-1/local/document",
+              "applicationName": null,
+              "name": "document",
+              "currentState": "editing",
+              "status": "active",
+              "childCount": 0
+            }
+          ],
+          "totalActors": 2
+        }
+      }
+    },
+    {
+      "step": 3,
+      "elapsedMs": 371,
+      "kind": "mcp",
+      "tool": "get_connection_health",
+      "arguments": {
+        "connectionId": "tab-1/connection"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sampledAt\": \"2026-09-08T04:38:05.659Z\",\n  \"supportedProtocolVersions\": [\n    1\n  ],\n  \"heartbeatIntervalMs\": 15000,\n  \"staleAfterMs\": 45000,\n  \"listener\": {\n    \"state\": \"listening\",\n    \"endpoint\": {\n      \"host\": \"127.0.0.1\",\n      \"port\": 50518,\n      \"url\": \"ws://127.0.0.1:50518\"\n    },\n    \"errorCode\": null\n  },\n  \"totals\": {\n    \"connectedClients\": 1,\n    \"clientsWithActors\": 1,\n    \"staleClients\": 0,\n    \"registeredSessions\": 2,\n    \"acceptedConnections\": 1,\n    \"closedConnections\": 0,\n    \"rejectedConnections\": 0,\n    \"lastDisconnectedAt\": null\n  },\n  \"counters\": {\n    \"receivedFrames\": 7,\n    \"acceptedInspectionFrames\": 6,\n    \"rejectedFrames\": 0,\n    \"ignoredFrames\": 0,\n    \"transportErrors\": 0,\n    \"unsupportedCommands\": 0,\n    \"commandTimeouts\": 0\n  },\n  \"connections\": [\n    {\n      \"connectionId\": \"tab-1/connection\",\n      \"application\": {\n        \"name\": \"Release note demo\"\n      },\n      \"adapter\": {\n        \"name\": \"frontend-demo\",\n        \"version\": \"1\"\n      },\n      \"negotiation\": \"negotiated\",\n      \"offeredProtocolVersion\": 1,\n      \"protocolVersion\": 1,\n      \"commands\": [\n        \"send_event\"\n      ],\n      \"actorCount\": 2,\n      \"connectedAt\": \"2026-09-08T04:38:05.334Z\",\n      \"lastActivityAt\": \"2026-09-08T04:38:05.543Z\",\n      \"lastInspectionAt\": \"2026-09-08T04:38:05.544Z\",\n      \"activityAgeMs\": 115.62037499999997,\n      \"inspectionAgeMs\": 115.01441699999998,\n      \"freshness\": \"fresh\",\n      \"counters\": {\n        \"receivedFrames\": 7,\n        \"acceptedInspectionFrames\": 6,\n        \"rejectedFrames\": 0,\n        \"ignoredFrames\": 0,\n        \"transportErrors\": 0,\n        \"unsupportedCommands\": 0,\n        \"commandTimeouts\": 0\n      },\n      \"lastRejection\": null,\n      \"lastRejectedAt\": null\n    }\n  ],\n  \"omittedConnections\": 0,\n  \"nextOffset\": null\n}"
+          }
+        ],
+        "structuredContent": {
+          "sampledAt": "2026-09-08T04:38:05.659Z",
+          "supportedProtocolVersions": [
+            1
+          ],
+          "heartbeatIntervalMs": 15000,
+          "staleAfterMs": 45000,
+          "listener": {
+            "state": "listening",
+            "endpoint": {
+              "host": "127.0.0.1",
+              "port": 50518,
+              "url": "ws://127.0.0.1:50518"
+            },
+            "errorCode": null
+          },
+          "totals": {
+            "connectedClients": 1,
+            "clientsWithActors": 1,
+            "staleClients": 0,
+            "registeredSessions": 2,
+            "acceptedConnections": 1,
+            "closedConnections": 0,
+            "rejectedConnections": 0,
+            "lastDisconnectedAt": null
+          },
+          "counters": {
+            "receivedFrames": 7,
+            "acceptedInspectionFrames": 6,
+            "rejectedFrames": 0,
+            "ignoredFrames": 0,
+            "transportErrors": 0,
+            "unsupportedCommands": 0,
+            "commandTimeouts": 0
+          },
+          "connections": [
+            {
+              "connectionId": "tab-1/connection",
+              "application": {
+                "name": "Release note demo"
+              },
+              "adapter": {
+                "name": "frontend-demo",
+                "version": "1"
+              },
+              "negotiation": "negotiated",
+              "offeredProtocolVersion": 1,
+              "protocolVersion": 1,
+              "commands": [
+                "send_event"
+              ],
+              "actorCount": 2,
+              "connectedAt": "2026-09-08T04:38:05.334Z",
+              "lastActivityAt": "2026-09-08T04:38:05.543Z",
+              "lastInspectionAt": "2026-09-08T04:38:05.544Z",
+              "activityAgeMs": 115.62037499999997,
+              "inspectionAgeMs": 115.01441699999998,
+              "freshness": "fresh",
+              "counters": {
+                "receivedFrames": 7,
+                "acceptedInspectionFrames": 6,
+                "rejectedFrames": 0,
+                "ignoredFrames": 0,
+                "transportErrors": 0,
+                "unsupportedCommands": 0,
+                "commandTimeouts": 0
+              },
+              "lastRejection": null,
+              "lastRejectedAt": null
+            }
+          ],
+          "omittedConnections": 0,
+          "nextOffset": null
+        }
+      }
+    },
+    {
+      "step": 4,
+      "elapsedMs": 373,
+      "kind": "mcp",
+      "tool": "get_actor_tree",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"tree\": [\n    {\n      \"sessionId\": \"tab-1/workspace\",\n      \"connectionId\": \"tab-1/connection\",\n      \"localSessionId\": \"tab-1/local/workspace\",\n      \"applicationName\": null,\n      \"name\": \"workspace\",\n      \"state\": \"open\",\n      \"status\": \"active\",\n      \"children\": [\n        {\n          \"sessionId\": \"tab-1/document\",\n          \"connectionId\": \"tab-1/connection\",\n          \"localSessionId\": \"tab-1/local/document\",\n          \"applicationName\": null,\n          \"name\": \"document\",\n          \"state\": \"editing\",\n          \"status\": \"active\",\n          \"children\": []\n        }\n      ]\n    }\n  ],\n  \"totalActors\": 2\n}"
+          }
+        ],
+        "structuredContent": {
+          "tree": [
+            {
+              "sessionId": "tab-1/workspace",
+              "connectionId": "tab-1/connection",
+              "localSessionId": "tab-1/local/workspace",
+              "applicationName": null,
+              "name": "workspace",
+              "state": "open",
+              "status": "active",
+              "children": [
+                {
+                  "sessionId": "tab-1/document",
+                  "connectionId": "tab-1/connection",
+                  "localSessionId": "tab-1/local/document",
+                  "applicationName": null,
+                  "name": "document",
+                  "state": "editing",
+                  "status": "active",
+                  "children": []
+                }
+              ]
+            }
+          ],
+          "totalActors": 2
+        }
+      }
+    },
+    {
+      "step": 5,
+      "elapsedMs": 374,
+      "kind": "mcp",
+      "tool": "get_machine_definition",
+      "arguments": {
+        "sessionId": "tab-1/workspace"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/workspace\",\n  \"name\": \"workspace\",\n  \"definition\": {\n    \"id\": \"workspace\",\n    \"key\": \"workspace\",\n    \"type\": \"compound\",\n    \"initial\": {\n      \"target\": [\n        \"[OMITTED]\"\n      ],\n      \"source\": \"[OMITTED]\",\n      \"actions\": [],\n      \"eventType\": null,\n      \"reenter\": false,\n      \"toJSON\": \"[OMITTED]\"\n    },\n    \"history\": false,\n    \"states\": {\n      \"open\": {\n        \"id\": \"workspace.open\",\n        \"key\": \"open\",\n        \"type\": \"atomic\",\n        \"initial\": {\n          \"target\": [],\n          \"source\": \"[OMITTED]\",\n          \"actions\": [],\n          \"eventType\": null,\n          \"reenter\": false,\n          \"toJSON\": \"[OMITTED]\"\n        },\n        \"history\": false,\n        \"states\": {},\n        \"on\": {},\n        \"transitions\": [],\n        \"entry\": [],\n        \"exit\": [],\n        \"order\": 1,\n        \"invoke\": [\n          {\n            \"id\": \"document\",\n            \"src\": \"document\",\n            \"systemId\": \"document\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"tags\": []\n      }\n    },\n    \"on\": {},\n    \"transitions\": [],\n    \"entry\": [],\n    \"exit\": [],\n    \"order\": -1,\n    \"invoke\": [],\n    \"tags\": []\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/workspace",
+          "name": "workspace",
+          "definition": {
+            "id": "workspace",
+            "key": "workspace",
+            "type": "compound",
+            "initial": {
+              "target": [
+                "[OMITTED]"
+              ],
+              "source": "[OMITTED]",
+              "actions": [],
+              "eventType": null,
+              "reenter": false,
+              "toJSON": "[OMITTED]"
+            },
+            "history": false,
+            "states": {
+              "open": {
+                "id": "workspace.open",
+                "key": "open",
+                "type": "atomic",
+                "initial": {
+                  "target": [],
+                  "source": "[OMITTED]",
+                  "actions": [],
+                  "eventType": null,
+                  "reenter": false,
+                  "toJSON": "[OMITTED]"
+                },
+                "history": false,
+                "states": {},
+                "on": {},
+                "transitions": [],
+                "entry": [],
+                "exit": [],
+                "order": 1,
+                "invoke": [
+                  {
+                    "id": "document",
+                    "src": "document",
+                    "systemId": "document",
+                    "toJSON": "[OMITTED]"
+                  }
+                ],
+                "tags": []
+              }
+            },
+            "on": {},
+            "transitions": [],
+            "entry": [],
+            "exit": [],
+            "order": -1,
+            "invoke": [],
+            "tags": []
+          }
+        }
+      }
+    },
+    {
+      "step": 6,
+      "elapsedMs": 375,
+      "kind": "mcp",
+      "tool": "get_machine_definition",
+      "arguments": {
+        "sessionId": "tab-1/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"name\": \"document\",\n  \"definition\": {\n    \"id\": \"document\",\n    \"key\": \"document\",\n    \"type\": \"compound\",\n    \"initial\": {\n      \"target\": [\n        \"[OMITTED]\"\n      ],\n      \"source\": \"[OMITTED]\",\n      \"actions\": [],\n      \"eventType\": null,\n      \"reenter\": false,\n      \"toJSON\": \"[OMITTED]\"\n    },\n    \"history\": false,\n    \"states\": {\n      \"loading\": {\n        \"id\": \"document.loading\",\n        \"key\": \"loading\",\n        \"type\": \"atomic\",\n        \"initial\": {\n          \"target\": [],\n          \"source\": \"[OMITTED]\",\n          \"actions\": [],\n          \"eventType\": null,\n          \"reenter\": false,\n          \"toJSON\": \"[OMITTED]\"\n        },\n        \"history\": false,\n        \"states\": {},\n        \"on\": {\n          \"xstate.done.actor.loadDraft\": [\n            {\n              \"target\": [\n                \"[OMITTED]\"\n              ],\n              \"actions\": [\n                \"[OMITTED]\"\n              ],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"xstate.done.actor.loadDraft\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ],\n          \"xstate.error.actor.loadDraft\": [\n            {\n              \"target\": [\n                \"[OMITTED]\"\n              ],\n              \"actions\": [\n                \"[OMITTED]\"\n              ],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"xstate.error.actor.loadDraft\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ]\n        },\n        \"transitions\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              {\n                \"type\": \"xstate.assign\"\n              }\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"xstate.done.actor.loadDraft\",\n            \"toJSON\": \"[OMITTED]\"\n          },\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              {\n                \"type\": \"xstate.assign\"\n              }\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"xstate.error.actor.loadDraft\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"entry\": [],\n        \"exit\": [],\n        \"order\": 1,\n        \"invoke\": [\n          {\n            \"id\": \"loadDraft\",\n            \"src\": \"loadDraft\",\n            \"onDone\": {\n              \"target\": \"editing\",\n              \"actions\": \"[OMITTED]\"\n            },\n            \"onError\": {\n              \"target\": \"loadError\",\n              \"actions\": \"[OMITTED]\"\n            },\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"tags\": []\n      },\n      \"loadError\": {\n        \"id\": \"document.loadError\",\n        \"key\": \"loadError\",\n        \"type\": \"atomic\",\n        \"initial\": {\n          \"target\": [],\n          \"source\": \"[OMITTED]\",\n          \"actions\": [],\n          \"eventType\": null,\n          \"reenter\": false,\n          \"toJSON\": \"[OMITTED]\"\n        },\n        \"history\": false,\n        \"states\": {},\n        \"on\": {\n          \"RETRY\": [\n            {\n              \"target\": [\n                \"[OMITTED]\"\n              ],\n              \"actions\": [],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"RETRY\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ]\n        },\n        \"transitions\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"RETRY\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"entry\": [],\n        \"exit\": [],\n        \"order\": 2,\n        \"invoke\": [],\n        \"tags\": []\n      },\n      \"editing\": {\n        \"id\": \"document.editing\",\n        \"key\": \"editing\",\n        \"type\": \"atomic\",\n        \"initial\": {\n          \"target\": [],\n          \"source\": \"[OMITTED]\",\n          \"actions\": [],\n          \"eventType\": null,\n          \"reenter\": false,\n          \"toJSON\": \"[OMITTED]\"\n        },\n        \"history\": false,\n        \"states\": {},\n        \"on\": {\n          \"CHANGE_TITLE\": [\n            {\n              \"actions\": [\n                \"changeTitle\"\n              ],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"CHANGE_TITLE\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ],\n          \"CHANGE_BODY\": [\n            {\n              \"actions\": [\n                \"changeBody\"\n              ],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"CHANGE_BODY\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ],\n          \"SAVE\": [\n            {\n              \"target\": [\n                \"[OMITTED]\"\n              ],\n              \"guard\": \"hasTitle\",\n              \"actions\": [],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"SAVE\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ]\n        },\n        \"transitions\": [\n          {\n            \"actions\": [\n              {\n                \"type\": \"changeTitle\"\n              }\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_TITLE\",\n            \"toJSON\": \"[OMITTED]\"\n          },\n          {\n            \"actions\": [\n              {\n                \"type\": \"changeBody\"\n              }\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_BODY\",\n            \"toJSON\": \"[OMITTED]\"\n          },\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"guard\": \"hasTitle\",\n            \"actions\": [],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"SAVE\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"entry\": [],\n        \"exit\": [],\n        \"order\": 3,\n        \"invoke\": [],\n        \"tags\": []\n      },\n      \"saving\": {\n        \"id\": \"document.saving\",\n        \"key\": \"saving\",\n        \"type\": \"atomic\",\n        \"initial\": {\n          \"target\": [],\n          \"source\": \"[OMITTED]\",\n          \"actions\": [],\n          \"eventType\": null,\n          \"reenter\": false,\n          \"toJSON\": \"[OMITTED]\"\n        },\n        \"history\": false,\n        \"states\": {},\n        \"on\": {\n          \"xstate.done.actor.saveDraft\": [\n            {\n              \"target\": [\n                \"[OMITTED]\"\n              ],\n              \"actions\": [\n                \"[OMITTED]\"\n              ],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"xstate.done.actor.saveDraft\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ],\n          \"xstate.error.actor.saveDraft\": [\n            {\n              \"target\": [\n                \"[OMITTED]\"\n              ],\n              \"actions\": [\n                \"[OMITTED]\"\n              ],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"xstate.error.actor.saveDraft\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ]\n        },\n        \"transitions\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              {\n                \"type\": \"xstate.assign\"\n              }\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"xstate.done.actor.saveDraft\",\n            \"toJSON\": \"[OMITTED]\"\n          },\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              {\n                \"type\": \"xstate.assign\"\n              }\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"xstate.error.actor.saveDraft\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"entry\": [\n          {\n            \"type\": \"xstate.assign\"\n          }\n        ],\n        \"exit\": [],\n        \"order\": 4,\n        \"invoke\": [\n          {\n            \"id\": \"saveDraft\",\n            \"src\": \"saveDraft\",\n            \"input\": \"[OMITTED]\",\n            \"onDone\": {\n              \"target\": \"saved\",\n              \"actions\": \"[OMITTED]\"\n            },\n            \"onError\": {\n              \"target\": \"error\",\n              \"actions\": \"[OMITTED]\"\n            },\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"tags\": []\n      },\n      \"error\": {\n        \"id\": \"document.error\",\n        \"key\": \"error\",\n        \"type\": \"atomic\",\n        \"initial\": {\n          \"target\": [],\n          \"source\": \"[OMITTED]\",\n          \"actions\": [],\n          \"eventType\": null,\n          \"reenter\": false,\n          \"toJSON\": \"[OMITTED]\"\n        },\n        \"history\": false,\n        \"states\": {},\n        \"on\": {\n          \"RETRY\": [\n            {\n              \"target\": [\n                \"[OMITTED]\"\n              ],\n              \"actions\": [],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"RETRY\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ],\n          \"CHANGE_TITLE\": [\n            {\n              \"target\": [\n                \"[OMITTED]\"\n              ],\n              \"actions\": [\n                \"changeTitle\"\n              ],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"CHANGE_TITLE\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ],\n          \"CHANGE_BODY\": [\n            {\n              \"target\": [\n                \"[OMITTED]\"\n              ],\n              \"actions\": [\n                \"changeBody\"\n              ],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"CHANGE_BODY\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ]\n        },\n        \"transitions\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"RETRY\",\n            \"toJSON\": \"[OMITTED]\"\n          },\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              {\n                \"type\": \"changeTitle\"\n              }\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_TITLE\",\n            \"toJSON\": \"[OMITTED]\"\n          },\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              {\n                \"type\": \"changeBody\"\n              }\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_BODY\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"entry\": [],\n        \"exit\": [],\n        \"order\": 5,\n        \"invoke\": [],\n        \"tags\": []\n      },\n      \"saved\": {\n        \"id\": \"document.saved\",\n        \"key\": \"saved\",\n        \"type\": \"atomic\",\n        \"initial\": {\n          \"target\": [],\n          \"source\": \"[OMITTED]\",\n          \"actions\": [],\n          \"eventType\": null,\n          \"reenter\": false,\n          \"toJSON\": \"[OMITTED]\"\n        },\n        \"history\": false,\n        \"states\": {},\n        \"on\": {\n          \"CHANGE_TITLE\": [\n            {\n              \"target\": [\n                \"[OMITTED]\"\n              ],\n              \"actions\": [\n                \"changeTitle\"\n              ],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"CHANGE_TITLE\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ],\n          \"CHANGE_BODY\": [\n            {\n              \"target\": [\n                \"[OMITTED]\"\n              ],\n              \"actions\": [\n                \"changeBody\"\n              ],\n              \"source\": \"[OMITTED]\",\n              \"reenter\": false,\n              \"eventType\": \"CHANGE_BODY\",\n              \"toJSON\": \"[OMITTED]\"\n            }\n          ]\n        },\n        \"transitions\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              {\n                \"type\": \"changeTitle\"\n              }\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_TITLE\",\n            \"toJSON\": \"[OMITTED]\"\n          },\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              {\n                \"type\": \"changeBody\"\n              }\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_BODY\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"entry\": [],\n        \"exit\": [],\n        \"order\": 6,\n        \"invoke\": [],\n        \"tags\": []\n      }\n    },\n    \"on\": {},\n    \"transitions\": [],\n    \"entry\": [],\n    \"exit\": [],\n    \"order\": -1,\n    \"invoke\": [],\n    \"tags\": []\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "name": "document",
+          "definition": {
+            "id": "document",
+            "key": "document",
+            "type": "compound",
+            "initial": {
+              "target": [
+                "[OMITTED]"
+              ],
+              "source": "[OMITTED]",
+              "actions": [],
+              "eventType": null,
+              "reenter": false,
+              "toJSON": "[OMITTED]"
+            },
+            "history": false,
+            "states": {
+              "loading": {
+                "id": "document.loading",
+                "key": "loading",
+                "type": "atomic",
+                "initial": {
+                  "target": [],
+                  "source": "[OMITTED]",
+                  "actions": [],
+                  "eventType": null,
+                  "reenter": false,
+                  "toJSON": "[OMITTED]"
+                },
+                "history": false,
+                "states": {},
+                "on": {
+                  "xstate.done.actor.loadDraft": [
+                    {
+                      "target": [
+                        "[OMITTED]"
+                      ],
+                      "actions": [
+                        "[OMITTED]"
+                      ],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "xstate.done.actor.loadDraft",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ],
+                  "xstate.error.actor.loadDraft": [
+                    {
+                      "target": [
+                        "[OMITTED]"
+                      ],
+                      "actions": [
+                        "[OMITTED]"
+                      ],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "xstate.error.actor.loadDraft",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ]
+                },
+                "transitions": [
+                  {
+                    "target": [
+                      "[OMITTED]"
+                    ],
+                    "actions": [
+                      {
+                        "type": "xstate.assign"
+                      }
+                    ],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "xstate.done.actor.loadDraft",
+                    "toJSON": "[OMITTED]"
+                  },
+                  {
+                    "target": [
+                      "[OMITTED]"
+                    ],
+                    "actions": [
+                      {
+                        "type": "xstate.assign"
+                      }
+                    ],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "xstate.error.actor.loadDraft",
+                    "toJSON": "[OMITTED]"
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "order": 1,
+                "invoke": [
+                  {
+                    "id": "loadDraft",
+                    "src": "loadDraft",
+                    "onDone": {
+                      "target": "editing",
+                      "actions": "[OMITTED]"
+                    },
+                    "onError": {
+                      "target": "loadError",
+                      "actions": "[OMITTED]"
+                    },
+                    "toJSON": "[OMITTED]"
+                  }
+                ],
+                "tags": []
+              },
+              "loadError": {
+                "id": "document.loadError",
+                "key": "loadError",
+                "type": "atomic",
+                "initial": {
+                  "target": [],
+                  "source": "[OMITTED]",
+                  "actions": [],
+                  "eventType": null,
+                  "reenter": false,
+                  "toJSON": "[OMITTED]"
+                },
+                "history": false,
+                "states": {},
+                "on": {
+                  "RETRY": [
+                    {
+                      "target": [
+                        "[OMITTED]"
+                      ],
+                      "actions": [],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "RETRY",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ]
+                },
+                "transitions": [
+                  {
+                    "target": [
+                      "[OMITTED]"
+                    ],
+                    "actions": [],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "RETRY",
+                    "toJSON": "[OMITTED]"
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "order": 2,
+                "invoke": [],
+                "tags": []
+              },
+              "editing": {
+                "id": "document.editing",
+                "key": "editing",
+                "type": "atomic",
+                "initial": {
+                  "target": [],
+                  "source": "[OMITTED]",
+                  "actions": [],
+                  "eventType": null,
+                  "reenter": false,
+                  "toJSON": "[OMITTED]"
+                },
+                "history": false,
+                "states": {},
+                "on": {
+                  "CHANGE_TITLE": [
+                    {
+                      "actions": [
+                        "changeTitle"
+                      ],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "CHANGE_TITLE",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ],
+                  "CHANGE_BODY": [
+                    {
+                      "actions": [
+                        "changeBody"
+                      ],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "CHANGE_BODY",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ],
+                  "SAVE": [
+                    {
+                      "target": [
+                        "[OMITTED]"
+                      ],
+                      "guard": "hasTitle",
+                      "actions": [],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "SAVE",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ]
+                },
+                "transitions": [
+                  {
+                    "actions": [
+                      {
+                        "type": "changeTitle"
+                      }
+                    ],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "CHANGE_TITLE",
+                    "toJSON": "[OMITTED]"
+                  },
+                  {
+                    "actions": [
+                      {
+                        "type": "changeBody"
+                      }
+                    ],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "CHANGE_BODY",
+                    "toJSON": "[OMITTED]"
+                  },
+                  {
+                    "target": [
+                      "[OMITTED]"
+                    ],
+                    "guard": "hasTitle",
+                    "actions": [],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "SAVE",
+                    "toJSON": "[OMITTED]"
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "order": 3,
+                "invoke": [],
+                "tags": []
+              },
+              "saving": {
+                "id": "document.saving",
+                "key": "saving",
+                "type": "atomic",
+                "initial": {
+                  "target": [],
+                  "source": "[OMITTED]",
+                  "actions": [],
+                  "eventType": null,
+                  "reenter": false,
+                  "toJSON": "[OMITTED]"
+                },
+                "history": false,
+                "states": {},
+                "on": {
+                  "xstate.done.actor.saveDraft": [
+                    {
+                      "target": [
+                        "[OMITTED]"
+                      ],
+                      "actions": [
+                        "[OMITTED]"
+                      ],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "xstate.done.actor.saveDraft",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ],
+                  "xstate.error.actor.saveDraft": [
+                    {
+                      "target": [
+                        "[OMITTED]"
+                      ],
+                      "actions": [
+                        "[OMITTED]"
+                      ],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "xstate.error.actor.saveDraft",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ]
+                },
+                "transitions": [
+                  {
+                    "target": [
+                      "[OMITTED]"
+                    ],
+                    "actions": [
+                      {
+                        "type": "xstate.assign"
+                      }
+                    ],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "xstate.done.actor.saveDraft",
+                    "toJSON": "[OMITTED]"
+                  },
+                  {
+                    "target": [
+                      "[OMITTED]"
+                    ],
+                    "actions": [
+                      {
+                        "type": "xstate.assign"
+                      }
+                    ],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "xstate.error.actor.saveDraft",
+                    "toJSON": "[OMITTED]"
+                  }
+                ],
+                "entry": [
+                  {
+                    "type": "xstate.assign"
+                  }
+                ],
+                "exit": [],
+                "order": 4,
+                "invoke": [
+                  {
+                    "id": "saveDraft",
+                    "src": "saveDraft",
+                    "input": "[OMITTED]",
+                    "onDone": {
+                      "target": "saved",
+                      "actions": "[OMITTED]"
+                    },
+                    "onError": {
+                      "target": "error",
+                      "actions": "[OMITTED]"
+                    },
+                    "toJSON": "[OMITTED]"
+                  }
+                ],
+                "tags": []
+              },
+              "error": {
+                "id": "document.error",
+                "key": "error",
+                "type": "atomic",
+                "initial": {
+                  "target": [],
+                  "source": "[OMITTED]",
+                  "actions": [],
+                  "eventType": null,
+                  "reenter": false,
+                  "toJSON": "[OMITTED]"
+                },
+                "history": false,
+                "states": {},
+                "on": {
+                  "RETRY": [
+                    {
+                      "target": [
+                        "[OMITTED]"
+                      ],
+                      "actions": [],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "RETRY",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ],
+                  "CHANGE_TITLE": [
+                    {
+                      "target": [
+                        "[OMITTED]"
+                      ],
+                      "actions": [
+                        "changeTitle"
+                      ],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "CHANGE_TITLE",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ],
+                  "CHANGE_BODY": [
+                    {
+                      "target": [
+                        "[OMITTED]"
+                      ],
+                      "actions": [
+                        "changeBody"
+                      ],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "CHANGE_BODY",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ]
+                },
+                "transitions": [
+                  {
+                    "target": [
+                      "[OMITTED]"
+                    ],
+                    "actions": [],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "RETRY",
+                    "toJSON": "[OMITTED]"
+                  },
+                  {
+                    "target": [
+                      "[OMITTED]"
+                    ],
+                    "actions": [
+                      {
+                        "type": "changeTitle"
+                      }
+                    ],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "CHANGE_TITLE",
+                    "toJSON": "[OMITTED]"
+                  },
+                  {
+                    "target": [
+                      "[OMITTED]"
+                    ],
+                    "actions": [
+                      {
+                        "type": "changeBody"
+                      }
+                    ],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "CHANGE_BODY",
+                    "toJSON": "[OMITTED]"
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "order": 5,
+                "invoke": [],
+                "tags": []
+              },
+              "saved": {
+                "id": "document.saved",
+                "key": "saved",
+                "type": "atomic",
+                "initial": {
+                  "target": [],
+                  "source": "[OMITTED]",
+                  "actions": [],
+                  "eventType": null,
+                  "reenter": false,
+                  "toJSON": "[OMITTED]"
+                },
+                "history": false,
+                "states": {},
+                "on": {
+                  "CHANGE_TITLE": [
+                    {
+                      "target": [
+                        "[OMITTED]"
+                      ],
+                      "actions": [
+                        "changeTitle"
+                      ],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "CHANGE_TITLE",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ],
+                  "CHANGE_BODY": [
+                    {
+                      "target": [
+                        "[OMITTED]"
+                      ],
+                      "actions": [
+                        "changeBody"
+                      ],
+                      "source": "[OMITTED]",
+                      "reenter": false,
+                      "eventType": "CHANGE_BODY",
+                      "toJSON": "[OMITTED]"
+                    }
+                  ]
+                },
+                "transitions": [
+                  {
+                    "target": [
+                      "[OMITTED]"
+                    ],
+                    "actions": [
+                      {
+                        "type": "changeTitle"
+                      }
+                    ],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "CHANGE_TITLE",
+                    "toJSON": "[OMITTED]"
+                  },
+                  {
+                    "target": [
+                      "[OMITTED]"
+                    ],
+                    "actions": [
+                      {
+                        "type": "changeBody"
+                      }
+                    ],
+                    "source": "[OMITTED]",
+                    "reenter": false,
+                    "eventType": "CHANGE_BODY",
+                    "toJSON": "[OMITTED]"
+                  }
+                ],
+                "entry": [],
+                "exit": [],
+                "order": 6,
+                "invoke": [],
+                "tags": []
+              }
+            },
+            "on": {},
+            "transitions": [],
+            "entry": [],
+            "exit": [],
+            "order": -1,
+            "invoke": [],
+            "tags": []
+          }
+        }
+      }
+    },
+    {
+      "step": 7,
+      "elapsedMs": 377,
+      "kind": "mcp",
+      "tool": "wait_for_state",
+      "arguments": {
+        "sessionId": "tab-1/document",
+        "state": "editing",
+        "timeoutMs": 4000
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"outcome\": \"matched\",\n  \"startedAt\": \"2026-09-08T04:38:05.667Z\",\n  \"completedAt\": \"2026-09-08T04:38:05.667Z\",\n  \"elapsedMs\": 0,\n  \"cursor\": {\n    \"generation\": \"55c034da-d43a-47db-8883-898ecd59d6e7\",\n    \"snapshot\": 2,\n    \"event\": 2\n  },\n  \"snapshot\": {\n    \"status\": \"active\",\n    \"value\": \"editing\",\n    \"context\": {\n      \"title\": \"A little room for good ideas\",\n      \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n      \"saved\": null,\n      \"attempts\": 0,\n      \"revision\": 0,\n      \"error\": null,\n      \"draftAccessToken\": \"[REDACTED]\"\n    }\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "outcome": "matched",
+          "startedAt": "2026-09-08T04:38:05.667Z",
+          "completedAt": "2026-09-08T04:38:05.667Z",
+          "elapsedMs": 0,
+          "cursor": {
+            "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+            "snapshot": 2,
+            "event": 2
+          },
+          "snapshot": {
+            "status": "active",
+            "value": "editing",
+            "context": {
+              "title": "A little room for good ideas",
+              "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing.",
+              "saved": null,
+              "attempts": 0,
+              "revision": 0,
+              "error": null,
+              "draftAccessToken": "[REDACTED]"
+            }
+          }
+        },
+        "isError": false
+      }
+    },
+    {
+      "step": 8,
+      "elapsedMs": 381,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-1/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"connectionId\": \"tab-1/connection\",\n  \"localSessionId\": \"tab-1/local/document\",\n  \"applicationName\": null,\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"editing\",\n  \"context\": {\n    \"title\": \"A little room for good ideas\",\n    \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null,\n    \"draftAccessToken\": \"[REDACTED]\"\n  },\n  \"output\": null,\n  \"error\": null,\n  \"parentId\": \"tab-1/workspace\",\n  \"updatedAt\": \"2026-09-08T04:38:05.543Z\",\n  \"cursor\": {\n    \"generation\": \"55c034da-d43a-47db-8883-898ecd59d6e7\",\n    \"snapshot\": 2,\n    \"event\": 2\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "connectionId": "tab-1/connection",
+          "localSessionId": "tab-1/local/document",
+          "applicationName": null,
+          "name": "document",
+          "status": "active",
+          "value": "editing",
+          "context": {
+            "title": "A little room for good ideas",
+            "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing.",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null,
+            "draftAccessToken": "[REDACTED]"
+          },
+          "output": null,
+          "error": null,
+          "parentId": "tab-1/workspace",
+          "updatedAt": "2026-09-08T04:38:05.543Z",
+          "cursor": {
+            "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+            "snapshot": 2,
+            "event": 2
+          }
+        }
+      }
+    },
+    {
+      "step": 9,
+      "elapsedMs": 498,
+      "kind": "browser",
+      "label": "Loaded document actor matches editable UI",
+      "screenshot": "01-editor.png",
+      "state": "document · editing",
+      "title": "A little room for good ideas"
+    },
+    {
+      "step": 10,
+      "elapsedMs": 504,
+      "kind": "browser-action",
+      "action": "Edit title",
+      "value": "A calmer place for your next idea"
+    },
+    {
+      "step": 11,
+      "elapsedMs": 504,
+      "kind": "mcp",
+      "tool": "get_actor_state",
+      "arguments": {
+        "sessionId": "tab-1/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"connectionId\": \"tab-1/connection\",\n  \"localSessionId\": \"tab-1/local/document\",\n  \"applicationName\": null,\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"editing\",\n  \"context\": {\n    \"title\": \"A calmer place for your next idea\",\n    \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n    \"saved\": null,\n    \"attempts\": 0,\n    \"revision\": 0,\n    \"error\": null,\n    \"draftAccessToken\": \"[REDACTED]\"\n  },\n  \"output\": null,\n  \"error\": null,\n  \"parentId\": \"tab-1/workspace\",\n  \"updatedAt\": \"2026-09-08T04:38:05.792Z\",\n  \"cursor\": {\n    \"generation\": \"55c034da-d43a-47db-8883-898ecd59d6e7\",\n    \"snapshot\": 3,\n    \"event\": 3\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "connectionId": "tab-1/connection",
+          "localSessionId": "tab-1/local/document",
+          "applicationName": null,
+          "name": "document",
+          "status": "active",
+          "value": "editing",
+          "context": {
+            "title": "A calmer place for your next idea",
+            "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing.",
+            "saved": null,
+            "attempts": 0,
+            "revision": 0,
+            "error": null,
+            "draftAccessToken": "[REDACTED]"
+          },
+          "output": null,
+          "error": null,
+          "parentId": "tab-1/workspace",
+          "updatedAt": "2026-09-08T04:38:05.792Z",
+          "cursor": {
+            "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+            "snapshot": 3,
+            "event": 3
+          }
+        }
+      }
+    },
+    {
+      "step": 12,
+      "elapsedMs": 505,
+      "kind": "mcp",
+      "tool": "can_handle_event",
+      "arguments": {
+        "sessionId": "tab-1/document",
+        "eventType": "SAVE"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"canHandle\": null,\n  \"reason\": \"guard_not_evaluated\",\n  \"matchedTransitions\": [\n    \"editing.on.SAVE\"\n  ],\n  \"blockedTransitions\": [],\n  \"analysis\": \"static\",\n  \"currentState\": \"editing\",\n  \"note\": \"Static evidence from the supplied definition and snapshot; guards are not evaluated and serialization may omit them. null means unknown. A structural match does not guarantee a transition; verify state after sending the full event.\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "canHandle": null,
+          "reason": "guard_not_evaluated",
+          "matchedTransitions": [
+            "editing.on.SAVE"
+          ],
+          "blockedTransitions": [],
+          "analysis": "static",
+          "currentState": "editing",
+          "note": "Static evidence from the supplied definition and snapshot; guards are not evaluated and serialization may omit them. null means unknown. A structural match does not guarantee a transition; verify state after sending the full event."
+        }
+      }
+    },
+    {
+      "step": 13,
+      "elapsedMs": 507,
+      "kind": "mcp",
+      "tool": "send_event",
+      "arguments": {
+        "target": "tab-1/document",
+        "event": {
+          "type": "SAVE"
+        }
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"event\": {\n    \"type\": \"SAVE\"\n  },\n  \"success\": true\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "event": {
+            "type": "SAVE"
+          },
+          "success": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "step": 14,
+      "elapsedMs": 509,
+      "kind": "mcp",
+      "tool": "wait_for_event",
+      "arguments": {
+        "sessionId": "tab-1/document",
+        "eventType": "SAVE",
+        "after": {
+          "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+          "snapshot": 3,
+          "event": 3
+        },
+        "timeoutMs": 4000
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"outcome\": \"matched\",\n  \"startedAt\": \"2026-09-08T04:38:05.799Z\",\n  \"completedAt\": \"2026-09-08T04:38:05.799Z\",\n  \"elapsedMs\": 0,\n  \"cursor\": {\n    \"generation\": \"55c034da-d43a-47db-8883-898ecd59d6e7\",\n    \"snapshot\": 4,\n    \"event\": 4\n  },\n  \"event\": {\n    \"sequence\": 4,\n    \"event\": {\n      \"type\": \"SAVE\"\n    },\n    \"sourceId\": null,\n    \"createdAt\": \"2026-09-08T04:38:05.797Z\"\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "outcome": "matched",
+          "startedAt": "2026-09-08T04:38:05.799Z",
+          "completedAt": "2026-09-08T04:38:05.799Z",
+          "elapsedMs": 0,
+          "cursor": {
+            "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+            "snapshot": 4,
+            "event": 4
+          },
+          "event": {
+            "sequence": 4,
+            "event": {
+              "type": "SAVE"
+            },
+            "sourceId": null,
+            "createdAt": "2026-09-08T04:38:05.797Z"
+          }
+        },
+        "isError": false
+      }
+    },
+    {
+      "step": 15,
+      "elapsedMs": 876,
+      "kind": "mcp",
+      "tool": "wait_for_state",
+      "arguments": {
+        "sessionId": "tab-1/document",
+        "state": "error",
+        "after": {
+          "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+          "snapshot": 3,
+          "event": 3
+        },
+        "timeoutMs": 4000
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"outcome\": \"matched\",\n  \"startedAt\": \"2026-09-08T04:38:05.800Z\",\n  \"completedAt\": \"2026-09-08T04:38:06.166Z\",\n  \"elapsedMs\": 367,\n  \"cursor\": {\n    \"generation\": \"55c034da-d43a-47db-8883-898ecd59d6e7\",\n    \"snapshot\": 5,\n    \"event\": 5\n  },\n  \"snapshot\": {\n    \"status\": \"active\",\n    \"value\": \"error\",\n    \"context\": {\n      \"title\": \"A calmer place for your next idea\",\n      \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n      \"saved\": null,\n      \"attempts\": 1,\n      \"revision\": 0,\n      \"error\": \"The demo service declined this save. Your draft is still here.\",\n      \"draftAccessToken\": \"[REDACTED]\"\n    }\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "outcome": "matched",
+          "startedAt": "2026-09-08T04:38:05.800Z",
+          "completedAt": "2026-09-08T04:38:06.166Z",
+          "elapsedMs": 367,
+          "cursor": {
+            "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+            "snapshot": 5,
+            "event": 5
+          },
+          "snapshot": {
+            "status": "active",
+            "value": "error",
+            "context": {
+              "title": "A calmer place for your next idea",
+              "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing.",
+              "saved": null,
+              "attempts": 1,
+              "revision": 0,
+              "error": "The demo service declined this save. Your draft is still here.",
+              "draftAccessToken": "[REDACTED]"
+            }
+          }
+        },
+        "isError": false
+      }
+    },
+    {
+      "step": 16,
+      "elapsedMs": 984,
+      "kind": "browser",
+      "label": "MCP confirms failed save; draft and retry remain visible",
+      "screenshot": "02-save-error.png",
+      "state": "document · error",
+      "title": "A calmer place for your next idea"
+    },
+    {
+      "step": 17,
+      "elapsedMs": 984,
+      "kind": "mcp",
+      "tool": "send_event",
+      "arguments": {
+        "target": "tab-1/document",
+        "event": {
+          "type": "DELETE_EVERYTHING",
+          "password": "[REDACTED]"
+        }
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"event\": {\n    \"type\": \"DELETE_EVERYTHING\",\n    \"password\": \"[REDACTED]\"\n  },\n  \"success\": false,\n  \"code\": \"write_not_allowed\",\n  \"error\": \"Actor/event pair is not allowed by the write policy\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "event": {
+            "type": "DELETE_EVERYTHING",
+            "password": "[REDACTED]"
+          },
+          "success": false,
+          "code": "write_not_allowed",
+          "error": "Actor/event pair is not allowed by the write policy"
+        },
+        "isError": true
+      }
+    },
+    {
+      "step": 18,
+      "elapsedMs": 985,
+      "kind": "mcp",
+      "tool": "send_event",
+      "arguments": {
+        "target": "tab-1/workspace",
+        "event": {
+          "type": "SAVE"
+        }
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/workspace\",\n  \"event\": {\n    \"type\": \"SAVE\"\n  },\n  \"success\": false,\n  \"code\": \"actor_not_found\",\n  \"error\": \"Application rejected event (details withheld)\"\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/workspace",
+          "event": {
+            "type": "SAVE"
+          },
+          "success": false,
+          "code": "actor_not_found",
+          "error": "Application rejected event (details withheld)"
+        },
+        "isError": true
+      }
+    },
+    {
+      "step": 19,
+      "elapsedMs": 986,
+      "kind": "mcp",
+      "tool": "wait_for_state",
+      "arguments": {
+        "sessionId": "tab-1/document",
+        "state": "error",
+        "timeoutMs": 4000
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"outcome\": \"matched\",\n  \"startedAt\": \"2026-09-08T04:38:06.276Z\",\n  \"completedAt\": \"2026-09-08T04:38:06.276Z\",\n  \"elapsedMs\": 0,\n  \"cursor\": {\n    \"generation\": \"55c034da-d43a-47db-8883-898ecd59d6e7\",\n    \"snapshot\": 5,\n    \"event\": 5\n  },\n  \"snapshot\": {\n    \"status\": \"active\",\n    \"value\": \"error\",\n    \"context\": {\n      \"title\": \"A calmer place for your next idea\",\n      \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n      \"saved\": null,\n      \"attempts\": 1,\n      \"revision\": 0,\n      \"error\": \"The demo service declined this save. Your draft is still here.\",\n      \"draftAccessToken\": \"[REDACTED]\"\n    }\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "outcome": "matched",
+          "startedAt": "2026-09-08T04:38:06.276Z",
+          "completedAt": "2026-09-08T04:38:06.276Z",
+          "elapsedMs": 0,
+          "cursor": {
+            "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+            "snapshot": 5,
+            "event": 5
+          },
+          "snapshot": {
+            "status": "active",
+            "value": "error",
+            "context": {
+              "title": "A calmer place for your next idea",
+              "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing.",
+              "saved": null,
+              "attempts": 1,
+              "revision": 0,
+              "error": "The demo service declined this save. Your draft is still here.",
+              "draftAccessToken": "[REDACTED]"
+            }
+          }
+        },
+        "isError": false
+      }
+    },
+    {
+      "step": 20,
+      "elapsedMs": 987,
+      "kind": "mcp",
+      "tool": "send_event",
+      "arguments": {
+        "target": "tab-1/document",
+        "event": {
+          "type": "RETRY"
+        }
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"event\": {\n    \"type\": \"RETRY\"\n  },\n  \"success\": true\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "event": {
+            "type": "RETRY"
+          },
+          "success": true
+        },
+        "isError": false
+      }
+    },
+    {
+      "step": 21,
+      "elapsedMs": 987,
+      "kind": "mcp",
+      "tool": "wait_for_event",
+      "arguments": {
+        "sessionId": "tab-1/document",
+        "eventType": "RETRY",
+        "after": {
+          "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+          "snapshot": 5,
+          "event": 5
+        },
+        "timeoutMs": 4000
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"outcome\": \"matched\",\n  \"startedAt\": \"2026-09-08T04:38:06.278Z\",\n  \"completedAt\": \"2026-09-08T04:38:06.278Z\",\n  \"elapsedMs\": 0,\n  \"cursor\": {\n    \"generation\": \"55c034da-d43a-47db-8883-898ecd59d6e7\",\n    \"snapshot\": 6,\n    \"event\": 6\n  },\n  \"event\": {\n    \"sequence\": 6,\n    \"event\": {\n      \"type\": \"RETRY\"\n    },\n    \"sourceId\": null,\n    \"createdAt\": \"2026-09-08T04:38:06.277Z\"\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "outcome": "matched",
+          "startedAt": "2026-09-08T04:38:06.278Z",
+          "completedAt": "2026-09-08T04:38:06.278Z",
+          "elapsedMs": 0,
+          "cursor": {
+            "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+            "snapshot": 6,
+            "event": 6
+          },
+          "event": {
+            "sequence": 6,
+            "event": {
+              "type": "RETRY"
+            },
+            "sourceId": null,
+            "createdAt": "2026-09-08T04:38:06.277Z"
+          }
+        },
+        "isError": false
+      }
+    },
+    {
+      "step": 22,
+      "elapsedMs": 1353,
+      "kind": "mcp",
+      "tool": "wait_for_state",
+      "arguments": {
+        "sessionId": "tab-1/document",
+        "state": "saved",
+        "after": {
+          "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+          "snapshot": 5,
+          "event": 5
+        },
+        "timeoutMs": 4000
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"outcome\": \"matched\",\n  \"startedAt\": \"2026-09-08T04:38:06.278Z\",\n  \"completedAt\": \"2026-09-08T04:38:06.643Z\",\n  \"elapsedMs\": 365,\n  \"cursor\": {\n    \"generation\": \"55c034da-d43a-47db-8883-898ecd59d6e7\",\n    \"snapshot\": 7,\n    \"event\": 7\n  },\n  \"snapshot\": {\n    \"status\": \"active\",\n    \"value\": \"saved\",\n    \"context\": {\n      \"title\": \"A calmer place for your next idea\",\n      \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n      \"saved\": {\n        \"title\": \"A calmer place for your next idea\",\n        \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\"\n      },\n      \"attempts\": 2,\n      \"revision\": 1,\n      \"error\": null,\n      \"draftAccessToken\": \"[REDACTED]\"\n    }\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "outcome": "matched",
+          "startedAt": "2026-09-08T04:38:06.278Z",
+          "completedAt": "2026-09-08T04:38:06.643Z",
+          "elapsedMs": 365,
+          "cursor": {
+            "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+            "snapshot": 7,
+            "event": 7
+          },
+          "snapshot": {
+            "status": "active",
+            "value": "saved",
+            "context": {
+              "title": "A calmer place for your next idea",
+              "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing.",
+              "saved": {
+                "title": "A calmer place for your next idea",
+                "body": "Today, we’re introducing a calmer place to collect your thoughts.\n\nStart with a small idea. Give it a clear title. Make something worth sharing."
+              },
+              "attempts": 2,
+              "revision": 1,
+              "error": null,
+              "draftAccessToken": "[REDACTED]"
+            }
+          }
+        },
+        "isError": false
+      }
+    },
+    {
+      "step": 23,
+      "elapsedMs": 1490,
+      "kind": "browser",
+      "label": "Retry accepted through MCP; saved snapshot and rendered success agree",
+      "screenshot": "03-recovered.png",
+      "state": "document · saved",
+      "title": "A calmer place for your next idea"
+    },
+    {
+      "step": 24,
+      "elapsedMs": 1491,
+      "kind": "mcp",
+      "tool": "get_event_history",
+      "arguments": {
+        "sessionId": "tab-1/document",
+        "limit": 50
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"events\": [\n    {\n      \"sequence\": 1,\n      \"event\": {\n        \"type\": \"xstate.init\"\n      },\n      \"sourceId\": \"tab-1/workspace\",\n      \"createdAt\": \"2026-09-08T04:38:05.332Z\"\n    },\n    {\n      \"sequence\": 2,\n      \"event\": {\n        \"type\": \"xstate.done.actor.loadDraft\"\n      },\n      \"sourceId\": null,\n      \"createdAt\": \"2026-09-08T04:38:05.542Z\"\n    },\n    {\n      \"sequence\": 3,\n      \"event\": {\n        \"type\": \"CHANGE_TITLE\",\n        \"value\": \"A calmer place for your next idea\"\n      },\n      \"sourceId\": null,\n      \"createdAt\": \"2026-09-08T04:38:05.792Z\"\n    },\n    {\n      \"sequence\": 4,\n      \"event\": {\n        \"type\": \"SAVE\"\n      },\n      \"sourceId\": null,\n      \"createdAt\": \"2026-09-08T04:38:05.797Z\"\n    },\n    {\n      \"sequence\": 5,\n      \"event\": {\n        \"type\": \"xstate.error.actor.saveDraft\"\n      },\n      \"sourceId\": null,\n      \"createdAt\": \"2026-09-08T04:38:06.164Z\"\n    },\n    {\n      \"sequence\": 6,\n      \"event\": {\n        \"type\": \"RETRY\"\n      },\n      \"sourceId\": null,\n      \"createdAt\": \"2026-09-08T04:38:06.277Z\"\n    },\n    {\n      \"sequence\": 7,\n      \"event\": {\n        \"type\": \"xstate.done.actor.saveDraft\"\n      },\n      \"sourceId\": null,\n      \"createdAt\": \"2026-09-08T04:38:06.641Z\"\n    }\n  ],\n  \"totalInBuffer\": 7,\n  \"bufferCapacity\": 100,\n  \"cursor\": {\n    \"generation\": \"55c034da-d43a-47db-8883-898ecd59d6e7\",\n    \"snapshot\": 7,\n    \"event\": 7\n  }\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "events": [
+            {
+              "sequence": 1,
+              "event": {
+                "type": "xstate.init"
+              },
+              "sourceId": "tab-1/workspace",
+              "createdAt": "2026-09-08T04:38:05.332Z"
+            },
+            {
+              "sequence": 2,
+              "event": {
+                "type": "xstate.done.actor.loadDraft"
+              },
+              "sourceId": null,
+              "createdAt": "2026-09-08T04:38:05.542Z"
+            },
+            {
+              "sequence": 3,
+              "event": {
+                "type": "CHANGE_TITLE",
+                "value": "A calmer place for your next idea"
+              },
+              "sourceId": null,
+              "createdAt": "2026-09-08T04:38:05.792Z"
+            },
+            {
+              "sequence": 4,
+              "event": {
+                "type": "SAVE"
+              },
+              "sourceId": null,
+              "createdAt": "2026-09-08T04:38:05.797Z"
+            },
+            {
+              "sequence": 5,
+              "event": {
+                "type": "xstate.error.actor.saveDraft"
+              },
+              "sourceId": null,
+              "createdAt": "2026-09-08T04:38:06.164Z"
+            },
+            {
+              "sequence": 6,
+              "event": {
+                "type": "RETRY"
+              },
+              "sourceId": null,
+              "createdAt": "2026-09-08T04:38:06.277Z"
+            },
+            {
+              "sequence": 7,
+              "event": {
+                "type": "xstate.done.actor.saveDraft"
+              },
+              "sourceId": null,
+              "createdAt": "2026-09-08T04:38:06.641Z"
+            }
+          ],
+          "totalInBuffer": 7,
+          "bufferCapacity": 100,
+          "cursor": {
+            "generation": "55c034da-d43a-47db-8883-898ecd59d6e7",
+            "snapshot": 7,
+            "event": 7
+          }
+        }
+      }
+    },
+    {
+      "step": 25,
+      "elapsedMs": 1492,
+      "kind": "mcp",
+      "tool": "get_state_timeline",
+      "arguments": {
+        "sessionId": "tab-1/document"
+      },
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"name\": \"document\",\n  \"currentState\": \"saved\",\n  \"totalTransitions\": 6,\n  \"transitions\": [\n    {\n      \"type\": \"state\",\n      \"changes\": [\n        \"value\",\n        \"context\"\n      ],\n      \"fromValue\": \"loading\",\n      \"toValue\": \"editing\",\n      \"fromStatus\": \"active\",\n      \"toStatus\": \"active\",\n      \"event\": \"xstate.done.actor.loadDraft\",\n      \"timestamp\": \"2026-09-08T04:38:05.543Z\"\n    },\n    {\n      \"type\": \"context\",\n      \"changes\": [\n        \"context\"\n      ],\n      \"fromValue\": \"editing\",\n      \"toValue\": \"editing\",\n      \"fromStatus\": \"active\",\n      \"toStatus\": \"active\",\n      \"event\": \"CHANGE_TITLE\",\n      \"timestamp\": \"2026-09-08T04:38:05.792Z\"\n    },\n    {\n      \"type\": \"state\",\n      \"changes\": [\n        \"value\",\n        \"context\"\n      ],\n      \"fromValue\": \"editing\",\n      \"toValue\": \"saving\",\n      \"fromStatus\": \"active\",\n      \"toStatus\": \"active\",\n      \"event\": \"SAVE\",\n      \"timestamp\": \"2026-09-08T04:38:05.797Z\"\n    },\n    {\n      \"type\": \"state\",\n      \"changes\": [\n        \"value\",\n        \"context\"\n      ],\n      \"fromValue\": \"saving\",\n      \"toValue\": \"error\",\n      \"fromStatus\": \"active\",\n      \"toStatus\": \"active\",\n      \"event\": \"xstate.error.actor.saveDraft\",\n      \"timestamp\": \"2026-09-08T04:38:06.165Z\"\n    },\n    {\n      \"type\": \"state\",\n      \"changes\": [\n        \"value\",\n        \"context\"\n      ],\n      \"fromValue\": \"error\",\n      \"toValue\": \"saving\",\n      \"fromStatus\": \"active\",\n      \"toStatus\": \"active\",\n      \"event\": \"RETRY\",\n      \"timestamp\": \"2026-09-08T04:38:06.277Z\"\n    },\n    {\n      \"type\": \"state\",\n      \"changes\": [\n        \"value\",\n        \"context\"\n      ],\n      \"fromValue\": \"saving\",\n      \"toValue\": \"saved\",\n      \"fromStatus\": \"active\",\n      \"toStatus\": \"active\",\n      \"event\": \"xstate.done.actor.saveDraft\",\n      \"timestamp\": \"2026-09-08T04:38:06.641Z\"\n    }\n  ]\n}"
+          }
+        ],
+        "structuredContent": {
+          "sessionId": "tab-1/document",
+          "name": "document",
+          "currentState": "saved",
+          "totalTransitions": 6,
+          "transitions": [
+            {
+              "type": "state",
+              "changes": [
+                "value",
+                "context"
+              ],
+              "fromValue": "loading",
+              "toValue": "editing",
+              "fromStatus": "active",
+              "toStatus": "active",
+              "event": "xstate.done.actor.loadDraft",
+              "timestamp": "2026-09-08T04:38:05.543Z"
+            },
+            {
+              "type": "context",
+              "changes": [
+                "context"
+              ],
+              "fromValue": "editing",
+              "toValue": "editing",
+              "fromStatus": "active",
+              "toStatus": "active",
+              "event": "CHANGE_TITLE",
+              "timestamp": "2026-09-08T04:38:05.792Z"
+            },
+            {
+              "type": "state",
+              "changes": [
+                "value",
+                "context"
+              ],
+              "fromValue": "editing",
+              "toValue": "saving",
+              "fromStatus": "active",
+              "toStatus": "active",
+              "event": "SAVE",
+              "timestamp": "2026-09-08T04:38:05.797Z"
+            },
+            {
+              "type": "state",
+              "changes": [
+                "value",
+                "context"
+              ],
+              "fromValue": "saving",
+              "toValue": "error",
+              "fromStatus": "active",
+              "toStatus": "active",
+              "event": "xstate.error.actor.saveDraft",
+              "timestamp": "2026-09-08T04:38:06.165Z"
+            },
+            {
+              "type": "state",
+              "changes": [
+                "value",
+                "context"
+              ],
+              "fromValue": "error",
+              "toValue": "saving",
+              "fromStatus": "active",
+              "toStatus": "active",
+              "event": "RETRY",
+              "timestamp": "2026-09-08T04:38:06.277Z"
+            },
+            {
+              "type": "state",
+              "changes": [
+                "value",
+                "context"
+              ],
+              "fromValue": "saving",
+              "toValue": "saved",
+              "fromStatus": "active",
+              "toStatus": "active",
+              "event": "xstate.done.actor.saveDraft",
+              "timestamp": "2026-09-08T04:38:06.641Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "step": 26,
+      "elapsedMs": 1494,
+      "kind": "resource",
+      "result": {
+        "contents": [
+          {
+            "uri": "xstate://actor/tab-1/document/snapshot",
+            "mimeType": "application/json",
+            "text": "{\n  \"sessionId\": \"tab-1/document\",\n  \"connectionId\": \"tab-1/connection\",\n  \"localSessionId\": \"tab-1/local/document\",\n  \"applicationName\": null,\n  \"name\": \"document\",\n  \"status\": \"active\",\n  \"value\": \"saved\",\n  \"context\": {\n    \"title\": \"A calmer place for your next idea\",\n    \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n    \"saved\": {\n      \"title\": \"A calmer place for your next idea\",\n      \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\"\n    },\n    \"attempts\": 2,\n    \"revision\": 1,\n    \"error\": null,\n    \"draftAccessToken\": \"[REDACTED]\"\n  },\n  \"output\": null,\n  \"error\": null,\n  \"parentId\": \"tab-1/workspace\",\n  \"updatedAt\": \"2026-09-08T04:38:06.641Z\",\n  \"cursor\": {\n    \"generation\": \"55c034da-d43a-47db-8883-898ecd59d6e7\",\n    \"snapshot\": 7,\n    \"event\": 7\n  }\n}"
+          }
+        ]
+      }
+    },
+    {
+      "step": 27,
+      "elapsedMs": 1495,
+      "kind": "prompt",
+      "name": "debug_actor",
+      "result": {
+        "messages": [
+          {
+            "role": "user",
+            "content": {
+              "type": "text",
+              "text": "You are debugging an XState v5 actor. Analyze it for problems and suggest fixes.\n\n## Actor: document (tab-1/document)\n- Status: active\n- Current state value: \"saved\"\n- Context: {\n  \"title\": \"A calmer place for your next idea\",\n  \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\",\n  \"saved\": {\n    \"title\": \"A calmer place for your next idea\",\n    \"body\": \"Today, we’re introducing a calmer place to collect your thoughts.\\n\\nStart with a small idea. Give it a clear title. Make something worth sharing.\"\n  },\n  \"attempts\": 2,\n  \"revision\": 1,\n  \"error\": null,\n  \"draftAccessToken\": \"[REDACTED]\"\n}\n- Output: null\n- Error: null\n- Parent: tab-1/workspace\n- Created: 2026-09-08T04:38:05.355Z\n- Last updated: 2026-09-08T04:38:06.641Z\n\n## Machine Definition\n```json\n{\n  \"id\": \"document\",\n  \"key\": \"document\",\n  \"type\": \"compound\",\n  \"initial\": {\n    \"target\": [\n      \"[OMITTED]\"\n    ],\n    \"source\": \"[OMITTED]\",\n    \"actions\": [],\n    \"eventType\": null,\n    \"reenter\": false,\n    \"toJSON\": \"[OMITTED]\"\n  },\n  \"history\": false,\n  \"states\": {\n    \"loading\": {\n      \"id\": \"document.loading\",\n      \"key\": \"loading\",\n      \"type\": \"atomic\",\n      \"initial\": {\n        \"target\": [],\n        \"source\": \"[OMITTED]\",\n        \"actions\": [],\n        \"eventType\": null,\n        \"reenter\": false,\n        \"toJSON\": \"[OMITTED]\"\n      },\n      \"history\": false,\n      \"states\": {},\n      \"on\": {\n        \"xstate.done.actor.loadDraft\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              \"[OMITTED]\"\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"xstate.done.actor.loadDraft\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"xstate.error.actor.loadDraft\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              \"[OMITTED]\"\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"xstate.error.actor.loadDraft\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ]\n      },\n      \"transitions\": [\n        {\n          \"target\": [\n            \"[OMITTED]\"\n          ],\n          \"actions\": [\n            {\n              \"type\": \"xstate.assign\"\n            }\n          ],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"xstate.done.actor.loadDraft\",\n          \"toJSON\": \"[OMITTED]\"\n        },\n        {\n          \"target\": [\n            \"[OMITTED]\"\n          ],\n          \"actions\": [\n            {\n              \"type\": \"xstate.assign\"\n            }\n          ],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"xstate.error.actor.loadDraft\",\n          \"toJSON\": \"[OMITTED]\"\n        }\n      ],\n      \"entry\": [],\n      \"exit\": [],\n      \"order\": 1,\n      \"invoke\": [\n        {\n          \"id\": \"loadDraft\",\n          \"src\": \"loadDraft\",\n          \"onDone\": {\n            \"target\": \"editing\",\n            \"actions\": \"[OMITTED]\"\n          },\n          \"onError\": {\n            \"target\": \"loadError\",\n            \"actions\": \"[OMITTED]\"\n          },\n          \"toJSON\": \"[OMITTED]\"\n        }\n      ],\n      \"tags\": []\n    },\n    \"loadError\": {\n      \"id\": \"document.loadError\",\n      \"key\": \"loadError\",\n      \"type\": \"atomic\",\n      \"initial\": {\n        \"target\": [],\n        \"source\": \"[OMITTED]\",\n        \"actions\": [],\n        \"eventType\": null,\n        \"reenter\": false,\n        \"toJSON\": \"[OMITTED]\"\n      },\n      \"history\": false,\n      \"states\": {},\n      \"on\": {\n        \"RETRY\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"RETRY\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ]\n      },\n      \"transitions\": [\n        {\n          \"target\": [\n            \"[OMITTED]\"\n          ],\n          \"actions\": [],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"RETRY\",\n          \"toJSON\": \"[OMITTED]\"\n        }\n      ],\n      \"entry\": [],\n      \"exit\": [],\n      \"order\": 2,\n      \"invoke\": [],\n      \"tags\": []\n    },\n    \"editing\": {\n      \"id\": \"document.editing\",\n      \"key\": \"editing\",\n      \"type\": \"atomic\",\n      \"initial\": {\n        \"target\": [],\n        \"source\": \"[OMITTED]\",\n        \"actions\": [],\n        \"eventType\": null,\n        \"reenter\": false,\n        \"toJSON\": \"[OMITTED]\"\n      },\n      \"history\": false,\n      \"states\": {},\n      \"on\": {\n        \"CHANGE_TITLE\": [\n          {\n            \"actions\": [\n              \"changeTitle\"\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_TITLE\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"CHANGE_BODY\": [\n          {\n            \"actions\": [\n              \"changeBody\"\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_BODY\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"SAVE\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"guard\": \"hasTitle\",\n            \"actions\": [],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"SAVE\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ]\n      },\n      \"transitions\": [\n        {\n          \"actions\": [\n            {\n              \"type\": \"changeTitle\"\n            }\n          ],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"CHANGE_TITLE\",\n          \"toJSON\": \"[OMITTED]\"\n        },\n        {\n          \"actions\": [\n            {\n              \"type\": \"changeBody\"\n            }\n          ],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"CHANGE_BODY\",\n          \"toJSON\": \"[OMITTED]\"\n        },\n        {\n          \"target\": [\n            \"[OMITTED]\"\n          ],\n          \"guard\": \"hasTitle\",\n          \"actions\": [],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"SAVE\",\n          \"toJSON\": \"[OMITTED]\"\n        }\n      ],\n      \"entry\": [],\n      \"exit\": [],\n      \"order\": 3,\n      \"invoke\": [],\n      \"tags\": []\n    },\n    \"saving\": {\n      \"id\": \"document.saving\",\n      \"key\": \"saving\",\n      \"type\": \"atomic\",\n      \"initial\": {\n        \"target\": [],\n        \"source\": \"[OMITTED]\",\n        \"actions\": [],\n        \"eventType\": null,\n        \"reenter\": false,\n        \"toJSON\": \"[OMITTED]\"\n      },\n      \"history\": false,\n      \"states\": {},\n      \"on\": {\n        \"xstate.done.actor.saveDraft\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              \"[OMITTED]\"\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"xstate.done.actor.saveDraft\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"xstate.error.actor.saveDraft\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              \"[OMITTED]\"\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"xstate.error.actor.saveDraft\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ]\n      },\n      \"transitions\": [\n        {\n          \"target\": [\n            \"[OMITTED]\"\n          ],\n          \"actions\": [\n            {\n              \"type\": \"xstate.assign\"\n            }\n          ],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"xstate.done.actor.saveDraft\",\n          \"toJSON\": \"[OMITTED]\"\n        },\n        {\n          \"target\": [\n            \"[OMITTED]\"\n          ],\n          \"actions\": [\n            {\n              \"type\": \"xstate.assign\"\n            }\n          ],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"xstate.error.actor.saveDraft\",\n          \"toJSON\": \"[OMITTED]\"\n        }\n      ],\n      \"entry\": [\n        {\n          \"type\": \"xstate.assign\"\n        }\n      ],\n      \"exit\": [],\n      \"order\": 4,\n      \"invoke\": [\n        {\n          \"id\": \"saveDraft\",\n          \"src\": \"saveDraft\",\n          \"input\": \"[OMITTED]\",\n          \"onDone\": {\n            \"target\": \"saved\",\n            \"actions\": \"[OMITTED]\"\n          },\n          \"onError\": {\n            \"target\": \"error\",\n            \"actions\": \"[OMITTED]\"\n          },\n          \"toJSON\": \"[OMITTED]\"\n        }\n      ],\n      \"tags\": []\n    },\n    \"error\": {\n      \"id\": \"document.error\",\n      \"key\": \"error\",\n      \"type\": \"atomic\",\n      \"initial\": {\n        \"target\": [],\n        \"source\": \"[OMITTED]\",\n        \"actions\": [],\n        \"eventType\": null,\n        \"reenter\": false,\n        \"toJSON\": \"[OMITTED]\"\n      },\n      \"history\": false,\n      \"states\": {},\n      \"on\": {\n        \"RETRY\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"RETRY\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"CHANGE_TITLE\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              \"changeTitle\"\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_TITLE\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"CHANGE_BODY\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              \"changeBody\"\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_BODY\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ]\n      },\n      \"transitions\": [\n        {\n          \"target\": [\n            \"[OMITTED]\"\n          ],\n          \"actions\": [],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"RETRY\",\n          \"toJSON\": \"[OMITTED]\"\n        },\n        {\n          \"target\": [\n            \"[OMITTED]\"\n          ],\n          \"actions\": [\n            {\n              \"type\": \"changeTitle\"\n            }\n          ],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"CHANGE_TITLE\",\n          \"toJSON\": \"[OMITTED]\"\n        },\n        {\n          \"target\": [\n            \"[OMITTED]\"\n          ],\n          \"actions\": [\n            {\n              \"type\": \"changeBody\"\n            }\n          ],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"CHANGE_BODY\",\n          \"toJSON\": \"[OMITTED]\"\n        }\n      ],\n      \"entry\": [],\n      \"exit\": [],\n      \"order\": 5,\n      \"invoke\": [],\n      \"tags\": []\n    },\n    \"saved\": {\n      \"id\": \"document.saved\",\n      \"key\": \"saved\",\n      \"type\": \"atomic\",\n      \"initial\": {\n        \"target\": [],\n        \"source\": \"[OMITTED]\",\n        \"actions\": [],\n        \"eventType\": null,\n        \"reenter\": false,\n        \"toJSON\": \"[OMITTED]\"\n      },\n      \"history\": false,\n      \"states\": {},\n      \"on\": {\n        \"CHANGE_TITLE\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              \"changeTitle\"\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_TITLE\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ],\n        \"CHANGE_BODY\": [\n          {\n            \"target\": [\n              \"[OMITTED]\"\n            ],\n            \"actions\": [\n              \"changeBody\"\n            ],\n            \"source\": \"[OMITTED]\",\n            \"reenter\": false,\n            \"eventType\": \"CHANGE_BODY\",\n            \"toJSON\": \"[OMITTED]\"\n          }\n        ]\n      },\n      \"transitions\": [\n        {\n          \"target\": [\n            \"[OMITTED]\"\n          ],\n          \"actions\": [\n            {\n              \"type\": \"changeTitle\"\n            }\n          ],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"CHANGE_TITLE\",\n          \"toJSON\": \"[OMITTED]\"\n        },\n        {\n          \"target\": [\n            \"[OMITTED]\"\n          ],\n          \"actions\": [\n            {\n              \"type\": \"changeBody\"\n            }\n          ],\n          \"source\": \"[OMITTED]\",\n          \"reenter\": false,\n          \"eventType\": \"CHANGE_BODY\",\n          \"toJSON\": \"[OMITTED]\"\n        }\n      ],\n      \"entry\": [],\n      \"exit\": [],\n      \"order\": 6,\n      \"invoke\": [],\n      \"tags\": []\n    }\n  },\n  \"on\": {},\n  \"transitions\": [],\n  \"entry\": [],\n  \"exit\": [],\n  \"order\": -1,\n  \"invoke\": [],\n  \"tags\": []\n}\n```\n\n## Recent Snapshot Changes (6 of 6 total)\n```json\n[\n  {\n    \"type\": \"state\",\n    \"changes\": [\n      \"value\",\n      \"context\"\n    ],\n    \"fromValue\": \"loading\",\n    \"toValue\": \"editing\",\n    \"fromStatus\": \"active\",\n    \"toStatus\": \"active\",\n    \"event\": \"xstate.done.actor.loadDraft\",\n    \"timestamp\": \"2026-09-08T04:38:05.543Z\"\n  },\n  {\n    \"type\": \"context\",\n    \"changes\": [\n      \"context\"\n    ],\n    \"fromValue\": \"editing\",\n    \"toValue\": \"editing\",\n    \"fromStatus\": \"active\",\n    \"toStatus\": \"active\",\n    \"event\": \"CHANGE_TITLE\",\n    \"timestamp\": \"2026-09-08T04:38:05.792Z\"\n  },\n  {\n    \"type\": \"state\",\n    \"changes\": [\n      \"value\",\n      \"context\"\n    ],\n    \"fromValue\": \"editing\",\n    \"toValue\": \"saving\",\n    \"fromStatus\": \"active\",\n    \"toStatus\": \"active\",\n    \"event\": \"SAVE\",\n    \"timestamp\": \"2026-09-08T04:38:05.797Z\"\n  },\n  {\n    \"type\": \"state\",\n    \"changes\": [\n      \"value\",\n      \"context\"\n    ],\n    \"fromValue\": \"saving\",\n    \"toValue\": \"error\",\n    \"fromStatus\": \"active\",\n    \"toStatus\": \"active\",\n    \"event\": \"xstate.error.actor.saveDraft\",\n    \"timestamp\": \"2026-09-08T04:38:06.165Z\"\n  },\n  {\n    \"type\": \"state\",\n    \"changes\": [\n      \"value\",\n      \"context\"\n    ],\n    \"fromValue\": \"error\",\n    \"toValue\": \"saving\",\n    \"fromStatus\": \"active\",\n    \"toStatus\": \"active\",\n    \"event\": \"RETRY\",\n    \"timestamp\": \"2026-09-08T04:38:06.277Z\"\n  },\n  {\n    \"type\": \"state\",\n    \"changes\": [\n      \"value\",\n      \"context\"\n    ],\n    \"fromValue\": \"saving\",\n    \"toValue\": \"saved\",\n    \"fromStatus\": \"active\",\n    \"toStatus\": \"active\",\n    \"event\": \"xstate.done.actor.saveDraft\",\n    \"timestamp\": \"2026-09-08T04:38:06.641Z\"\n  }\n]\n```\n\n## Recent Events (7 of 7 in buffer)\n```json\n[\n  {\n    \"sequence\": 1,\n    \"event\": {\n      \"type\": \"xstate.init\"\n    },\n    \"sourceId\": \"tab-1/workspace\",\n    \"createdAt\": \"2026-09-08T04:38:05.332Z\"\n  },\n  {\n    \"sequence\": 2,\n    \"event\": {\n      \"type\": \"xstate.done.actor.loadDraft\"\n    },\n    \"sourceId\": null,\n    \"createdAt\": \"2026-09-08T04:38:05.542Z\"\n  },\n  {\n    \"sequence\": 3,\n    \"event\": {\n      \"type\": \"CHANGE_TITLE\",\n      \"value\": \"A calmer place for your next idea\"\n    },\n    \"sourceId\": null,\n    \"createdAt\": \"2026-09-08T04:38:05.792Z\"\n  },\n  {\n    \"sequence\": 4,\n    \"event\": {\n      \"type\": \"SAVE\"\n    },\n    \"sourceId\": null,\n    \"createdAt\": \"2026-09-08T04:38:05.797Z\"\n  },\n  {\n    \"sequence\": 5,\n    \"event\": {\n      \"type\": \"xstate.error.actor.saveDraft\"\n    },\n    \"sourceId\": null,\n    \"createdAt\": \"2026-09-08T04:38:06.164Z\"\n  },\n  {\n    \"sequence\": 6,\n    \"event\": {\n      \"type\": \"RETRY\"\n    },\n    \"sourceId\": null,\n    \"createdAt\": \"2026-09-08T04:38:06.277Z\"\n  },\n  {\n    \"sequence\": 7,\n    \"event\": {\n      \"type\": \"xstate.done.actor.saveDraft\"\n    },\n    \"sourceId\": null,\n    \"createdAt\": \"2026-09-08T04:38:06.641Z\"\n  }\n]\n```\n\n## Analysis Tasks\n1. **State consistency** — Is the current state value valid given the machine definition? Are there any impossible states?\n2. **Missed transitions** — Based on the event history, were there events that should have caused transitions but didn't?\n3. **Context validity** — Does the context data make sense for the current state? Are there stale or missing values?\n4. **Event flow** — Do the events follow the expected sequence? Are there unexpected event types or missing expected ones?\n5. **Stuck states** — Is the actor stuck in a state it shouldn't be in? What event would move it forward?\n6. **Lifecycle results** — Check status, output, and error before calling an actor stuck. Timeline type distinguishes state, context, and lifecycle changes; changes lists every changed field. A done, error, or stopped actor may have no state value. Missing error details may have been lost by the adapter."
+            }
+          }
+        ]
+      }
+    },
+    {
+      "step": 28,
+      "elapsedMs": 1498,
+      "kind": "mcp",
+      "tool": "list_actors",
+      "arguments": {},
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "{\n  \"actors\": [],\n  \"totalActors\": 0\n}"
+          }
+        ],
+        "structuredContent": {
+          "actors": [],
+          "totalActors": 0
+        }
+      }
+    }
+  ]
+}
