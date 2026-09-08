@@ -10,10 +10,12 @@ frontend → verify state and UI**. The coding agent writes the frontend; this
 server supplies runtime evidence. See [purpose and architecture](docs/concepts.md),
 [contributing](CONTRIBUTING.md), and [working across coding agents](docs/agent-workflow.md).
 
-**September 2026 review:** the existing 148 tests pass, but real application checks
-found adapter compatibility and lifecycle bugs. Read the
-[review and issue roadmap](docs/reviews/2026-09-07.md) before relying on the browser
-examples below. The [demo plan](docs/demo-plan.md) follows the reliability fixes.
+The [runnable frontend example](examples/frontend/README.md) exercises the current
+server with real MCP and browser checks. The
+[September 2026 review](docs/reviews/2026-09-07.md) records the original findings;
+[demo status and acceptance criteria](docs/demo-plan.md) explain the completed
+examples and their scope.
+
 ## Runnable frontend example
 
 [Fieldnotes](examples/frontend/README.md) demonstrates the complete local MCP loop
@@ -22,12 +24,40 @@ intentional failure, reject a forbidden command, retry, and verify the rendered 
 Automated browser/MCP tests require no model or API key. See the example guide for
 clean-clone commands, current-main compatibility, and captured evidence.
 
+## Design Studio coding-agent demo
+
+The [Design Studio demo](examples/design-studio/README.md) shows a coding agent
+diagnosing and fixing document-save recovery through real MCP observations and
+browser checks. It includes a 34-second recording, actual transcripts, the
+application diff, and a reproducible setup verified on Node 24. This recording uses
+a pinned historical server snapshot; its guide preserves the exact versions and
+explains the differences from the current checkout.
+
 ## Quick Start
 
 Requires Node.js 22.23.2+ within 22.x, or 24.20.0+ within 24.x.
 See the [runtime and dependency policy](docs/runtime-support.md).
 
-### 1. Configure your MCP client
+### 1. Build the current checkout
+
+The capabilities below are in the unpublished `1.1.0-dev.0` development candidate.
+The historical npm release `1.0.3` does not include these changes. Use a checkout
+for this guide; see [release status and provenance](docs/releases.md) for details.
+
+With Bun 1.4.2 and a supported Node.js version:
+
+```bash
+git clone https://github.com/eandualem/xstate-mcp.git
+cd xstate-mcp
+bun install --frozen-lockfile
+bun run build
+```
+
+### 2. Configure your MCP client
+
+Replace `/absolute/path/to/xstate-mcp` with the checkout path. The client must
+launch a supported Node.js version; use its absolute executable path if the
+client's `PATH` differs from your terminal.
 
 **Claude Code** — add to `.mcp.json` in your project root:
 
@@ -35,8 +65,8 @@ See the [runtime and dependency policy](docs/runtime-support.md).
 {
   "mcpServers": {
     "xstate-mcp": {
-      "command": "npx",
-      "args": ["-y", "xstate-mcp"]
+      "command": "node",
+      "args": ["/absolute/path/to/xstate-mcp/dist/cli.js"]
     }
   }
 }
@@ -48,8 +78,8 @@ See the [runtime and dependency policy](docs/runtime-support.md).
 {
   "mcpServers": {
     "xstate-mcp": {
-      "command": "npx",
-      "args": ["-y", "xstate-mcp"],
+      "command": "node",
+      "args": ["/absolute/path/to/xstate-mcp/dist/cli.js"],
       "env": {
         "XSTATE_MCP_WS_PORT": "7357"
       }
@@ -64,25 +94,19 @@ See the [runtime and dependency policy](docs/runtime-support.md).
 {
   "mcpServers": {
     "xstate-mcp": {
-      "command": "npx",
-      "args": ["-y", "xstate-mcp"]
+      "command": "node",
+      "args": ["/absolute/path/to/xstate-mcp/dist/cli.js"]
     }
   }
 }
 ```
 
-Or install globally:
-
-```bash
-npm install -g xstate-mcp
-```
-
-### 2. Verify with MCP Inspector (optional)
+### 3. Verify with MCP Inspector (optional)
 
 Confirm the server works before wiring up your app:
 
 ```bash
-npx -y @modelcontextprotocol/inspector npx -y xstate-mcp
+npx -y @modelcontextprotocol/inspector node /absolute/path/to/xstate-mcp/dist/cli.js
 ```
 
 This opens a web UI at `http://localhost:6274`. The server exposes 12 tools, 1 fixed resource, 2 resource templates, and 3 prompts. `list_actors` returns an empty actor list when no application is connected. This verifies MCP discovery only; it does not verify that the application inspection connection works.
@@ -653,7 +677,8 @@ event history — it's a server-side failure, not a state machine bug.
 ```
 User: I'm new to this codebase. Can you explain the session machine?
 
-Agent uses prompt: explain_machine("x:0:sessions")
+Agent uses: list_actors → finds "sessionsMachine" at sessionId "sessions-session"
+Agent uses prompt: explain_machine("sessions-session")
 
 Agent: The sessions machine manages WebSocket connection lifecycle. It has 4 states:
 - disconnected (initial) — waiting for a connect event

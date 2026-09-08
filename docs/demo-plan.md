@@ -1,69 +1,93 @@
-# Demo plan: an agent develops a frontend with runtime evidence
+# Demo status: an agent develops a frontend with runtime evidence
 
-This is a proposed sequence. No new demo or Design Studio integration has been
-implemented by the repository review. Resolve the reliability issues in the
-[review roadmap](reviews/2026-09-07.md) before recording a demo.
+Both demonstration stages have implementations and evidence:
 
-## First gate: a reproducible local example
+- The [local frontend example](../examples/frontend/README.md) exercises the
+  current checkout through an actual MCP client and browser assertions.
+- The [Design Studio development demonstration](../examples/design-studio/README.md)
+  records a coding agent diagnosing and fixing document-save recovery. Its exact
+  historical server and application pins remain reproducible; its original
+  Node 26 capture and independent Node 24 verification are kept distinct.
 
-Build a small XState v5 frontend (for example, an editor with load, edit, save,
-validation error, and retry states) using a supported first-party adapter. Provide
-one documented command sequence, deterministic local services, and no model key
-requirement for its automated assertions.
+The [September 2026 review](reviews/2026-09-07.md) preserves the original findings
+and proposed sequence. The criteria below explain what each stage demonstrates
+and how to repeat the development exercise.
 
-Verify a real MCP client can discover the root and child actors, read definitions,
-send an allowed event, await the result, and inspect the event/timeline evidence.
-Then use a browser tool to verify the rendered UI. Repeat after refresh,
-reconnect, and a second tab. Include an invalid event and an intentional failure.
+## A reproducible local example
 
-The first release gate is a repeatable clean-clone run with those assertions,
-not a screenshot of `list_actors` containing hand-authored data.
+The small XState v5 editor covers load, edit, save, validation failure and retry
+using deterministic local services. Its guide provides the command sequence and
+requires no model key for the automated assertions. Its application-specific
+adapter tracks the two persistent actors; the general adapter remains
+[#13](https://github.com/eandualem/xstate-mcp/issues/13).
 
-## Flagship: Design Studio's coding agent improves its frontend
+A real MCP client discovers the root and child actors, reads definitions, sends
+allowed events, awaits observed state/events, and inspects history and timelines.
+Browser assertions verify the rendered UI. The scenarios include refresh,
+reconnect, a second tab, rejected commands and an intentional save failure.
+See the example's evidence manifests for exact sources, versions and checks.
 
-[Design Studio](https://github.com/eandualem/design-studio) already uses XState v5.
-The local review found `appMachine` spawning `files`, `document`, `assistant`, and
-`artifacts`, mounted through `AppMachineContext.Provider`. It has no inspection
-callback connected yet. Add instrumentation at the root provider in development
-only, with cleanup for hot reload and React lifecycle behavior.
+The acceptance criterion remains a repeatable clean-clone run with these
+assertions. Actor discovery alone does not establish a working frontend loop.
+
+## Design Studio's coding agent improves its frontend
+
+[Design Studio](https://github.com/eandualem/design-studio) uses XState v5, with
+`appMachine` spawning `files`, `document`, `assistant`, and `artifacts` through
+`AppMachineContext.Provider`. The original reviewed baseline lacked inspection.
+The [pinned application change](https://github.com/eandualem/design-studio/commit/0da1b6ae93a65c376022874f2d687f23f26352a8)
+adds development-only root instrumentation, hierarchy inspection, and cleanup
+for hot reload and React lifecycle behavior.
 
 Distinguish the participants:
 
 - The **coding agent assigned to Design Studio** edits and tests frontend code
   and calls xstate-mcp as a development tool.
 - The **assistant inside Design Studio** uses assistant-runtime to edit design
-  documents. Its existing host actions do not make it a frontend coding agent.
+  documents. It did not develop the frontend feature in this demonstration.
 
-Choose a small feature or bug that fits Design Studio's intentionally narrow
-scope. A candidate is a visible, recoverable error state for document or Mermaid
-rendering, with a retry action. The feature selection remains open; first verify
-the chosen behavior is missing and useful.
+The selected feature is recovery from a failed IndexedDB document save. The agent
+recorded the original failure and its implementation decision before changing the
+machine, hook and component. The result preserves the draft, adds bounded automatic
+retries and a visible manual retry, and verifies persisted content after reload.
+The [demo guide](../examples/design-studio/README.md) links the diff, tests, actual
+MCP excerpts, screenshots and short recording.
 
-Suggested recording sequence:
+The recorded server snapshot predates the current CLI entry point and write
+handshake. Keep its pins to reproduce the evidence; the guide explains the
+compatibility boundary. Integrating current core into Design Studio requires
+separate application work and fresh validation. This repository's documentation
+does not merge, deploy or release the application PR.
 
-1. Give the coding agent a written frontend acceptance brief and a baseline commit.
-2. Let it discover the real actor tree and explain the relevant machine.
-3. Reproduce the problem through the UI; record state, event history, and screenshot.
-4. Let the agent implement the machine, hook, and component changes and tests.
-5. Verify through actual UI interactions and MCP observations. Show one rejected
-   or failing action and its recovery, as well as the successful path.
-6. Refresh and repeat. Demonstrate the state and UI remain consistent.
-7. Show the final diff, passing tests, MCP tool transcript, and before/after UI.
+## Repeat the coding exercise
+
+Use the [acceptance brief](../examples/design-studio/BRIEF.md) and start from the
+instrumented pre-feature commit in the
+[demo guide](../examples/design-studio/README.md#repeat-the-coding-exercise):
+
+1. Give the coding agent the written brief and record the baseline commit.
+2. Discover the real actor tree and explain the relevant machine.
+3. Reproduce the problem through the UI; record state, history and a screenshot.
+4. Implement the machine, hook and component changes with regression tests.
+5. Verify actual UI interactions and MCP observations, including a rejected or
+   failing action, recovery and the successful path.
+6. Refresh and verify that state, UI and persisted content agree.
+7. Preserve the final diff, passing checks, MCP transcript and before/after UI.
 
 Keep Design Studio's layering: components → hooks → machines → pure libraries.
-Its own contributor instructions govern changes there. This roadmap is scoped to
-xstate-mcp; coordinate any Design Studio PR as an explicit follow-up task.
+Its own contributor instructions govern application changes.
 
-## Artifacts and success criteria
+## Evidence and limits
 
-Deliver a runnable example, an exact setup guide, a short screen recording, and
-a sanitized transcript that ties tool calls to the actual frontend development.
-Record commit IDs and dependency versions; note any real model calls and costs.
+Record source commits, dependency versions, exact commands and capture provenance.
+Keep recordings and transcripts tied to the version they exercised when the code
+changes. Disclose any model calls and costs only when the runtime supplies them.
 
 The viewer should be able to answer: what evidence did the MCP reveal, what code
-did the agent change because of it, and how was the result verified? A viewer
-following the guide should reproduce the result from a clean clone.
+did the agent change because of it, and how was the result verified?
 
-For the simple demo, deterministic mocks exercise the workflow without paid
-services. A later Design Studio demonstration can use the real runtime if the
-selected scenario needs it. Clearly label mock and live runs.
+The local frontend uses deterministic mock services. The Design Studio demo uses
+real browser storage with explicitly injected synthetic transaction failures.
+Neither scenario needs an in-app model call or provider key; that is separate
+from the coding agent's own model usage. A live assistant-runtime demonstration
+remains a separate scenario.

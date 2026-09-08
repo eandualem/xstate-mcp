@@ -1,0 +1,37 @@
+{
+  "baseline": "e1bd77533decbb0a139c152cd5c0a8ae8d3eca81",
+  "codeCommit": "0da1b6a",
+  "inspectorSource": "16c7a0004dce3f676eab0b5606be1e3542c89449",
+  "integration": "unmerged development source; not a published release",
+  "serverPackageVersion": "1.0.1",
+  "serverHandshakeVersion": "1.0.0",
+  "node": "v26.8.1",
+  "nodeExecutable": "/opt/homebrew/Cellar/node/26.8.1/bin/node",
+  "bun": "1.4.2",
+  "browser": "Chrome 152.0.7977.77",
+  "app": {
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "xstate": "5.32.6",
+    "@xstate/react": "6.1.0",
+    "idb-keyval": "6.3.0",
+    "vitest": "4.1.11",
+    "playwright-core": "1.63.0",
+    "zod": "3.25.76"
+  },
+  "server": {
+    "@modelcontextprotocol/sdk": "1.27.1",
+    "ws": "8.19.0",
+    "zod": "3.25.76",
+    "xstate": "5.28.0"
+  },
+  "codingAgent": {
+    "runtime": "Codex CLI",
+    "model": "GPT-6 (system identification; exact deployment ID unavailable)",
+    "cost": "unavailable",
+    "usage": "unavailable"
+  },
+  "inAppModelCalls": 0,
+  "faults": "Synthetic fixture calling the real IndexedDB transaction.abort()"
+}
