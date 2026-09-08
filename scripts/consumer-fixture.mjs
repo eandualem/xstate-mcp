@@ -237,7 +237,8 @@ try {
   actor?.stop();
   ws?.terminate();
   child.stdin.end();
-  const force = setTimeout(() => child.kill("SIGKILL"), 1000);
+  // Allow the CLI's 1500 ms shutdown budget to expire before the parent watchdog.
+  const force = setTimeout(() => child.kill("SIGKILL"), 2500);
   exitResult = await closed;
   clearTimeout(force);
   clearTimeout(deadline);

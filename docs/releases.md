@@ -46,10 +46,13 @@ bun run release:prepare
 The preparation command validates metadata, builds twice from clean `dist/`,
 compares tarball SHA-256, checks the package allowlist and executable mode, then
 installs the archive outside the checkout without development dependencies or
-lifecycle scripts. A real XState actor is discovered, commanded via `send_event`,
-and verified through both state and resource reads. The handshake must match the
-installed package version. Export and declaration targets must resolve. After
-#5 is integrated, the smoke additionally imports and closes the library factory.
+lifecycle scripts. It imports and closes the library factory separately from
+launching the installed CLI. A real XState actor negotiates command support,
+rejects a forbidden write, and accepts `RUN` under explicit server and application
+allow rules. Bounded state/event waits and resource reads verify the transition
+and filtered secrets. The handshake must match the installed package version;
+export and declaration targets must resolve. Clean EOF exit and port reuse verify
+shutdown.
 
 `artifacts/` contains the archive, metadata, committed release notes, consumer
 lockfile and `release.json` with source commit, dirty flag, tool versions and
@@ -66,7 +69,7 @@ production adapter or frontend demo; those remain #13 and #17.
 
 ## Maintainer release procedure
 
-1. Integrate and review the intended changes, including #5, #6 and #7. The
+1. Integrate and review the intended changes, including the remaining #7 work. The
    publication preflight rejects the old combined CLI/library entry point and a
    missing audit gate. Complete the full contract CI work before releasing.
 2. Select an unused stable version after assessing the combined API/runtime
