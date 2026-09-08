@@ -1,12 +1,15 @@
 # Library, CLI, and server lifecycle
 
-The package has two entry points:
+The package has separate library, CLI, and browser-policy entry points:
 
 - `import ... from "xstate-mcp"` loads the ESM library in `dist/index.js`, with
   declarations in `dist/index.d.ts`. Importing it reads no process configuration,
   binds no port, installs no signal listeners, and attaches no stdio transport.
 - The `xstate-mcp` executable runs `dist/cli.js`. Only this entry reads
   `XSTATE_MCP_*` environment variables and owns process stdio and signal handling.
+
+- `import ... from "xstate-mcp/inspection-policy"` loads the browser-safe policy
+  helpers without server startup or Node transport dependencies.
 
 `npx xstate-mcp` and the installed command continue to work. Commands that invoke
 `node dist/index.js` directly must change to **`node dist/cli.js`**. The former
@@ -70,12 +73,15 @@ available port; inspect `address` after `start()` to discover it. The HTTP liste
 serves WebSocket upgrades, not an HTTP MCP endpoint.
 
 Options are `wsPort`, `wsHost`, `bufferSize`, `logLevel`, `allowedOrigins`,
-`requireOrigin`, and `shutdownTimeoutMs`. Defaults are port 7357, host 127.0.0.1,
+`requireOrigin`, `shutdownTimeoutMs`, `writePolicy`, and `redaction`. Defaults are port 7357, host 127.0.0.1,
 100 history entries, info logging, localhost/127.0.0.1 HTTP origins with any port,
 optional Origin header, and a 1000ms shutdown budget. `shutdownTimeoutMs` must be
 an integer from 1 through 30000 and is an embedding option, not a CLI environment
 setting. Hosts own their process signals and stream end/error handling; the
-library never pauses process stdin or calls `process.exit`.
+library never pauses process stdin or calls `process.exit`. Application writes
+default to disabled; use explicit paired `writePolicy` rules and an independently
+negotiated adapter. `redaction` extends default payload filtering before retention
+and verification waits. See [write controls and redaction](write-controls-and-redaction.md).
 
 `start()` takes ownership of the supplied transport. It waits for the inspection
 port to bind before connecting MCP, so a bind failure cannot advertise a working

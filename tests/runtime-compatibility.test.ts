@@ -31,6 +31,9 @@ async function startCli() {
       XSTATE_MCP_WS_HOST: "127.0.0.1",
       XSTATE_MCP_LOG_LEVEL: "debug",
       XSTATE_MCP_REQUIRE_ORIGIN: "false",
+      // Exercise the adapter ACK path, including its deliberate REJECT case.
+      XSTATE_MCP_READ_ONLY: "false",
+      XSTATE_MCP_WRITE_ALLOW: '[{"actor":"*","events":["RUN","REJECT"]}]',
     },
     stdio: "pipe",
   });
@@ -240,7 +243,7 @@ describe.each([
         isError: true,
         structuredContent: {
           success: false,
-          error: "Adapter rejected the command",
+          error: "Application rejected event (details withheld)",
         },
       });
       expect(

@@ -1,3 +1,7 @@
+import type {
+  WritePolicyOptions,
+  RedactionOptions,
+} from "./inspection-policy.js";
 import { z } from "zod";
 
 // --- Configuration ---
@@ -9,6 +13,8 @@ export interface Config {
   logLevel: LogLevel;
   allowedOrigins: string[];
   requireOrigin: boolean;
+  writePolicy: WritePolicyOptions;
+  redaction: RedactionOptions;
 }
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
@@ -242,5 +248,7 @@ export const sendResponseSchema = z.object({
   requestId: z.string().min(1).max(128),
   success: z.boolean(),
   error: z.string().max(4096).optional(),
+  // Validate before dispatch; the registry exposes only fixed rejection codes.
+  code: z.string().min(1).max(128).optional(),
   sessionId: z.string().optional(),
 });

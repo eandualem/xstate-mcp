@@ -17,7 +17,12 @@ describe("ClientRegistry", () => {
   let store: ActorStore;
   beforeEach(() => {
     vi.useFakeTimers();
-    registry = new ClientRegistry(1000, logger);
+    registry = new ClientRegistry(1000, logger, {
+      writePolicy: {
+        readOnly: false,
+        allow: [{ actor: "*", events: ["TEST", "OTHER", "RUN"] }],
+      },
+    });
     store = new ActorStore(20, logger);
   });
   afterEach(() => {
@@ -106,6 +111,59 @@ describe("ClientRegistry", () => {
     }
   });
 
+  it("pairs public actor IDs and events while retaining local wire targets and socket ownership", async () => {
+    const a = makeMockWs(),
+      b = makeMockWs();
+    const first = registry.getSessionId(a, "x:0");
+    const second = registry.getSessionId(b, "x:0");
+    registry = new ClientRegistry(1000, logger, {
+      health: registry.health,
+      writePolicy: {
+        readOnly: false,
+        allow: [
+          { actor: first, events: ["RUN"] },
+          { actor: second, events: ["RESET"] },
+        ],
+      },
+    });
+    expect(register(a).sessionId).toBe(first);
+    expect(register(b).sessionId).toBe(second);
+    expect(first).not.toBe(second);
+    for (const [actor, type] of [
+      [first, "RESET"],
+      [second, "RUN"],
+      ["x:0", "RUN"],
+    ]) {
+      expect(await registry.sendEvent(actor, { type })).toMatchObject({
+        success: false,
+        code: "write_not_allowed",
+      });
+    }
+    expect(a.send).not.toHaveBeenCalled();
+    expect(b.send).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+    const pending = registry.sendEvent(first, { type: "RUN" });
+    const sent = command(a);
+    expect(sent.sessionId).toBe("x:0");
+    expect(
+      registry.handleResponse(
+        b,
+        sent.requestId,
+        false,
+        "private foreign detail",
+        "read_only",
+      ),
+    ).toBe(false);
+    expect(vi.getTimerCount()).toBe(1);
+    expect(registry.handleResponse(a, sent.requestId, true)).toBe(true);
+    expect(await pending).toMatchObject({ success: true });
+    const other = registry.sendEvent(second, { type: "RESET" });
+    expect(command(b).sessionId).toBe("x:0");
+    registry.handleResponse(b, command(b).requestId, true);
+    expect(await other).toMatchObject({ success: true });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("rejects sends on a closed connection", async () => {
     const { sessionId } = register(makeMockWs(3));
     expect(await registry.sendEvent(sessionId, { type: "TEST" })).toMatchObject(
@@ -143,7 +201,7 @@ describe("ClientRegistry", () => {
     );
     expect(await result).toEqual({
       success: false,
-      error: "Application rejected event",
+      error: "Application rejected event (details withheld)",
     });
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -167,7 +225,7 @@ describe("ClientRegistry", () => {
     const { sessionId } = register(ws);
     expect(await registry.sendEvent(sessionId, { type: "TEST" })).toEqual({
       success: false,
-      error: "Failed to send: Connection reset",
+      error: "Failed to send event",
     });
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -250,5 +308,61 @@ describe("ClientRegistry", () => {
     expect(registry.getConnectedClientCount()).toBe(1);
     expect(registry.getConnectedSessionCount()).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
+  });
+  it.each([
+    "read_only",
+    "invalid_event",
+    "write_not_allowed",
+    "instrumentation_disabled",
+    "invalid_command",
+    "actor_not_found",
+    "dispatch_failed",
+  ])("preserves the adapter rejection code %s", async (code) => {
+    const ws = makeMockWs();
+    const { sessionId } = register(ws);
+    const promise = registry.sendEvent(sessionId, { type: "TEST" });
+    const message = JSON.parse(ws.send.mock.calls[0][0]);
+    registry.handleResponse(
+      ws,
+      message.requestId,
+      false,
+      "private detail",
+      code,
+    );
+    expect(await promise).toEqual({
+      success: false,
+      code,
+      error: "Application rejected event (details withheld)",
+    });
+  });
+
+  it.each(["private-code", { token: "private-code" }, 42, null])(
+    "withholds unrecognized or malformed adapter codes: %j",
+    async (code) => {
+      const ws = makeMockWs();
+      const { sessionId } = register(ws);
+      const promise = registry.sendEvent(sessionId, { type: "TEST" });
+      const message = JSON.parse(ws.send.mock.calls[0][0]);
+      registry.handleResponse(ws, message.requestId, false, undefined, code);
+      const result = await promise;
+      expect(result.code).toBeUndefined();
+      expect(result.error).toBe("Application rejected event");
+      expect(JSON.stringify(result)).not.toContain("private-code");
+    },
+  );
+
+  it("does not attach a rejection code to a successful acknowledgement", async () => {
+    const ws = makeMockWs();
+    const { sessionId } = register(ws);
+    const promise = registry.sendEvent(sessionId, { type: "TEST" });
+    const message = JSON.parse(ws.send.mock.calls[0][0]);
+    registry.handleResponse(
+      ws,
+      message.requestId,
+      true,
+      "private detail",
+      "read_only",
+    );
+    expect(await promise).toEqual({ success: true });
   });
 });

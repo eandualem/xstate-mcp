@@ -35,7 +35,14 @@ async function assertReusable(port: number) {
   await new Promise<void>((resolve) => listener.close(() => resolve()));
 }
 async function setup() {
-  const bridge = createInspectionServer({ wsPort: 0, logLevel: "error" });
+  const bridge = createInspectionServer({
+    wsPort: 0,
+    logLevel: "error",
+    writePolicy: {
+      readOnly: false,
+      allow: [{ actor: "*", events: ["RUN", "HELD"] }],
+    },
+  });
   const client = new Client({ name: "embedded-lifecycle-test", version: "1" });
   const [ct, st] = InMemoryTransport.createLinkedPair();
   onTestFinished(async () => {

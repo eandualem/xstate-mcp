@@ -1,3 +1,9 @@
+import {
+  createRedactor,
+  createWritePolicy,
+  type RedactionOptions,
+  type WritePolicyOptions,
+} from "./inspection-policy.js";
 import type { Config, LogLevel } from "./types.js";
 
 const LOG_LEVELS: LogLevel[] = ["debug", "info", "warn", "error"];
@@ -37,7 +43,31 @@ export function loadConfig(): Config {
   const requireOrigin =
     process.env.XSTATE_MCP_REQUIRE_ORIGIN?.toLowerCase() === "true";
 
+  const readOnlyRaw = process.env.XSTATE_MCP_READ_ONLY ?? "true";
+  if (readOnlyRaw !== "true" && readOnlyRaw !== "false")
+    throw new Error("XSTATE_MCP_READ_ONLY must be true or false");
+  const parseJson = (name: string, fallback: unknown): unknown => {
+    if (process.env[name] === undefined) return fallback;
+    try {
+      return JSON.parse(process.env[name]!);
+    } catch {
+      throw new Error(`Invalid JSON in ${name}`);
+    }
+  };
+  const writePolicy: WritePolicyOptions = {
+    readOnly: readOnlyRaw === "true",
+    allow: parseJson(
+      "XSTATE_MCP_WRITE_ALLOW",
+      [],
+    ) as WritePolicyOptions["allow"],
+  };
+  const redaction = parseJson("XSTATE_MCP_REDACTION", {}) as RedactionOptions;
+  createWritePolicy(writePolicy);
+  createRedactor(redaction);
+
   return {
+    writePolicy,
+    redaction,
     wsPort,
     wsHost,
     bufferSize,

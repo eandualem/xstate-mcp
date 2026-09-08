@@ -18,7 +18,12 @@ async function connectActor(
 ) {
   const logger = new Logger("error");
   const store = new ActorStore(100, logger);
-  const registry = new ClientRegistry(500, logger);
+  const registry = new ClientRegistry(500, logger, {
+    writePolicy: {
+      readOnly: false,
+      allow: [{ actor: "*", events: ["GUARDED", "user.save", "GO"] }],
+    },
+  });
   const server = createMcpServer(store, registry, logger);
   const client = new Client({ name: "eligibility-test", version: "1" });
   const [clientTransport, serverTransport] =

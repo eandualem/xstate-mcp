@@ -68,6 +68,9 @@ async function startCli() {
       XSTATE_MCP_WS_PORT: String(port),
       XSTATE_MCP_WS_HOST: "127.0.0.1",
       XSTATE_MCP_LOG_LEVEL: "info",
+      // These tests exercise ACK validation after the write-policy boundary.
+      XSTATE_MCP_READ_ONLY: "false",
+      XSTATE_MCP_WRITE_ALLOW: '[{"actor":"*","events":["NEXT"]}]',
     },
   });
   let stderr = "";
@@ -212,9 +215,13 @@ describe("CLI WebSocket envelope validation", () => {
     );
   });
 
-  it.each([true, false])(
-    "keeps requests pending until a valid success=%s acknowledgement",
-    async (success) => {
+  it.each([
+    { success: true, code: "read_only" },
+    { success: false, code: "dispatch_failed" },
+    { success: false, code: privateMarker },
+  ])(
+    "keeps requests pending until a valid acknowledgement %j",
+    async ({ success, code }) => {
       const cli = await startCli();
       const ws = await cli.connectSocket();
       await negotiateApplication(ws);
@@ -255,6 +262,10 @@ describe("CLI WebSocket envelope validation", () => {
           requestId: value,
         })),
         ...[null, 42, {}, []].map((value) => ({ ...base, error: value })),
+        ...[null, 42, {}, [], true, "", "C".repeat(129)].map((value) => ({
+          ...base,
+          code: value,
+        })),
       ];
       for (const frame of malformedResponses) ws.send(JSON.stringify(frame));
       await flush(ws);
@@ -270,14 +281,21 @@ describe("CLI WebSocket envelope validation", () => {
         JSON.stringify({
           ...base,
           success,
+          code,
           ...(success ? {} : { error: "Action rejected" }),
         }),
       );
       const result = await response;
       expect(result.structuredContent).toMatchObject({
         success,
-        ...(success ? {} : { error: "Action rejected" }),
+        ...(success
+          ? {}
+          : { error: "Application rejected event (details withheld)" }),
       });
+      expect((result.structuredContent as { code?: string }).code).toBe(
+        !success && code !== privateMarker ? code : undefined,
+      );
+      expect(JSON.stringify(result)).not.toContain(privateMarker);
       expect(result.isError).toBe(!success);
       await flush(ws);
       const state = await cli.client.callTool({

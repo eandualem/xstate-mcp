@@ -115,7 +115,10 @@ async function harness(
   } = {},
 ) {
   const store = new ActorStore(100, logger);
-  const registry = new ClientRegistry(5000, logger, options.health);
+  const registry = new ClientRegistry(5000, logger, {
+    health: options.health,
+    writePolicy: { readOnly: false, allow: [{ actor: "*", events: ["RUN"] }] },
+  });
   const mcp = createMcpServer(store, registry, logger);
   const client = new Client({ name: "doctor-tests", version: "1" });
   const [serverTransport, clientTransport] =
@@ -728,6 +731,8 @@ it("exposes health and negotiated writes through the built CLI's actual MCP stdi
       env: {
         ...process.env,
         XSTATE_MCP_WS_PORT: String(address.port),
+        XSTATE_MCP_READ_ONLY: "false",
+        XSTATE_MCP_WRITE_ALLOW: '[{"actor":"*","events":["RUN"]}]',
         XSTATE_MCP_WS_HOST: "127.0.0.1",
         XSTATE_MCP_REQUIRE_ORIGIN: "false",
         XSTATE_MCP_LOG_LEVEL: "error",

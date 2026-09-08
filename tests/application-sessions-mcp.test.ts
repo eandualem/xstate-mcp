@@ -26,7 +26,12 @@ interface AppMessage {
 async function setup(withRegistry = true) {
   const logger = new Logger("error");
   const store = new ActorStore(50, logger);
-  const registry = new ClientRegistry(3000, logger);
+  const registry = new ClientRegistry(3000, logger, {
+    writePolicy: {
+      readOnly: false,
+      allow: [{ actor: "*", events: ["RUN", "WORK"] }],
+    },
+  });
   const server = createMcpServer(store, registry, logger);
   const client = new Client({ name: "session-isolation-test", version: "1" });
   const [ct, st] = InMemoryTransport.createLinkedPair();
@@ -211,7 +216,7 @@ describe("application session isolation via real XState and MCP", () => {
     });
     expect((await result).data).toMatchObject({
       success: false,
-      error: "owner response",
+      error: "Application rejected event (details withheld)",
     });
   });
 });

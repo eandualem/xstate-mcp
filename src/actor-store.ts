@@ -10,8 +10,54 @@ import type {
 } from "./types.js";
 import { RingBuffer } from "./types.js";
 import type { Logger } from "./logger.js";
+import { createRedactor, type RedactionOptions } from "./inspection-policy.js";
 import { safeStringify } from "./safe-stringify.js";
 import { readSnapshot } from "./actor-snapshot.js";
+
+/** Preserve the lifecycle contract for native Errors without invoking accessors. */
+function projectSnapshot(
+  snapshot: Record<string, unknown>,
+): Record<string, unknown> {
+  const descriptor = Object.getOwnPropertyDescriptor(snapshot, "error");
+  if (
+    !descriptor ||
+    !("value" in descriptor) ||
+    !(descriptor.value instanceof Error)
+  )
+    return snapshot;
+  const error: Error = descriptor.value;
+  const field = (key: string): unknown => {
+    let object: object | null = error;
+    // Standard Error fields need at most three levels; bound custom prototype chains.
+    for (let depth = 0; object && depth < 8; depth++) {
+      const property = Object.getOwnPropertyDescriptor(object, key);
+      if (property) return "value" in property ? property.value : undefined;
+      object = Object.getPrototypeOf(object) as object | null;
+    }
+    return undefined;
+  };
+  const message = field("message");
+  const name = field("name");
+  const code = field("code");
+  const projected = {
+    message:
+      typeof message === "string"
+        ? message.slice(0, 4096)
+        : "Error details unavailable",
+    name: typeof name === "string" ? name.slice(0, 256) : "Error",
+    ...(typeof code === "string"
+      ? { code: code.slice(0, 256) }
+      : typeof code === "number" && Number.isFinite(code)
+        ? { code }
+        : {}),
+  };
+  const descriptors = Object.getOwnPropertyDescriptors(snapshot);
+  descriptors.error = { ...descriptor, value: projected };
+  return Object.create(Object.getPrototypeOf(snapshot), descriptors) as Record<
+    string,
+    unknown
+  >;
+}
 
 export type ActorRegisteredCallback = (sessionId: string) => void;
 export type ActorRemovedCallback = (sessionId: string) => void;
@@ -35,10 +81,37 @@ export class ActorStore {
   private onSnapshotCallbacks: SnapshotUpdatedCallback[] = [];
   private onClearCallbacks: StoreCleared[] = [];
 
+  private readonly redact: (value: unknown) => unknown;
+
   constructor(
     private bufferSize: number,
     private logger: Logger,
-  ) {}
+    redaction?: RedactionOptions,
+  ) {
+    this.redact = createRedactor(redaction);
+  }
+
+  /** Keep canonical payload names so suffix rules also match transfer and export wrappers. */
+  redactField(field: string, value: unknown): unknown {
+    const result = this.redact({ [field]: value });
+    return result && typeof result === "object"
+      ? (result as Record<string, unknown>)[field]
+      : "[OMITTED]";
+  }
+
+  private redactSnapshot(
+    snapshot: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const result = this.redactField("snapshot", projectSnapshot(snapshot));
+    return result && typeof result === "object" && !Array.isArray(result)
+      ? (result as Record<string, unknown>)
+      : {
+          status: "unknown",
+          value: "[OMITTED]",
+          context: "[OMITTED]",
+          output: "[OMITTED]",
+        };
+  }
 
   subscribe(cb: (change: ActorStoreChange) => void): () => void {
     const listener = (change: ActorStoreChange) => cb(change);
@@ -103,23 +176,11 @@ export class ActorStore {
       createdAt,
     } = event;
 
-    let parsedDefinition: unknown = null;
-    if (definition !== undefined && definition !== null) {
-      if (typeof definition === "string") {
-        try {
-          parsedDefinition = JSON.parse(definition);
-        } catch {
-          this.logger.warn(`Failed to parse definition for actor ${sessionId}`);
-          parsedDefinition = definition;
-        }
-      } else {
-        parsedDefinition = definition;
-      }
-    }
+    const parsedDefinition = this.redactField("definition", definition ?? null);
 
     let currentSnapshot: ActorSnapshot | null = null;
     if (snapshot && typeof snapshot === "object") {
-      currentSnapshot = readSnapshot(snapshot);
+      currentSnapshot = readSnapshot(this.redactSnapshot(snapshot));
     }
 
     const record: ActorRecord = {
@@ -129,7 +190,7 @@ export class ActorStore {
       localSessionId: event.localSessionId ?? sessionId,
       applicationName: event.applicationName ?? null,
       sessionId,
-      name: name ?? sessionId,
+      name: this.redactField("name", name ?? sessionId) as string,
       rootId: rootId ?? null,
       parentId: parentId ?? null,
       definition: parsedDefinition,
@@ -156,7 +217,7 @@ export class ActorStore {
     if (event.snapshot && typeof event.snapshot === "object") {
       actor.snapshotVersion++;
       const previous = actor.currentSnapshot;
-      const next = readSnapshot(event.snapshot, previous);
+      const next = readSnapshot(this.redactSnapshot(event.snapshot), previous);
       actor.currentSnapshot = next;
 
       const fields = ["value", "context", "status", "output", "error"] as const;
@@ -166,8 +227,10 @@ export class ActorStore {
           safeStringify(next[field] ?? null),
       );
       if (changes.length > 0) {
-        const eventType = (event.event as Record<string, unknown> | undefined)
-          ?.type;
+        const eventType = (
+          this.redactField("event", event.event) as
+            Record<string, unknown> | undefined
+        )?.type;
         actor.transitionHistory.push({
           type: changes.includes("value")
             ? "state"
@@ -199,10 +262,15 @@ export class ActorStore {
       return;
     }
 
+    const sanitized = this.redactField("event", event.event);
+    const sourceId = this.redactField("sourceId", event.sourceId ?? null);
     const record: EventRecord = {
       sequence: actor.eventHistory.total + 1,
-      event: (event.event as Record<string, unknown>) ?? { type: "unknown" },
-      sourceId: event.sourceId ?? null,
+      event:
+        sanitized && typeof sanitized === "object"
+          ? (sanitized as Record<string, unknown>)
+          : { type: "[OMITTED]" },
+      sourceId: typeof sourceId === "string" ? sourceId : null,
       createdAt: event.createdAt,
     };
 

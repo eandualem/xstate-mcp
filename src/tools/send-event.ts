@@ -11,7 +11,17 @@ export const sendEventOutputSchema = {
   success: z.boolean(),
   error: z.string().optional(),
   code: z
-    .enum(["capability_negotiation_required", "unsupported_command"])
+    .enum([
+      "capability_negotiation_required",
+      "unsupported_command",
+      "read_only",
+      "write_not_allowed",
+      "invalid_event",
+      "instrumentation_disabled",
+      "invalid_command",
+      "actor_not_found",
+      "dispatch_failed",
+    ])
     .optional(),
 };
 
@@ -53,9 +63,13 @@ export async function sendEvent(
 
   const result = await clientRegistry.sendEvent(sessionId, event);
 
+  const sanitized = store.redactField("event", event);
   const structuredContent = {
     sessionId,
-    event,
+    event:
+      sanitized && typeof sanitized === "object"
+        ? sanitized
+        : { type: "[OMITTED]" },
     ...result,
   };
 

@@ -276,6 +276,15 @@ function check(
     snapshot: snapshot as Record<string, unknown> | undefined,
     createdAt: new Date().toISOString(),
   });
+  // Exercise static analysis directly, including non-JSON prototype/cycle cases.
+  // Real transport tests separately cover the pre-retention sanitization boundary.
+  store.getActor("actor")!.definition = definition;
+  if (snapshot)
+    store.getActor("actor")!.currentSnapshot = {
+      status: snapshot.status ?? "active",
+      value: snapshot.value ?? null,
+      context: null,
+    };
   return canHandleEvent(store, "actor", event).structuredContent as Record<
     string,
     unknown

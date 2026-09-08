@@ -26,7 +26,9 @@ async function setup() {
       unsubscribe();
     };
   });
-  const registry = new ClientRegistry(1000, logger);
+  const registry = new ClientRegistry(1000, logger, {
+    writePolicy: { readOnly: false, allow: [{ actor: "*", events: ["LOAD"] }] },
+  });
   const server = createMcpServer(store, registry, logger);
   const client = new Client({ name: "wait-test", version: "1.0.0" });
   const [clientTransport, serverTransport] =
@@ -171,7 +173,12 @@ describe("MCP verification waits with real XState actors", () => {
     });
     const server = createMcpServer(
       store,
-      new ClientRegistry(1000, logger),
+      new ClientRegistry(1000, logger, {
+        writePolicy: {
+          readOnly: false,
+          allow: [{ actor: "*", events: ["LOAD"] }],
+        },
+      }),
       logger,
     );
     await server.close();

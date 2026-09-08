@@ -27,7 +27,12 @@ const cli = resolve(root, pkg.bin["xstate-mcp"]);
 function launch(args: string[], env: Record<string, string> = {}, cwd = root) {
   const child = spawn(process.execPath, args, {
     cwd,
-    env: { ...process.env, ...env },
+    env: {
+      ...process.env,
+      XSTATE_MCP_READ_ONLY: "false",
+      XSTATE_MCP_WRITE_ALLOW: '[{"actor":"*","events":["RUN"]}]',
+      ...env,
+    },
     stdio: "pipe",
   });
   let stdout = "",

@@ -1,8 +1,24 @@
+import {
+  createWritePolicy,
+  type WritePolicyOptions,
+} from "./inspection-policy.js";
 import { ConnectionHealth } from "./connection-health.js";
 import { randomUUID } from "node:crypto";
 import type { WebSocket } from "ws";
 import type { ActorStore } from "./actor-store.js";
 import type { Logger } from "./logger.js";
+
+// Only the guard's fixed codes are safe to expose; arbitrary adapter strings
+// can contain the same application data as free-form error messages.
+const ADAPTER_REJECTION_CODES = new Set([
+  "read_only",
+  "write_not_allowed",
+  "invalid_event",
+  "instrumentation_disabled",
+  "invalid_command",
+  "actor_not_found",
+  "dispatch_failed",
+]);
 
 export interface SessionIdentity {
   sessionId: string;
@@ -26,7 +42,7 @@ interface PendingRequest {
 export interface SendEventResult {
   success: boolean;
   error?: string;
-  code?: "capability_negotiation_required" | "unsupported_command";
+  code?: string;
 }
 
 export class ClientRegistry {
@@ -36,11 +52,21 @@ export class ClientRegistry {
   private pending = new Map<string, PendingRequest>();
   private closed = false;
 
+  private checkWrite: ReturnType<typeof createWritePolicy>;
+
+  readonly health: ConnectionHealth;
+
   constructor(
     private timeoutMs: number,
     private logger: Logger,
-    readonly health = new ConnectionHealth(),
-  ) {}
+    options: {
+      health?: ConnectionHealth;
+      writePolicy?: WritePolicyOptions;
+    } = {},
+  ) {
+    this.health = options.health ?? new ConnectionHealth();
+    this.checkWrite = createWritePolicy(options.writePolicy);
+  }
 
   get isClosed(): boolean {
     return this.closed;
@@ -132,6 +158,8 @@ export class ClientRegistry {
   ): Promise<SendEventResult> {
     if (this.closed)
       return Promise.resolve({ success: false, error: "Server shutting down" });
+    const policy = this.checkWrite(sessionId, event.type);
+    if (!policy.success) return Promise.resolve(policy);
     const session = this.sessions.get(sessionId);
     if (!session)
       return Promise.resolve({
@@ -170,7 +198,7 @@ export class ClientRegistry {
         if (err)
           this.settle(requestId, {
             success: false,
-            error: `Failed to send: ${err.message}`,
+            error: "Failed to send event",
           });
       });
       this.logger.debug(
@@ -184,6 +212,7 @@ export class ClientRegistry {
     requestId: string,
     success: boolean,
     error?: string,
+    code?: unknown,
   ): boolean {
     const pending = this.pending.get(requestId);
     if (!pending) {
@@ -197,7 +226,20 @@ export class ClientRegistry {
       this.logger.warn("Rejected response from non-owning connection");
       return false;
     }
-    this.settle(requestId, { success, error });
+    this.settle(requestId, {
+      success,
+      code:
+        !success &&
+        typeof code === "string" &&
+        ADAPTER_REJECTION_CODES.has(code)
+          ? code
+          : undefined,
+      error: success
+        ? undefined
+        : error === undefined
+          ? "Application rejected event"
+          : "Application rejected event (details withheld)",
+    });
     return true;
   }
 
