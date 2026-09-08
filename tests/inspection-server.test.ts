@@ -1,3 +1,4 @@
+import { negotiateApplication } from "./fixtures/application-hello.js";
 import { once } from "node:events";
 import { createServer, connect } from "node:net";
 import { PassThrough } from "node:stream";
@@ -47,6 +48,7 @@ async function setup() {
     throw new Error("Missing address");
   const ws = new WebSocket(`ws://127.0.0.1:${address.port}`);
   await once(ws, "open");
+  await negotiateApplication(ws);
   onTestFinished(() => ws.terminate());
   return {
     bridge,
@@ -68,7 +70,7 @@ describe("importable inspection server lifecycle", () => {
     const client = new Client({ name: "scanner", version: "1" });
     const [ct, st] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(st), client.connect(ct)]);
-    expect((await client.listTools()).tools).toHaveLength(11);
+    expect((await client.listTools()).tools).toHaveLength(12);
     expect((await client.listPrompts()).prompts).toHaveLength(3);
     expect((await client.listResources()).resources).toHaveLength(1);
     await client.close();
@@ -167,6 +169,15 @@ describe("importable inspection server lifecycle", () => {
       expect(bridge.store.size).toBe(0);
       expect(bridge.clientRegistry.getConnectedSessionCount()).toBe(0);
       expect(bridge.clientRegistry.getConnectedClientCount()).toBe(0);
+      expect(bridge.clientRegistry.getHealth()).toMatchObject({
+        listener: { state: "closed", endpoint: null },
+        totals: {
+          connectedClients: 0,
+          registeredSessions: 0,
+          closedConnections: 1,
+        },
+        connections: [],
+      });
       expect(transport.onmessage).toBeUndefined();
       expect(transport.onclose).toBeUndefined();
       await assertReusable(port);
@@ -197,7 +208,7 @@ describe("importable inspection server lifecycle", () => {
     await flush();
     actor.stop();
     expect(bridge.store.size).toBe(0);
-    expect((await client.listTools()).tools).toHaveLength(11);
+    expect((await client.listTools()).tools).toHaveLength(12);
     expect(bridge.clientRegistry.isClosed).toBe(true);
   });
 

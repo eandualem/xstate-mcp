@@ -78,7 +78,7 @@ Confirm the server works before wiring up your app:
 npx -y @modelcontextprotocol/inspector npx -y xstate-mcp
 ```
 
-This opens a web UI at `http://localhost:6274`. The server exposes 11 tools, 1 fixed resource, 2 resource templates, and 3 prompts. `list_actors` returns an empty actor list when no application is connected. This verifies MCP discovery only; it does not verify that the application inspection connection works.
+This opens a web UI at `http://localhost:6274`. The server exposes 12 tools, 1 fixed resource, 2 resource templates, and 3 prompts. `list_actors` returns an empty actor list when no application is connected. This verifies MCP discovery only; it does not verify that the application inspection connection works.
 
 ## Library and lifecycle
 
@@ -199,15 +199,23 @@ ws.addEventListener("message", (msg) => {
 });
 ```
 
+For writes, install the handler before sending a version-1 `xstate-mcp.hello` on
+that same socket and wait for its successful response. See the complete
+[doctor example](examples/doctor-app.mjs) and [handshake guide](docs/connection-health.md).
+The snippets above are inspection/command wiring fragments; complete startup and
+reconnect handling is tracked in [#13](https://github.com/eandualem/xstate-mcp/issues/13).
+
 ### Incoming message validation
 
-Every WebSocket message must be a JSON object with a non-empty string `type`.
+Every WebSocket message must be a JSON object with a non-empty string `type`
+of at most 128 characters.
 The server ignores malformed JSON, nulls, arrays, primitives, and invalid
 inspection messages while keeping the connection available for valid traffic.
 
 A `xstate-mcp.send.response` acknowledgement must include a non-empty string
-`requestId` copied from the command and a boolean `success`. Optional `error`
-must be a string; omit it when there is no error. Invalid acknowledgements leave
+`requestId` of at most 128 characters copied from the command and a boolean
+`success`. Optional `error` must be a string of at most 4096 characters; omit it
+when there is no error. Invalid acknowledgements leave
 the pending request intact so a valid reply can still resolve it, subject to
 the existing timeout. Unknown request IDs are ignored. Validation warnings and
 unknown-request warnings use fixed descriptions on stderr, without echoing the
@@ -231,6 +239,21 @@ Examples below abbreviate public IDs as `app-session` and `agents-session`.
 Always copy the actual opaque `sessionId` from discovery.
 
 ### Discovery & Orientation
+
+#### `get_connection_health`
+
+Start here when no actors appear or before sending an event. Reports the actual
+listener endpoint, live applications (including sockets without actors), negotiated
+adapter/protocol versions, supported commands, rejected-frame counters and freshness.
+Output contains metadata only, with at most 50 connection rows.
+
+**Parameters:** optional `limit` (integer 1–50), `offset` (nonnegative integer),
+and `connectionId` (UUID). Use `nextOffset` for further pages.
+
+See the [connection doctor guide](docs/connection-health.md) for expected failure
+outputs, the version-1 adapter handshake and a runnable XState example. Legacy
+inspectors remain readable; `send_event` now requires a successful hello advertising
+that command and otherwise fails immediately with remediation.
 
 #### `list_actors`
 
@@ -529,6 +552,7 @@ Reset the registry. Actors re-register automatically on next page load.
 Start every debugging session here:
 
 ```
+get_connection_health → check listener, application, freshness and commands
 list_actors         → see all actors, their states, and statuses
 get_actor_tree      → see the parent-child hierarchy
 get_actor_state     → drill into one actor for full context
@@ -694,7 +718,7 @@ createActor(machine, {              WebSocket Server :7357         MCP Client
                                     ↓
                     xstate-mcp.send ◄────────────────────────────► send_event
                                     ↓
-                                    McpServer (stdio)  ──────────► 11 tools, 3 resources, 3 prompts
+                                    McpServer (stdio)  ──────────► 12 tools, 3 resources, 3 prompts
 ```
 
 - **MCP transport:** stdio (standard for Claude Code MCP servers)

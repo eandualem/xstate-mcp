@@ -7,6 +7,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { describe, expect, it, onTestFinished } from "vitest";
 import { WebSocket } from "ws";
 import { createActor, createMachine } from "xstate";
+import { negotiateApplication } from "./fixtures/application-hello.js";
 
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 const cliEntry: string = JSON.parse(
@@ -216,6 +217,7 @@ describe("CLI WebSocket envelope validation", () => {
     async (success) => {
       const cli = await startCli();
       const ws = await cli.connectSocket();
+      await negotiateApplication(ws);
       const actor = startActor(ws);
       await flush(ws);
       const sessionId = await discoverSessionId(cli.client, actor.sessionId);
@@ -295,6 +297,13 @@ describe("CLI WebSocket envelope validation", () => {
     ws.send(
       JSON.stringify({
         type: "xstate-mcp.send.response",
+        requestId: "valid-but-unknown",
+        success: true,
+      }),
+    );
+    ws.send(
+      JSON.stringify({
+        type: "xstate-mcp.send.response",
         requestId: privateMarker.repeat(10000),
         success: true,
         error: privateMarker,
@@ -303,6 +312,15 @@ describe("CLI WebSocket envelope validation", () => {
     await flush(ws);
     await cli.client.ping();
     expect(cli.stderr).toContain("Received response for unknown request");
+    expect(cli.stderr).toContain("Invalid send response");
+    const health = await cli.client.callTool({
+      name: "get_connection_health",
+      arguments: {},
+    });
+    expect(health.structuredContent).toMatchObject({
+      counters: { receivedFrames: 2, rejectedFrames: 2 },
+      connections: [{ lastRejection: "invalid_ack" }],
+    });
     expect(cli.stderr.includes(privateMarker)).toBe(false);
     expect(cli.stderr.split("\n").every((line) => line.length < 512)).toBe(
       true,

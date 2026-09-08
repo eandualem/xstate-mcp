@@ -1,3 +1,4 @@
+import { ConnectionHealth } from "./connection-health.js";
 import { randomUUID } from "node:crypto";
 import type { WebSocket } from "ws";
 import type { ActorStore } from "./actor-store.js";
@@ -25,6 +26,7 @@ interface PendingRequest {
 export interface SendEventResult {
   success: boolean;
   error?: string;
+  code?: "capability_negotiation_required" | "unsupported_command";
 }
 
 export class ClientRegistry {
@@ -37,6 +39,7 @@ export class ClientRegistry {
   constructor(
     private timeoutMs: number,
     private logger: Logger,
+    readonly health = new ConnectionHealth(),
   ) {}
 
   get isClosed(): boolean {
@@ -48,7 +51,7 @@ export class ClientRegistry {
     if (this.closed) throw new Error("Client registry is closed");
     if (this.connections.has(ws)) return;
     this.connections.set(ws, {
-      connectionId: randomUUID(),
+      connectionId: this.health.connect(ws),
       applicationName: applicationName?.trim().slice(0, 128) || null,
     });
   }
@@ -101,6 +104,7 @@ export class ClientRegistry {
   }
 
   removeClient(ws: WebSocket, store?: ActorStore): void {
+    this.health.disconnect(ws);
     // Match the original socket, independently of current actor mappings.
     for (const [requestId, pending] of this.pending) {
       if (pending.session.client === ws) {
@@ -140,9 +144,15 @@ export class ClientRegistry {
         success: false,
         error: `Client connection is not open (state: ${ws.readyState})`,
       });
+    const blocked = this.health.writeBlock(ws);
+    if (blocked) {
+      this.health.count(ws, "unsupportedCommands");
+      return Promise.resolve({ success: false, ...blocked });
+    }
     const requestId = randomUUID();
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
+        this.health.count(ws, "commandTimeouts");
         this.settle(requestId, {
           success: false,
           error: `Timeout waiting for response (${this.timeoutMs}ms)`,
@@ -174,20 +184,21 @@ export class ClientRegistry {
     requestId: string,
     success: boolean,
     error?: string,
-  ): void {
+  ): boolean {
     const pending = this.pending.get(requestId);
     if (!pending) {
       this.logger.warn("Received response for unknown request, skipping");
-      return;
+      return false;
     }
     if (
       pending.session.client !== ws ||
       this.sessions.get(pending.session.sessionId) !== pending.session
     ) {
       this.logger.warn("Rejected response from non-owning connection");
-      return;
+      return false;
     }
     this.settle(requestId, { success, error });
+    return true;
   }
 
   private settle(requestId: string, result: SendEventResult): void {
@@ -214,10 +225,19 @@ export class ClientRegistry {
     // Live sockets keep their connection identity, but must register actors again.
   }
 
+  getHealth(limit?: number, connectionId?: string, offset?: number) {
+    return this.health.snapshot(
+      (ws) => this.clientToSessions.get(ws)?.size ?? 0,
+      limit,
+      connectionId,
+      offset,
+    );
+  }
+
   getConnectedSessionCount(): number {
     return this.sessions.size;
   }
   getConnectedClientCount(): number {
-    return this.clientToSessions.size;
+    return this.health.size;
   }
 }

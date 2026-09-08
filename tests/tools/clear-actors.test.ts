@@ -58,6 +58,6 @@ describe("clear_actors tool", () => {
 
     expect(store.size).toBe(0);
     expect(registry.getConnectedSessionCount()).toBe(0);
-    expect(registry.getConnectedClientCount()).toBe(0);
+    expect(registry.getConnectedClientCount()).toBe(1);
   });
 });

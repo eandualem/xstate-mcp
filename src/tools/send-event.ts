@@ -10,6 +10,9 @@ export const sendEventOutputSchema = {
   event: z.record(z.string(), z.unknown()),
   success: z.boolean(),
   error: z.string().optional(),
+  code: z
+    .enum(["capability_negotiation_required", "unsupported_command"])
+    .optional(),
 };
 
 export async function sendEvent(

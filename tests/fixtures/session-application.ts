@@ -1,3 +1,4 @@
+import { negotiateApplication } from "./application-hello.js";
 // Each subprocess gets its own real XState session counter, just like a browser tab.
 import { once } from "node:events";
 import { WebSocket } from "ws";
@@ -5,6 +6,7 @@ import { createActor, createMachine, sendTo, type AnyActorRef } from "xstate";
 
 const ws = new WebSocket(process.argv[2]);
 await once(ws, "open");
+await negotiateApplication(ws);
 const actors = new Map<string, AnyActorRef>();
 const registrations: unknown[] = [];
 const commands: unknown[] = [];
@@ -58,6 +60,7 @@ const actor = createActor(machine, {
 });
 ws.on("message", (raw) => {
   const command = JSON.parse(raw.toString());
+  if (command.type !== "xstate-mcp.send") return;
   commands.push(command);
   process.send?.({ command });
   if (hold) return;

@@ -1,3 +1,4 @@
+import { applicationHello } from "../fixtures/application-hello.js";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ActorStore } from "../../src/actor-store.js";
 import { ClientRegistry } from "../../src/client-registry.js";
@@ -49,6 +50,7 @@ describe("send_event tool", () => {
 
   it("resolves target by sessionId", async () => {
     const ws = makeMockWs();
+    registry.health.negotiate(ws as never, applicationHello());
     const identity = registry.registerSession(ws as never, "x:0");
     store.registerActor(makeActorEvent(identity));
 
@@ -69,6 +71,7 @@ describe("send_event tool", () => {
 
   it("resolves target by actor name when sessionId not found", async () => {
     const ws = makeMockWs();
+    registry.health.negotiate(ws as never, applicationHello());
     const identity = registry.registerSession(ws as never, "x:99");
     store.registerActor(makeActorEvent({ ...identity, name: "appMachine" }));
 

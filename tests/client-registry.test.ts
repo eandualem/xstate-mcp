@@ -1,3 +1,4 @@
+import { applicationHello } from "./fixtures/application-hello.js";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { WebSocket } from "ws";
 import { ClientRegistry } from "../src/client-registry.js";
@@ -24,6 +25,7 @@ describe("ClientRegistry", () => {
     vi.useRealTimers();
   });
   function register(ws: WebSocket, localSessionId = "x:0") {
+    registry.health.negotiate(ws, applicationHello());
     const identity = registry.registerSession(ws, localSessionId);
     store.registerActor({
       type: "@xstate.actor",
@@ -210,7 +212,7 @@ describe("ClientRegistry", () => {
     const first = registry.sendEvent(identity.sessionId, { type: "TEST" });
     registry.clear();
     expect(await first).toEqual({ success: false, error: "Registry cleared" });
-    expect(registry.getConnectedClientCount()).toBe(0);
+    expect(registry.getConnectedClientCount()).toBe(1);
     expect(registry.getConnectedSessionCount()).toBe(0);
     expect(registry.getSession(ws, "x:0")).toBeUndefined();
     expect(register(ws)).toEqual(identity);
@@ -245,7 +247,7 @@ describe("ClientRegistry", () => {
       error: "Server shutting down",
     });
     expect(ws.send).toHaveBeenCalledOnce();
-    expect(registry.getConnectedClientCount()).toBe(0);
+    expect(registry.getConnectedClientCount()).toBe(1);
     expect(registry.getConnectedSessionCount()).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
   });
