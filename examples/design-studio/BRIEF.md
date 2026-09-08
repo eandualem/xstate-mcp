@@ -63,15 +63,20 @@ the fix is useful regression evidence, but does not prove this development seque
 
 ## Dependencies and disclosure
 
-Use a pinned development build of xstate-mcp with the write/redaction controls from
-[PR #32](https://github.com/eandualem/xstate-mcp/pull/32), source commit
-`16c7a0004dce3f676eab0b5606be1e3542c89449`. Its browser-safe helper is available only
-through `xstate-mcp/inspection-policy`; its package root still starts the CLI.
-Record the source commit as well as the package and MCP-advertised versions. This
-is an unmerged development build, not a new published release.
+To repeat the original exercise, use the historical development snapshot with the
+write/redaction controls from [PR #32](https://github.com/eandualem/xstate-mcp/pull/32),
+source commit
+[`16c7a0004dce3f676eab0b5606be1e3542c89449`](https://github.com/eandualem/xstate-mcp/commit/16c7a0004dce3f676eab0b5606be1e3542c89449),
+preserved on
+[`archive/demo-evidence/design-studio-server-16c7a00`](https://github.com/eandualem/xstate-mcp/tree/archive/demo-evidence/design-studio-server-16c7a00).
+It was unmerged when captured. Its browser-safe helper is available only through
+`xstate-mcp/inspection-policy`; its package root starts the CLI. Record the source
+commit as well as the package and MCP-advertised versions. Follow the
+[pinned setup and compatibility notes](README.md#run-the-example); current core
+requires changes to this historical application's adapter and harness.
 
-The small frontend demonstration in [PR #33](https://github.com/eandualem/xstate-mcp/pull/33)
-is a useful verified reference. Its two-actor adapter is specific to that example;
+The [small frontend demonstration](../frontend/README.md) is a reference for the
+current server. Its two-actor adapter is specific to that example;
 Design Studio needs its own complete hierarchy and React lifecycle coverage.
 
 The document/storage scenario needs no in-app assistant model call or provider key.

@@ -69,12 +69,25 @@ NEXT_PUBLIC_XSTATE_INSPECT=1 bunx next dev --port 7131
 
 `inspector:prepare` builds the pinned server source in `.tmp/xstate-mcp` and installs
 its browser policy build. A Git dependency alone does not provide its compiled
-exports. The server source is
-`16c7a0004dce3f676eab0b5606be1e3542c89449` from
-[PR #32](https://github.com/eandualem/xstate-mcp/pull/32), an **unmerged development
-build**. It declares package version `1.0.1` and MCP handshake version `1.0.0`.
-There is no new npm release. Only `xstate-mcp/inspection-policy` is browser-safe;
-the package root still starts the CLI at this source commit.
+exports. The recorded server source is
+[`16c7a0004dce3f676eab0b5606be1e3542c89449`](https://github.com/eandualem/xstate-mcp/commit/16c7a0004dce3f676eab0b5606be1e3542c89449),
+a historical development snapshot from
+[PR #32](https://github.com/eandualem/xstate-mcp/pull/32), preserved on
+[`archive/demo-evidence/design-studio-server-16c7a00`](https://github.com/eandualem/xstate-mcp/tree/archive/demo-evidence/design-studio-server-16c7a00).
+It was unmerged when captured and declares package version `1.0.1` and MCP
+handshake version `1.0.0`. The evidence files retain that capture-time status and
+the original versions; they do not describe the current release status.
+
+Keep this server pin when reproducing the recording. It exposes nine tools, and
+the harness launches `.tmp/xstate-mcp/dist/index.js`. At this snapshot the package
+root starts the CLI; only `xstate-mcp/inspection-policy` is browser-safe. The
+current checkout exposes twelve tools, has an import-safe package root, launches
+the CLI through `dist/cli.js`, scopes public actor IDs by connection, and requires
+hello negotiation for writes. This pinned Design Studio adapter predates that
+handshake. Replacing its server with current core requires an adapter and harness
+migration plus a new validation run. Use the
+[frontend example](../frontend/README.md) for the current server's complete MCP
+loop; the recording and Node 24 verification here cover the historical snapshot.
 
 In another terminal in the application checkout:
 
@@ -180,6 +193,10 @@ client's provider and logs, so use synthetic documents throughout.
 
 The coding agent ran in Codex CLI and identified itself as GPT-6. Exact deployment
 identity, usage and cost were unavailable; zero in-app model calls is not a
-zero-cost claim for the coding agent. The upstream reliability, maintained runtime,
-release and general adapter PRs remain separate. This demo's HMR remounts from
-persisted data and does not preserve an unsaved draft across a code update.
+zero-cost claim for the coding agent. The
+[current release guide](../../docs/releases.md) describes the integrated server;
+the [general adapter](https://github.com/eandualem/xstate-mcp/issues/13) remains
+separate work. The application change is reviewed in Design Studio PR #2; this
+repository's demo does not merge or publish that application. This demo's HMR
+remounts from persisted data and does not preserve an unsaved draft across a code
+update.
