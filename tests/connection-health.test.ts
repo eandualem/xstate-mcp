@@ -15,7 +15,12 @@ const logger = new Logger("error");
 
 describe("connection health and capability contracts", () => {
   it("counts empty connections, keeps actor clearing separate and forgets disconnects", () => {
-    const registry = new ClientRegistry(5000, logger);
+    const registry = new ClientRegistry(5000, logger, {
+      writePolicy: {
+        readOnly: false,
+        allow: [{ actor: "*", events: ["RUN"] }],
+      },
+    });
     const ws = socket();
     const id = registry.health.connect(ws);
     expect(registry.getConnectedClientCount()).toBe(1);
@@ -43,7 +48,12 @@ describe("connection health and capability contracts", () => {
   it.each([undefined, []])(
     "rejects unsupported writes immediately without sending or scheduling a timeout (%j)",
     async (commands) => {
-      const registry = new ClientRegistry(5000, logger);
+      const registry = new ClientRegistry(5000, logger, {
+        writePolicy: {
+          readOnly: false,
+          allow: [{ actor: "*", events: ["RUN"] }],
+        },
+      });
       const ws = socket();
       const { sessionId } = registry.registerSession(ws, "actor");
       if (commands) registry.health.negotiate(ws, applicationHello(commands));

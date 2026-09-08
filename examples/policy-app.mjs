@@ -40,6 +40,17 @@ if (guard.enabled) {
     ws.terminate();
   }, 5000);
   ws.on("open", () => {
+    ws.send(
+      JSON.stringify({
+        type: "xstate-mcp.hello",
+        protocolVersion: 1,
+        application: { name: "policy-demo" },
+        adapter: { name: "policy-example", version: "1.0.0" },
+        capabilities: { commands: ["send_event"] },
+      }),
+    );
+  });
+  function startActor() {
     clearTimeout(deadline);
     actor = createActor(machine, {
       inspect(event) {
@@ -82,12 +93,27 @@ if (guard.enabled) {
     process.stderr.write(
       "Policy demo ready; NEXT is allowed, RESET is denied\n",
     );
-  });
+  }
   ws.on("message", (raw) => {
     let command;
     try {
       command = JSON.parse(raw.toString());
     } catch {
+      return;
+    }
+    if (command?.type === "xstate-mcp.hello.response") {
+      if (
+        command.success === true &&
+        command.protocolVersion === 1 &&
+        command.commands?.includes("send_event")
+      ) {
+        if (!actor) startActor();
+      } else {
+        clearTimeout(deadline);
+        process.stderr.write("Development inspector negotiation failed\n");
+        process.exitCode = 1;
+        ws.terminate();
+      }
       return;
     }
     if (

@@ -141,17 +141,16 @@ Application writes are disabled by default. Set `XSTATE_MCP_READ_ONLY=false` and
 an explicit `XSTATE_MCP_WRITE_ALLOW` array, and opt into the adapter's own policy.
 For example, `[{"actor":"*","events":["NEXT"]}]` permits only `NEXT` on any actor.
 Empty rules deny everything; read-only true overrides all rules. The server checks
-the resolved session ID even when the tool target is an actor name.
+the resolved public session ID even when the tool target is an actor name.
 
 A successful acknowledgement confirms dispatch, not a completed transition. Read
 the actor state/history afterward, and verify the UI when developing a frontend.
 
-
 For writes, install the handler before sending a version-1 `xstate-mcp.hello` on
-that same socket and wait for its successful response. See the complete
-[doctor example](examples/doctor-app.mjs) and [handshake guide](docs/connection-health.md).
-The snippets above are inspection/command wiring fragments; complete startup and
-reconnect handling is tracked in [#13](https://github.com/eandualem/xstate-mcp/issues/13).
+that same socket and wait for its successful response. The
+[policy example](examples/policy-app.mjs) combines negotiation, serialization and
+local write checks; see the [handshake guide](docs/connection-health.md). General
+reconnect handling remains [#13](https://github.com/eandualem/xstate-mcp/issues/13).
 
 ### Incoming message validation
 
@@ -163,7 +162,9 @@ inspection messages while keeping the connection available for valid traffic.
 A `xstate-mcp.send.response` acknowledgement must include a non-empty string
 `requestId` of at most 128 characters copied from the command and a boolean
 `success`. Optional `error` must be a string of at most 4096 characters; omit it
-when there is no error. Invalid acknowledgements leave
+when there is no error. Optional `code` must be a non-empty string of at most
+128 characters; only the guard's fixed rejection codes are exposed on failed ACKs.
+Invalid acknowledgements leave
 the pending request intact so a valid reply can still resolve it, subject to
 the existing timeout. Unknown request IDs are ignored. Validation warnings and
 unknown-request warnings use fixed descriptions on stderr, without echoing the

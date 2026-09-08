@@ -41,7 +41,8 @@ XState/Stately inspection format version.
    `invalid_json`, `invalid_envelope`, `invalid_inspection`, or `missing_session_id`
    indicate framing/serialization problems. Check adapter/server compatibility.
    `@xstate.microstep` is intentionally counted as ignored, not rejected.
-4. Before writing, require `negotiation: "negotiated"` and `commands` containing
+4. Before writing, explicitly enable the intended actor/event pairs with
+   [server and adapter write policy](write-controls-and-redaction.md). Also require `negotiation: "negotiated"` and `commands` containing
    `send_event`. `awaiting_hello` means the legacy connection is observation-only;
    `invalid` means its hello failed validation; `incompatible` means the offered
    protocol is unsupported. Send the version-1 hello below. A negotiated adapter
@@ -54,7 +55,9 @@ XState/Stately inspection format version.
 
 For a runnable sanity check, install this checkout's development dependencies with
 `bun install --frozen-lockfile`, configure an MCP client to run the built CLI, and
-start the separate application fixture:
+enable only `RUN` in the server environment (`XSTATE_MCP_READ_ONLY=false` and
+`XSTATE_MCP_WRITE_ALLOW='[{"actor":"*","events":["RUN"]}]'`), then start the
+separate application fixture:
 
 ```bash
 node examples/doctor-app.mjs ws://127.0.0.1:7357
@@ -132,13 +135,14 @@ idempotent; changing it returns `capabilities_locked`. Reconnect to change capab
 its negotiation. A new socket always has a new identity and needs its own hello.
 
 Legacy inspection connections without a hello can still register/read actors.
-**Write compatibility change:** they now fail immediately with
+When server policy permits a command, legacy connections fail immediately with
 `code: "capability_negotiation_required"`, `success: false` and MCP `isError: true`.
 Explicitly read-only adapters return `unsupported_command`. Neither case sends a
 wire command nor schedules the five-second acknowledgement timeout. Negotiated
 writers that fail to acknowledge can still time out; `commandTimeouts` records
 that case. Capabilities express supported operations; they are not an authorization
-or user-consent policy. Write policy remains [#15](https://github.com/eandualem/xstate-mcp/issues/15).
+or user-consent policy. Independent [write policy](write-controls-and-redaction.md)
+defaults to read-only and cannot be bypassed by negotiation.
 
 ## Freshness, counters and limits
 

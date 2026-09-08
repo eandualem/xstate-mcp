@@ -1,3 +1,4 @@
+import { applicationHello } from "./fixtures/application-hello.js";
 import { once } from "node:events";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -31,7 +32,10 @@ afterEach(async () => {
   for (const close of cleanups.splice(0).reverse()) await close();
 });
 
-async function fixture(writePolicy?: WritePolicyOptions) {
+async function fixture(
+  writePolicy?: WritePolicyOptions,
+  advertisedCommands: string[] | null = ["send_event"],
+) {
   const logger = new Logger("error");
   const store = new ActorStore(20, logger, {
     keys: ["serverOnly", "received", "sourceId"],
@@ -58,6 +62,11 @@ async function fixture(writePolicy?: WritePolicyOptions) {
     throw new Error("Missing listener address");
   const ws = new WebSocket(`ws://127.0.0.1:${address.port}`);
   await once(ws, "open");
+  if (advertisedCommands !== null) {
+    const hello = once(ws, "message", { signal: AbortSignal.timeout(2000) });
+    ws.send(JSON.stringify(applicationHello(advertisedCommands)));
+    expect(JSON.parse((await hello)[0].toString()).success).toBe(true);
+  }
   const wire: string[] = [];
   const commands: unknown[] = [];
   const guard = createInspectionGuard({
@@ -170,17 +179,56 @@ async function fixture(writePolicy?: WritePolicyOptions) {
   });
   actor.start();
   await expect
-    .poll(() => store.getActor(actor.sessionId)?.currentSnapshot?.value, {
-      timeout: 5000,
-    })
+    .poll(
+      () =>
+        store
+          .listActors()
+          .find((record) => record.localSessionId === actor.sessionId)
+          ?.currentSnapshot?.value,
+      {
+        timeout: 5000,
+      },
+    )
     .toBe("idle");
-  return { actor, store, registry, client, wire, commands };
+  const sessionId = store
+    .listActors()
+    .find((record) => record.localSessionId === actor.sessionId)!.sessionId;
+  expect(sessionId).not.toBe(actor.sessionId);
+  return { actor, sessionId, store, registry, client, wire, commands };
 }
 
 describe("write controls and redaction across actual XState, WebSocket and MCP", () => {
+  it.each([null, []] as const)(
+    "requires independent command negotiation with advertised commands %j",
+    async (commands) => {
+      const {
+        client,
+        sessionId,
+        actor,
+        commands: sent,
+        registry,
+      } = await fixture(ALLOWED, commands === null ? null : [...commands]);
+      const result = await client.callTool({
+        name: "send_event",
+        arguments: { target: sessionId, event: { type: "NEXT" } },
+      });
+      expect(result.isError).toBe(true);
+      expect(result.structuredContent).toMatchObject({
+        success: false,
+        code:
+          commands === null
+            ? "capability_negotiation_required"
+            : "unsupported_command",
+      });
+      expect(sent).toHaveLength(0);
+      expect(actor.getSnapshot().value).toBe("idle");
+      expect(registry.getHealth().counters.unsupportedCommands).toBe(1);
+    },
+  );
+
   it("rejects default writes by session and name without sending a command; clearing affects only debugger data", async () => {
-    const { actor, store, client, commands } = await fixture();
-    for (const target of [actor.sessionId, "policy-fixture"]) {
+    const { actor, sessionId, store, client, commands } = await fixture();
+    for (const target of [sessionId, "policy-fixture"]) {
       const result = await client.callTool({
         name: "send_event",
         arguments: { target, event: { type: "NEXT", password: PASSWORD } },
@@ -218,7 +266,7 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
   });
 
   it("checks resolved session IDs rather than accepting an allow rule for a target name", async () => {
-    const { client, commands, actor } = await fixture({
+    const { client, commands, actor, sessionId } = await fixture({
       readOnly: false,
       allow: [{ actor: "policy-fixture", events: ["NEXT"] }],
     });
@@ -227,7 +275,7 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
       arguments: { target: "policy-fixture", event: { type: "NEXT" } },
     });
     expect(result.structuredContent).toMatchObject({
-      sessionId: actor.sessionId,
+      sessionId: sessionId,
       code: "write_not_allowed",
     });
     expect(commands).toHaveLength(0);
@@ -235,7 +283,7 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
   });
 
   it("enforces server and adapter policies independently and verifies actual transitions", async () => {
-    const { actor, client, commands } = await fixture(ALLOWED);
+    const { actor, sessionId, client, commands } = await fixture(ALLOWED);
     const denied = await client.callTool({
       name: "send_event",
       arguments: { target: "policy-fixture", event: { type: "DELETE" } },
@@ -256,7 +304,7 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
     expect(actor.getSnapshot().context.received).toBe(PASSWORD); // Redaction must not rewrite application commands.
     const adapterDenied = await client.callTool({
       name: "send_event",
-      arguments: { target: actor.sessionId, event: { type: "RESET" } },
+      arguments: { target: sessionId, event: { type: "RESET" } },
     });
     expect(adapterDenied.isError).toBe(true);
     expect(adapterDenied.structuredContent).toMatchObject({
@@ -268,14 +316,14 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
     expect(actor.getSnapshot().value).toBe("ready");
     const ignored = await client.callTool({
       name: "send_event",
-      arguments: { target: actor.sessionId, event: { type: "IGNORED" } },
+      arguments: { target: sessionId, event: { type: "IGNORED" } },
     });
     expect(ignored.structuredContent).toMatchObject({ success: true });
     expect(actor.getSnapshot().value).toBe("ready"); // ACK is not proof of a transition.
   });
 
   it("redacts before transfer and consistently exposes sanitized data in every read surface and a diagnostic export", async () => {
-    const { actor, store, client, wire } = await fixture(ALLOWED);
+    const { actor, sessionId, store, client, wire } = await fixture(ALLOWED);
     // An application event, not an MCP command, contains the same sensitive fields.
     actor.send({
       type: "NEXT",
@@ -285,7 +333,7 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
       customer: { email: EMAIL },
     });
     await expect
-      .poll(() => store.getActor(actor.sessionId)?.currentSnapshot?.value, {
+      .poll(() => store.getActor(sessionId)?.currentSnapshot?.value, {
         timeout: 5000,
       })
       .toBe("ready");
@@ -298,7 +346,7 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
         .map((text) => JSON.parse(text))
         .find((event) => event.event?.type === "SOURCE_PROBE"),
     ).toMatchObject({ sourceId: actor.sessionId });
-    const record = store.getActor(actor.sessionId)!;
+    const record = store.getActor(sessionId)!;
     expect(record.eventHistory.toArray()).toContainEqual(
       expect.objectContaining({
         event: { type: "SOURCE_PROBE" },
@@ -323,7 +371,7 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
     ]) {
       const result = await client.callTool({
         name,
-        arguments: { sessionId: actor.sessionId, eventType: "RESET" },
+        arguments: { sessionId: sessionId, eventType: "RESET" },
       });
       expect(result.isError, `${name}: ${JSON.stringify(result)}`).not.toBe(
         true,
@@ -331,15 +379,15 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
       if (name === "get_event_history") {
         expect(JSON.stringify(result)).toContain('"sourceId":"[REDACTED]"');
         expect(JSON.stringify(result)).not.toContain(
-          `"sourceId":"${actor.sessionId}"`,
+          `"sourceId":"${sessionId}"`,
         );
       }
       results.push(result);
     }
     for (const uri of [
       "xstate://actors",
-      `xstate://actor/${actor.sessionId}/snapshot`,
-      `xstate://actor/${actor.sessionId}/definition`,
+      `xstate://actor/${sessionId}/snapshot`,
+      `xstate://actor/${sessionId}/definition`,
     ])
       results.push(await client.readResource({ uri }));
     results.push(await client.listResources());
@@ -347,7 +395,7 @@ describe("write controls and redaction across actual XState, WebSocket and MCP",
       results.push(
         await client.getPrompt({
           name,
-          arguments: { sessionId: actor.sessionId },
+          arguments: { sessionId: sessionId },
         }),
       );
     const diagnostic = {

@@ -9,7 +9,10 @@ import { Logger } from "./logger.js";
 import { createMcpServer } from "./mcp-server.js";
 import { createWsServer } from "./ws-server.js";
 import type { LogLevel } from "./types.js";
-import type { WritePolicyOptions, RedactionOptions } from "./inspection-policy.js";
+import type {
+  WritePolicyOptions,
+  RedactionOptions,
+} from "./inspection-policy.js";
 
 export interface InspectionServerOptions {
   writePolicy?: WritePolicyOptions;
@@ -61,8 +64,14 @@ export function createInspectionServer(
   const port = options.wsPort ?? 7357;
   const host = options.wsHost ?? "127.0.0.1";
   const logger = new Logger(options.logLevel ?? "info");
-  const store = new ActorStore(options.bufferSize ?? 100, logger, options.redaction);
-  const clientRegistry = new ClientRegistry(5000, logger, {writePolicy: options.writePolicy});
+  const store = new ActorStore(
+    options.bufferSize ?? 100,
+    logger,
+    options.redaction,
+  );
+  const clientRegistry = new ClientRegistry(5000, logger, {
+    writePolicy: options.writePolicy,
+  });
   const mcpServer = createMcpServer(store, clientRegistry, logger);
   const lifetime = new AbortController();
   const sockets = new Set<Socket>();

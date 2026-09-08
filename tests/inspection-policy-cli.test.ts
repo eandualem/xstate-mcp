@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { createServer } from "node:net";
 import { promisify } from "node:util";
 import { resolve } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
@@ -14,12 +14,6 @@ const nodeEnv = Object.fromEntries(
     (entry): entry is [string, string] => entry[1] !== undefined,
   ),
 );
-beforeAll(async () => {
-  await run(process.execPath, ["node_modules/tsup/dist/cli-default.js"], {
-    cwd: root,
-    timeout: 30_000,
-  });
-}, 35_000);
 
 async function freePort() {
   const server = createServer();
@@ -90,7 +84,7 @@ describe("built CLI and development policy example", () => {
       const port = await freePort();
       const transport = new StdioClientTransport({
         command: process.execPath,
-        args: ["dist/index.js"],
+        args: ["dist/cli.js"],
         cwd: root,
         stderr: "pipe",
         env: {

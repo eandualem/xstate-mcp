@@ -1,4 +1,7 @@
-import { createWritePolicy, type WritePolicyOptions } from "./inspection-policy.js";
+import {
+  createWritePolicy,
+  type WritePolicyOptions,
+} from "./inspection-policy.js";
 import { ConnectionHealth } from "./connection-health.js";
 import { randomUUID } from "node:crypto";
 import type { WebSocket } from "ws";
@@ -56,7 +59,10 @@ export class ClientRegistry {
   constructor(
     private timeoutMs: number,
     private logger: Logger,
-    options: { health?: ConnectionHealth; writePolicy?: WritePolicyOptions } = {},
+    options: {
+      health?: ConnectionHealth;
+      writePolicy?: WritePolicyOptions;
+    } = {},
   ) {
     this.health = options.health ?? new ConnectionHealth();
     this.checkWrite = createWritePolicy(options.writePolicy);
@@ -220,7 +226,20 @@ export class ClientRegistry {
       this.logger.warn("Rejected response from non-owning connection");
       return false;
     }
-    this.settle(requestId, { success, code: !success && typeof code === "string" && ADAPTER_REJECTION_CODES.has(code) ? code : undefined, error: success ? undefined : error === undefined ? "Application rejected event" : "Application rejected event (details withheld)" });
+    this.settle(requestId, {
+      success,
+      code:
+        !success &&
+        typeof code === "string" &&
+        ADAPTER_REJECTION_CODES.has(code)
+          ? code
+          : undefined,
+      error: success
+        ? undefined
+        : error === undefined
+          ? "Application rejected event"
+          : "Application rejected event (details withheld)",
+    });
     return true;
   }
 

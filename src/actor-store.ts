@@ -14,6 +14,66 @@ import { createRedactor, type RedactionOptions } from "./inspection-policy.js";
 import { safeStringify } from "./safe-stringify.js";
 import { readSnapshot } from "./actor-snapshot.js";
 
+/** Preserve the lifecycle contract for native Errors without invoking accessors. */
+function projectSnapshot(
+  snapshot: Record<string, unknown>,
+): Record<string, unknown> {
+  const descriptors = Object.getOwnPropertyDescriptors(snapshot);
+  // Match readSnapshot's partial-snapshot semantics before the generic serializer
+  // maps unsupported JavaScript values to omission markers.
+  for (const key of ["value", "context", "status", "output", "error"]) {
+    const property = descriptors[key];
+    if (!property || !("value" in property) || property.value !== undefined)
+      continue;
+    if (key === "value" || key === "context")
+      descriptors[key] = { ...property, value: null };
+    else delete descriptors[key];
+  }
+  const copy = () =>
+    Object.create(Object.getPrototypeOf(snapshot), descriptors) as Record<
+      string,
+      unknown
+    >;
+  const descriptor = descriptors.error;
+  if (
+    !descriptor ||
+    !("value" in descriptor) ||
+    !(descriptor.value instanceof Error)
+  )
+    return copy();
+  const error: Error = descriptor.value;
+  const field = (key: string): unknown => {
+    let object: object | null = error;
+    // Standard Error fields need at most three levels; bound custom prototype chains.
+    for (let depth = 0; object && depth < 8; depth++) {
+      const property = Object.getOwnPropertyDescriptor(object, key);
+      if (property) return "value" in property ? property.value : undefined;
+      object = Object.getPrototypeOf(object) as object | null;
+    }
+    return undefined;
+  };
+  const message = field("message");
+  const name = field("name");
+  const code = field("code");
+  const projected = {
+    message:
+      typeof message === "string"
+        ? message.slice(0, 4096)
+        : "Error details unavailable",
+    name: typeof name === "string" ? name.slice(0, 256) : "Error",
+    ...(typeof code === "string"
+      ? { code: code.slice(0, 256) }
+      : typeof code === "number" && Number.isFinite(code)
+        ? { code }
+        : {}),
+  };
+  descriptors.error = { ...descriptor, value: projected };
+  return Object.create(Object.getPrototypeOf(snapshot), descriptors) as Record<
+    string,
+    unknown
+  >;
+}
+
 export type ActorRegisteredCallback = (sessionId: string) => void;
 export type ActorRemovedCallback = (sessionId: string) => void;
 export type SnapshotUpdatedCallback = (sessionId: string) => void;
@@ -57,7 +117,7 @@ export class ActorStore {
   private redactSnapshot(
     snapshot: Record<string, unknown>,
   ): Record<string, unknown> {
-    const result = this.redactField("snapshot", snapshot);
+    const result = this.redactField("snapshot", projectSnapshot(snapshot));
     return result && typeof result === "object" && !Array.isArray(result)
       ? (result as Record<string, unknown>)
       : {
@@ -182,8 +242,10 @@ export class ActorStore {
           safeStringify(next[field] ?? null),
       );
       if (changes.length > 0) {
-        const eventType = (this.redactField("event", event.event) as Record<string, unknown> | undefined)
-          ?.type;
+        const eventType = (
+          this.redactField("event", event.event) as
+            Record<string, unknown> | undefined
+        )?.type;
         actor.transitionHistory.push({
           type: changes.includes("value")
             ? "state"
@@ -219,7 +281,10 @@ export class ActorStore {
     const sourceId = this.redactField("sourceId", event.sourceId ?? null);
     const record: EventRecord = {
       sequence: actor.eventHistory.total + 1,
-      event: sanitized && typeof sanitized === "object" ? (sanitized as Record<string, unknown>) : {type:"[OMITTED]"},
+      event:
+        sanitized && typeof sanitized === "object"
+          ? (sanitized as Record<string, unknown>)
+          : { type: "[OMITTED]" },
       sourceId: typeof sourceId === "string" ? sourceId : null,
       createdAt: event.createdAt,
     };

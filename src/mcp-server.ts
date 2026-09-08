@@ -337,7 +337,7 @@ export function createMcpServer(
     {
       title: "Send Event",
       description:
-        "Send an application event (may cause destructive external side effects). Requires explicit server and adapter write permission. Target can be a sessionId or actor name. Success acknowledges dispatch only; verify the resulting state separately.",
+        "Send an application event (may cause destructive external side effects). Requires negotiated send_event support and explicit server and adapter write permission. Target can be a sessionId or actor name. Success acknowledges dispatch only; verify the resulting state separately.",
       inputSchema: {
         target: z
           .string()

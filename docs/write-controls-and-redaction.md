@@ -27,31 +27,33 @@ For example, configure your MCP client's server environment with:
 
 Every send is checked after target name resolution, inside `ClientRegistry`, before
 creating a pending request or sending a WebSocket frame. An actor/event must match
-the **same** rule. `actor` matches an exact resolved session ID; `events` contains
+the **same** rule. `actor` matches an exact resolved public session ID from `list_actors`; `events` contains
 exact event types. Matching is case-sensitive. A whole string `"*"` explicitly
 allows every actor or event; `"user.*"` is a literal, not a pattern. Actor names
 cannot bypass a session rule. Empty or omitted rules deny all writes, even when
 read-only is false. Read-only true overrides every rule.
 
-Direct hosts configure the same boundary:
+Direct hosts configure the same boundary through the importable factory:
 
 ```typescript
-const registry = new ClientRegistry(5000, logger, {
+import { createInspectionServer } from "xstate-mcp";
+
+const bridge = createInspectionServer({
   writePolicy: {
     readOnly: false,
-    allow: [{ actor: "x:1", events: ["NEXT"] }],
+    allow: [{ actor: "*", events: ["NEXT"] }],
   },
-});
-const store = new ActorStore(100, logger, {
-  keys: ["email"],
-  paths: [["customer", "address"]],
+  redaction: {
+    keys: ["email"],
+    paths: [["customer", "address"]],
+  },
 });
 ```
 
-These are constructor examples for hosts using the source modules. The package
-root still has the historical CLI startup behavior on this branch; importable
-server factories are tracked in #5 / PR #26. Import only the dedicated policy
-subpath from applications.
+The root import and factory are idle until `bridge.start(transport)`; see
+[server lifecycle](server-lifecycle.md). Lower-level hosts can pass
+`{ health?, writePolicy? }` as `ClientRegistry`'s third argument and redaction
+options as `ActorStore`'s third argument. The dedicated policy subpath is browser-safe.
 
 Rules are validated and copied at construction; mutating the original options
 cannot broaden access. There are at most 100 rules, with at most 100 event types
@@ -66,8 +68,11 @@ failure. Free-form application ACK error details and send errors are withheld
 because they may contain application data. Rejected adapter ACKs preserve the
 guard's fixed codes: `read_only`, `write_not_allowed`, `invalid_event`,
 `instrumentation_disabled`, `invalid_command`, `actor_not_found`, and
-`dispatch_failed`. Unknown or malformed codes are withheld, as are codes attached
-to successful ACKs. The generic application rejection message remains available.
+`dispatch_failed`. Unknown valid codes are withheld, as are codes attached to successful ACKs.
+On the wire, an optional `code` must be a non-empty string of at most 128
+characters. A malformed code rejects the complete ACK without settling the
+pending command; validation runs before the fixed-code allowlist. Valid rejected
+ACKs retain a generic application rejection message.
 
 `clear_actors` remains available in application read-only mode. It discards the
 debugger's retained data, routes and pending requests; it does not stop application
@@ -118,7 +123,11 @@ actor's actual session ID equals the command target, applies its own actor/event
 rules and only then calls `actor.send`. Return its result in the ACK. Adapter
 rules use local session IDs. Keep this check adjacent to dispatch; advertising
 command support alone is not permission. The application policy can further
-restrict anything the server allows.
+restrict anything the server allows. First negotiate protocol version 1 and
+`send_event` on this same socket, as described in the [handshake guide](connection-health.md).
+A successful hello never overrides server or adapter write policy. Missing command
+negotiation returns `capability_negotiation_required`; a negotiated adapter without
+command support returns `unsupported_command`, after server policy permits the request.
 
 The helper does not infer a production environment from a browser global. Omit
 `enabled` unless you explicitly pass a development build flag. Production code
@@ -140,9 +149,11 @@ and 100 paths (1–16 segments, 128 characters per segment) are accepted.
 
 The server sanitizes and copies actor names, definitions, snapshots, event
 payloads and event source IDs **before retention**. Timeline entries derive from
-sanitized state values and event types. All existing read tools, resource
+sanitized state values, context, status, output, errors and event types. All existing read tools, resource
 contents/listings, prompts and histories use that store, including both tool text
-and structured results. An
+and structured results. Bounded state/event waits and store observers see only
+sanitized snapshots and events, with lifecycle status and observation cursors
+preserved. A state predicate must match the sanitized state value. An
 application-side filter prevents transfer to the server; an additional server
 filter prevents retained data from reaching MCP clients. `excludeContext` and
 `contextMaxChars` remain presentation options, not privacy controls.
@@ -151,7 +162,10 @@ Serialization recursively copies plain objects and arrays without calling getter
 or `toJSON`. It supports bigint as strings; cycles, functions, accessors and
 non-plain instances (including native Error objects) become `[OMITTED]`. Project
 Error fields explicitly, then redact their sensitive properties or whole error
-field. Stringified `definition` objects are parsed before redaction; invalid
+field. For direct library hosts, the actor store preserves the supported native
+Error `message`, `name`, and `code` fields using bounded inert property descriptors
+before applying the same snapshot redaction; getters, stacks, causes and arbitrary
+Error properties are not retained. Stringified `definition` objects are parsed before redaction; invalid
 serialized definitions are omitted. Traversal has a depth limit of 64 and a
 10,000-value budget per call. Oversized containers are omitted. This limits
 traversal work; it is not a total byte or retained-memory budget (#11).
@@ -162,13 +176,19 @@ the routing session IDs, timestamps, resource URIs and client-supplied lookup
 arguments are protocol metadata, not secret-bearing payload fields. Do not
 configure rules that remove required transport identifiers in an application
 envelope. Retained event
-`sourceId` metadata can be hidden with an explicit key or path rule without
-changing actor routing. The in-process store is trusted host state; hosts must not
+`sourceId` is first scoped to the public connection namespace, then can be hidden
+with an explicit key or path rule without changing actor routing. URL application
+labels and negotiated application/adapter labels are separate identity/health
+metadata; this payload filter does not filter those labels. Use non-secret labels
+and track broader metadata filtering in #35. The in-process store is trusted host state; hosts must not
 mutate its records with raw data.
 
 This is a key/path filter, not a secret detector. It does not scan arbitrary text,
 encoded strings, property names or JSON embedded in other string fields. A password
-copied into `context.message` needs an explicit rule for that field. Redact entire
+copied into `context.message` needs an explicit rule for that field. XState promise
+rejections can repeat the message in `snapshot.error.message` and
+`event.data.message`; configure both paths (or a `message` key rule) when either
+may contain sensitive text. Redact entire
 context/output/error subtrees when their contents are uncertain. Keep domain
 policies in the application, where you know what data is sensitive.
 
@@ -181,7 +201,7 @@ supplied. Review the coding client's data handling separately.
 ## Run the development example
 
 Build the checkout with `bun install --frozen-lockfile` and `bun run build`. Point
-your MCP client at `node /absolute/path/to/checkout/dist/index.js`. Set the server
+your MCP client at `node /absolute/path/to/checkout/dist/cli.js`. Set the server
 write environment shown above (or leave defaults to verify rejection).
 
 In another terminal in the checkout:
@@ -195,16 +215,16 @@ XState actor through the guard, with a redacted password and email. Through MCP:
 
 1. Call `list_actors`, then `get_actor_state` for the discovered session ID.
 2. Call `send_event` targeting `policy-demo` with `{ "type": "NEXT" }`.
-3. Read the snapshot and verify `ready` and `count: 1`.
+3. Use `wait_for_state` with `state: "ready"`, then read the snapshot and verify `count: 1`.
 4. Try `RESET`: the adapter denies it even if the server explicitly allows it.
 
 A successful ACK means the adapter accepted dispatch. An ignored event can be
 acknowledged without changing state; async work can still fail later. Verify the
 subsequent snapshot/history and, for frontend development, the rendered UI.
 
-The executable example is a single-actor development fixture. Full adapter
-reconnect/replay, child actors and capability negotiation are tracked in #13/#14;
-this branch starts from main and does not incorporate those unmerged changes.
+The executable example is a single-actor development fixture. It negotiates
+command support before starting its actor and applies separate local dispatch
+policy. Full adapter reconnect/replay and child actors remain #13.
 
 ## Diagnostic export boundary and integration
 
@@ -216,16 +236,7 @@ resource, prompt and history results. There is **no exported-trace MCP tool yet*
 the versioned cross-actor trace API, causal ordering and export metadata remain #16.
 Use the shared serializer and sanitized store when implementing that issue.
 
-When integrating the other main-based PRs:
-
-- #25: server allow rules match resolved public scoped IDs; adapter rules match
-  original local IDs. Preserve socket ownership checks independently of policy.
-- #31: combine capability negotiation and write authorization. A successful hello
-  cannot enable a denied write. Reconcile the `ClientRegistry` constructor options,
-  and make the example negotiate before dispatch.
-- #22/#24: sanitize error/output/lifecycle data before retention and preserve
-  sanitized wait results. State predicates will observe sanitized data.
-- #26/#30: propagate options through the managed factory/CLI, preserve the policy
-  subpath when combining exports/build entries, and explicitly enable only the
-  commands needed by release consumer fixtures. #27 updates the shared lockfile
-  and runtime matrix. Contract CI integration remains #7.
+The factory, connection identity, negotiation, lifecycle and bounded-wait contracts
+above are integrated in this checkout. Release consumers must independently opt
+into the commands they exercise and negotiate before dispatch. Contract CI remains
+#7; a general reconnecting application adapter remains #13.

@@ -151,6 +151,98 @@ describe("application write policy", () => {
 });
 
 describe("redaction before retention and transfer", () => {
+  it("preserves explicit null and undefined snapshot resets through redaction", () => {
+    const store = new ActorStore(10, logger);
+    store.registerActor({
+      type: "@xstate.actor",
+      sessionId: "reset",
+      createdAt: "now",
+      snapshot: {
+        status: "done",
+        value: "ready",
+        context: { count: 1 },
+        output: { answer: 42 },
+      },
+    });
+    store.updateSnapshot({
+      type: "@xstate.snapshot",
+      sessionId: "reset",
+      createdAt: "later",
+      snapshot: {
+        status: undefined,
+        value: undefined,
+        context: null,
+        output: undefined,
+        error: undefined,
+      },
+    });
+    expect(store.getActor("reset")!.currentSnapshot).toEqual({
+      status: "done",
+      value: null,
+      context: null,
+      output: undefined,
+      error: undefined,
+    });
+    expect(
+      store.getActor("reset")!.transitionHistory.toArray().at(-1),
+    ).toMatchObject({
+      changes: ["value", "context", "output"],
+      toStatus: "done",
+    });
+  });
+
+  it("projects only inert native Error fields before canonical snapshot redaction", () => {
+    const getter = vi.fn(() => "private-accessor");
+    const toJSON = vi.fn(() => ({ message: "private-toJSON" }));
+    const error = Object.assign(new TypeError("private-message"), {
+      code: "SERVICE_FAILED",
+      cause: new Error("private-cause"),
+      toJSON,
+    });
+    const store = new ActorStore(10, logger, { paths: [["error", "message"]] });
+    const observations: unknown[] = [];
+    const unsubscribe = store.subscribe((change) => {
+      if (change.type !== "cleared")
+        observations.push(change.actor.currentSnapshot);
+    });
+    store.registerActor({
+      type: "@xstate.actor",
+      sessionId: "native-error",
+      createdAt: "now",
+      snapshot: { status: "error", error },
+    });
+    expect(store.getActor("native-error")!.currentSnapshot!.error).toEqual({
+      name: "TypeError",
+      message: REDACTED,
+      code: "SERVICE_FAILED",
+    });
+    Object.defineProperty(error, "message", { get: getter });
+    Object.defineProperty(error, "name", { get: getter });
+    Object.defineProperty(error, "code", { get: getter });
+    store.updateSnapshot({
+      type: "@xstate.snapshot",
+      sessionId: "native-error",
+      createdAt: "later",
+      snapshot: { status: "error", error },
+    });
+    expect(store.getActor("native-error")!.currentSnapshot!.error).toEqual({
+      name: "Error",
+      message: REDACTED,
+    });
+    expect(getter).not.toHaveBeenCalled();
+    expect(toJSON).not.toHaveBeenCalled();
+    expect(JSON.stringify(observations)).not.toContain("private");
+    expect(
+      JSON.stringify(
+        store.getActor("native-error")!.transitionHistory.toArray(),
+      ),
+    ).not.toContain("private");
+    expect(serializeRedacted({ error: new Error("private-message") })).toBe(
+      '{"error":"[OMITTED]"}',
+    );
+    unsubscribe();
+  });
+
   it("redacts default keys and suffix paths consistently across wrappers and arrays", () => {
     const redact = createRedactor({
       keys: ["email"],
