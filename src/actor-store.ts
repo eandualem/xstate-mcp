@@ -18,29 +18,13 @@ import { readSnapshot } from "./actor-snapshot.js";
 function projectSnapshot(
   snapshot: Record<string, unknown>,
 ): Record<string, unknown> {
-  const descriptors = Object.getOwnPropertyDescriptors(snapshot);
-  // Match readSnapshot's partial-snapshot semantics before the generic serializer
-  // maps unsupported JavaScript values to omission markers.
-  for (const key of ["value", "context", "status", "output", "error"]) {
-    const property = descriptors[key];
-    if (!property || !("value" in property) || property.value !== undefined)
-      continue;
-    if (key === "value" || key === "context")
-      descriptors[key] = { ...property, value: null };
-    else delete descriptors[key];
-  }
-  const copy = () =>
-    Object.create(Object.getPrototypeOf(snapshot), descriptors) as Record<
-      string,
-      unknown
-    >;
-  const descriptor = descriptors.error;
+  const descriptor = Object.getOwnPropertyDescriptor(snapshot, "error");
   if (
     !descriptor ||
     !("value" in descriptor) ||
     !(descriptor.value instanceof Error)
   )
-    return copy();
+    return snapshot;
   const error: Error = descriptor.value;
   const field = (key: string): unknown => {
     let object: object | null = error;
@@ -67,6 +51,7 @@ function projectSnapshot(
         ? { code }
         : {}),
   };
+  const descriptors = Object.getOwnPropertyDescriptors(snapshot);
   descriptors.error = { ...descriptor, value: projected };
   return Object.create(Object.getPrototypeOf(snapshot), descriptors) as Record<
     string,

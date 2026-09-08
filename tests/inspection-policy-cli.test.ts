@@ -141,6 +141,9 @@ describe("built CLI and development policy example", () => {
         });
         expect(snapshot.structuredContent).toMatchObject({
           value: readOnly ? "idle" : "ready",
+          status: "active",
+          output: null,
+          error: null,
           context: {
             password: "[REDACTED]",
             email: "[REDACTED]",
