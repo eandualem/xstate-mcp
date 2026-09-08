@@ -217,7 +217,7 @@ export function createMcpServer(
     {
       title: "Can Handle Event",
       description:
-        "Check whether an actor can handle a given event type in its current state. Performs static analysis of the machine definition — guards are not evaluated.",
+        "Inspect static event eligibility in the current snapshot using XState v5 event precedence. canHandle is true/false for structural evidence, or null when unknown (including guards or missing data). Guards are never executed; a match does not guarantee a runtime transition.",
       inputSchema: {
         sessionId: z
           .string()
