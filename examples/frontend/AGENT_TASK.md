@@ -16,6 +16,8 @@ Acceptance:
 
 - Preserve title/body through a failed save. Show a visible, keyboard-accessible
   retry action and honest error/saving/saved messages.
+- Save the observation cursor before sending SAVE/RETRY. Use bounded
+  `wait_for_event` and `wait_for_state`, then inspect the visible frontend.
 - After retry, the UI and MCP agree on `saved`, `attempts: 2`, `revision: 1`, and the
   saved document. Rejected events do not change the draft or attempt count.
 - Keep changes in the model, renderer or styles as appropriate. Do not replace

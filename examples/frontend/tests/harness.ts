@@ -105,18 +105,31 @@ export class Harness {
   async waitState(
     sessionId: string,
     value: string,
+    after?: unknown,
   ): Promise<Record<string, unknown>> {
-    let snapshot: Record<string, unknown> = {};
-    await expect
-      .poll(
-        async () => {
-          snapshot = await this.call("get_actor_state", { sessionId });
-          return snapshot.value;
-        },
-        { timeout: 5000, intervals: [30, 60, 100] },
-      )
-      .toBe(value);
-    return snapshot;
+    const result = await this.call("wait_for_state", {
+      sessionId,
+      state: value,
+      ...(after ? { after } : {}),
+      timeoutMs: 4000,
+    });
+    expect(result.outcome).toBe("matched");
+    expect(result.snapshot).toMatchObject({ value });
+    return {
+      ...(result.snapshot as Record<string, unknown>),
+      cursor: result.cursor,
+    };
+  }
+  async waitEvent(sessionId: string, eventType: string, after: unknown) {
+    const result = await this.call("wait_for_event", {
+      sessionId,
+      eventType,
+      after,
+      timeoutMs: 4000,
+    });
+    expect(result.outcome).toBe("matched");
+    expect(result.event).toMatchObject({ event: { type: eventType } });
+    return result;
   }
   async screenshot(page: Page, file: string, label: string) {
     await page.screenshot({
@@ -216,7 +229,7 @@ export const test = base.extend<{ demo: Harness }>({
         server: client.getServerVersion(),
         tools: tools.tools.map((tool) => tool.name),
         verification:
-          "Real MCP stdio client with bounded get_actor_state polling; no model calls",
+          "Real MCP stdio client with bounded state/event waits and browser assertions; no model calls",
       });
       await use(harness);
     } finally {

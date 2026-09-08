@@ -31,8 +31,8 @@ or reuse a developer's browser session.
 `demo:verify` builds the **current repository CLI**, builds the frontend, and runs
 four real browser/MCP scenarios plus a teardown failure regression. It starts and
 cleans up its own processes. Each
-MCP request has a five-second limit; state verification polls real MCP snapshots
-with a five-second bound. A successful command ACK is followed by state and browser
+MCP request has a five-second limit; `wait_for_state` and `wait_for_event`
+use four-second server bounds, with observation cursors for SAVE and RETRY. A successful command ACK is followed by state and browser
 assertions. Source/test TypeScript and formatting can be checked separately:
 
 ```bash
@@ -60,14 +60,14 @@ The scenarios cover:
 ## Use it with your coding agent
 
 Build the root server with `bun run build`. Configure your MCP client to launch
-`node` with the **absolute** path to `dist/index.js` in this checkout:
+`node` with the **absolute** path to `dist/cli.js` in this checkout:
 
 ```json
 {
   "mcpServers": {
     "xstate": {
       "command": "node",
-      "args": ["/absolute/path/to/xstate-mcp/dist/index.js"],
+      "args": ["/absolute/path/to/xstate-mcp/dist/cli.js"],
       "env": {
         "XSTATE_MCP_WS_PORT": "7357",
         "XSTATE_MCP_READ_ONLY": "false",
@@ -78,10 +78,10 @@ Build the root server with `bun run build`. Configure your MCP client to launch
 }
 ```
 
-That CLI path matches current main. After the pending factory/CLI split (#26), use
-the executable in the root `package.json` `bin.xstate-mcp` entry instead; the test
-harness already reads this entry. The write environment prepares for #32; current
-main ignores it and the demo adapter enforces its own narrow command policy.
+The test harness discovers the executable from the root `package.json`
+`bin.xstate-mcp` entry. `dist/index.js` is the importable library. The write
+environment prepares for #32; this checkpoint ignores it and the demo adapter
+enforces its own narrow command policy.
 
 Start the frontend in another terminal:
 
@@ -104,10 +104,13 @@ Give any coding agent [the task brief](AGENT_TASK.md). A manual verification loo
    tab or inspection reconnect has its own connection.
 2. Read the tree, document definition, and current snapshot. Edit the title in the
    browser and verify the preview changes.
-3. Call `send_event` with the discovered document session ID and `{ "type": "SAVE" }`.
-4. Observe `saving`, then `error`; verify the alert and unchanged draft in the UI.
+3. Save the snapshot cursor, then call `send_event` with the discovered document
+   session ID and `{ "type": "SAVE" }`.
+4. Use `wait_for_event` for `SAVE` and `wait_for_state` for `error`, both after the
+   saved cursor; verify the alert and unchanged draft in the UI.
 5. Try `{ "type": "DELETE_EVERYTHING" }` and confirm rejection without changing state.
-6. Send `{ "type": "RETRY" }`, await `saved`, and verify the success message,
+6. Send `{ "type": "RETRY" }`, wait for that event and `saved` after the failure
+   cursor, and verify the success message,
    `attempts: 2`, and `revision: 1` using both MCP and the browser.
 
 Stop Vite with Ctrl-C and let the MCP client stop its owned server. Reload resets
@@ -169,19 +172,20 @@ without falling back to writes. A connection label means a socket is open, not
 proof that capabilities were negotiated. Server write authorization and capability
 negotiation remain separate checks when #31/#32 are integrated.
 
-This integration preparation uses server base `a0d15baf2c445c6664f1d52b49ce78a9243d210a`,
-which includes the dependency, Stately inspection, envelope validation and scoped
-identity fixes. It is a checkpoint before the remaining core PRs are combined.
-The checked-in captures retain their original source pins; fresh `test-results/`
-transcripts identify the checkout and actual source hashes used by each run.
+This integration preparation uses server base `64bd2822bca4371a58c42d6c3a072c36e99d05f5`,
+which includes dependency, producer/envelope validation, scoped identity, managed
+CLI lifecycle, actor results/history, event eligibility, and bounded waits.
+This is a checkpoint before connection negotiation, write/redaction policy and
+release metadata are combined. The checked-in captures retain their original
+source pins; fresh `test-results/` transcripts identify each tested checkout.
 
-This checkpoint exposes nine tools. It uses **bounded MCP polling**,
-not the still-unmerged `wait_for_state` tool from #24. It does not claim wildcard/
-forbidden-transition correctness from #28 or the complete contract CI from #7.
-The frontend workflow adds its own real MCP/browser gates on Node 22/24. Preserve
-these scenarios when integrating those dependencies, then switch the wait helper
-to the merged bounded-wait API. The test harness already discovers tool names,
-reads the configured CLI executable, and supplies narrowly scoped write opt-in.
+This checkpoint exposes eleven tools. Verification uses server waits for observed
+states and SAVE/RETRY events; discovery and actor removal still use bounded client
+polling because those are actor-list observations. A declared guarded SAVE yields
+`canHandle: null`; actual eligibility is checked by the application's
+`snapshot.can(event)`, then verified through observed state and the browser.
+The frontend workflow adds real MCP/browser gates on Node 22/24; broader contract
+CI remains #7. Keep these scenarios when integrating the remaining core changes.
 
 Exact frontend versions: XState **5.32.6**, Vite **8.2.2**, Playwright **1.63.0**,
 MCP client SDK **1.30.0**, TypeScript **5.9.3**, Node types **22.20.1**, Prettier

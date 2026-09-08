@@ -85,12 +85,18 @@ test("real MCP loop: inspect, fail, reject, retry, and verify the UI", async ({
   await page.getByLabel("TITLE", { exact: true }).fill(revisedTitle);
   await expect(page.locator("#preview-title")).toHaveText(revisedTitle);
   demo.record("browser-action", { action: "Edit title", value: revisedTitle });
+  const baseline = await demo.call("get_actor_state", {
+    sessionId: document.sessionId,
+  });
   expect(
     await demo.call("can_handle_event", {
       sessionId: document.sessionId,
       eventType: "SAVE",
     }),
-  ).toHaveProperty("canHandle");
+  ).toMatchObject({
+    canHandle: null,
+    reason: expect.any(String),
+  });
   expect(
     (
       await demo.call("send_event", {
@@ -99,7 +105,12 @@ test("real MCP loop: inspect, fail, reject, retry, and verify the UI", async ({
       })
     ).success,
   ).toBe(true);
-  const failure = await demo.waitState(document.sessionId, "error");
+  await demo.waitEvent(document.sessionId, "SAVE", baseline.cursor);
+  const failure = await demo.waitState(
+    document.sessionId,
+    "error",
+    baseline.cursor,
+  );
   expect(failure.context).toMatchObject({
     title: revisedTitle,
     attempts: 1,
@@ -136,7 +147,12 @@ test("real MCP loop: inspect, fail, reject, retry, and verify the UI", async ({
       })
     ).success,
   ).toBe(true);
-  const saved = await demo.waitState(document.sessionId, "saved");
+  await demo.waitEvent(document.sessionId, "RETRY", failure.cursor);
+  const saved = await demo.waitState(
+    document.sessionId,
+    "saved",
+    failure.cursor,
+  );
   expect(saved.context).toMatchObject({
     title: revisedTitle,
     attempts: 2,
