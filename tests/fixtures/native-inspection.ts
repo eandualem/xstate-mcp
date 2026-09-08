@@ -1,4 +1,5 @@
 import type { AnyActorRef, InspectionEvent } from "xstate";
+import type { InspectionEvent as CompatInspectionEvent } from "xstate-compat";
 import type { WebSocket } from "ws";
 
 /** Test transport for native XState inspection events, with Error fields preserved. */
@@ -17,7 +18,7 @@ export function nativeInspectionForwarder(ws: WebSocket) {
   }
   return {
     sent,
-    inspect(event: InspectionEvent) {
+    inspect(event: InspectionEvent | CompatInspectionEvent) {
       // Native actor refs' toJSON only retains the actor id, not the session id.
       // Add routing metadata while keeping the producer's snapshot/event intact.
       // Error properties are non-enumerable; plain JSON.stringify loses them.

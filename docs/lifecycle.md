@@ -2,7 +2,8 @@
 
 `get_actor_state` and `xstate://actor/{sessionId}/snapshot` expose the same
 snapshot fields: `sessionId`, `localSessionId`, `connectionId`, `applicationName`,
-`name`, `status`, `value`, `context`, `output`, `error`, `parentId`, and `updatedAt`.
+`name`, `status`, `value`, `context`, `output`, `error`, `parentId`, `updatedAt`,
+and `cursor`.
 All three analysis prompts include output and error alongside status.
 The tool's context exclusion/truncation options
 affect only its context field; the resource returns the full context.

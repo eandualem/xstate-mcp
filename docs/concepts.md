@@ -43,7 +43,7 @@ Application / XState v5
   and two ring buffers: events and snapshot changes. Context-only changes also
   create timeline entries, so the timeline is not exclusively state-value changes.
 - `client-registry.ts` routes commands and waits up to five seconds for a response.
-- `mcp-server.ts` registers nine tools, `xstate://actors`, two per-actor resource
+- `mcp-server.ts` registers eleven tools, `xstate://actors`, two per-actor resource
   templates (snapshot and definition), and three prompts. Tool handlers and prompt
   builders live in separate directories.
 

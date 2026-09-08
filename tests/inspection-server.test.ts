@@ -68,7 +68,7 @@ describe("importable inspection server lifecycle", () => {
     const client = new Client({ name: "scanner", version: "1" });
     const [ct, st] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(st), client.connect(ct)]);
-    expect((await client.listTools()).tools).toHaveLength(9);
+    expect((await client.listTools()).tools).toHaveLength(11);
     expect((await client.listPrompts()).prompts).toHaveLength(3);
     expect((await client.listResources()).resources).toHaveLength(1);
     await client.close();
@@ -197,7 +197,7 @@ describe("importable inspection server lifecycle", () => {
     await flush();
     actor.stop();
     expect(bridge.store.size).toBe(0);
-    expect((await client.listTools()).tools).toHaveLength(9);
+    expect((await client.listTools()).tools).toHaveLength(11);
     expect(bridge.clientRegistry.isClosed).toBe(true);
   });
 
@@ -461,16 +461,19 @@ it("disposes owned callbacks and routes even when transport.close rejects", asyn
   await assertReusable(address.port);
 });
 
-it("lets separate registrations of the same callback be disposed independently", () => {
-  const store = new ActorStore(10, new Logger("error"));
-  const callback = vi.fn();
-  const removeFirst = store.onCleared(callback);
-  const removeSecond = store.onCleared(callback);
-  removeFirst();
-  removeFirst();
-  store.clear();
-  expect(callback).toHaveBeenCalledOnce();
-  removeSecond();
-  store.clear();
-  expect(callback).toHaveBeenCalledOnce();
-});
+it.each(["onCleared", "subscribe"] as const)(
+  "lets separate %s registrations of the same callback be disposed independently",
+  (method) => {
+    const store = new ActorStore(10, new Logger("error"));
+    const callback = vi.fn();
+    const removeFirst = store[method](callback);
+    const removeSecond = store[method](callback);
+    removeFirst();
+    removeFirst();
+    store.clear();
+    expect(callback).toHaveBeenCalledOnce();
+    removeSecond();
+    store.clear();
+    expect(callback).toHaveBeenCalledOnce();
+  },
+);

@@ -324,7 +324,12 @@ and adapter requirements.
   "output": null,
   "error": null,
   "parentId": "app-session",
-  "updatedAt": "2026-02-28T12:00:01.500Z"
+  "updatedAt": "2026-02-28T12:00:01.500Z",
+  "cursor": {
+    "generation": "5d2727b8-c095-4b22-946e-464b5e3f7f64",
+    "snapshot": 3,
+    "event": 1
+  }
 }
 ```
 
@@ -369,13 +374,19 @@ use the application's local IDs before the server scopes them to a connection.
   "sessionId": "agents-session",
   "events": [
     {
+      "sequence": 1,
       "event": { "type": "sys.refresh" },
       "sourceId": "app-session",
       "createdAt": "2026-02-28T12:00:01.000Z"
     }
   ],
   "totalInBuffer": 1,
-  "bufferCapacity": 100
+  "bufferCapacity": 100,
+  "cursor": {
+    "generation": "5d2727b8-c095-4b22-946e-464b5e3f7f64",
+    "snapshot": 3,
+    "event": 1
+  }
 }
 ```
 

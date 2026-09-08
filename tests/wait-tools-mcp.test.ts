@@ -10,6 +10,7 @@ import { ClientRegistry } from "../src/client-registry.js";
 import { Logger } from "../src/logger.js";
 import { createMcpServer } from "../src/mcp-server.js";
 import { createWsServer } from "../src/ws-server.js";
+import { nativeInspectionForwarder } from "./fixtures/native-inspection.js";
 
 async function setup() {
   const logger = new Logger("error");
@@ -65,7 +66,21 @@ async function setup() {
     expect(result.structuredContent).toEqual(JSON.parse(content[0].text));
     return result.structuredContent as Record<string, unknown>;
   };
+  async function discover(localSessionId: string) {
+    const result = await call("list_actors", {});
+    const actors = result.actors as {
+      sessionId: string;
+      localSessionId: string;
+    }[];
+    const actor = actors.find(
+      (candidate) => candidate.localSessionId === localSessionId,
+    );
+    if (!actor) throw new Error(`Actor ${localSessionId} was not discovered`);
+    expect(actor.sessionId).not.toBe(localSessionId);
+    return actor.sessionId;
+  }
   return {
+    discover,
     client,
     server,
     serverTransport,
@@ -95,7 +110,8 @@ function deferred() {
 
 describe("MCP verification waits with real XState actors", () => {
   it("contains failed resource-list notifications and keeps MCP requests usable", async () => {
-    const { call, ws, flush, serverTransport, logger } = await setup();
+    const { call, ws, flush, serverTransport, logger, discover } =
+      await setup();
     const debug = vi.spyOn(logger, "debug");
     const send = serverTransport.send.bind(serverTransport);
     const delivery = vi
@@ -128,12 +144,13 @@ describe("MCP verification waits with real XState actors", () => {
     actor.start();
     await flush();
 
+    const sessionId = await discover(actor.sessionId);
     expect(debug).toHaveBeenCalledWith(
       "Resource-list notification could not be delivered",
     );
     expect(
       await call("wait_for_state", {
-        sessionId: actor.sessionId,
+        sessionId,
         state: "idle",
         timeoutMs: 0,
       }),
@@ -156,14 +173,14 @@ describe("MCP verification waits with real XState actors", () => {
       logger,
     );
     await server.close();
-    expect(disposers).toHaveLength(2);
+    expect(disposers).toHaveLength(1);
     for (const dispose of disposers) expect(dispose).toHaveBeenCalledOnce();
   });
 
   it.each(["success", "failure"] as const)(
     "verifies asynchronous load → %s without replaying actions",
     async (outcome) => {
-      const { call, client, ws, tools, flush } = await setup();
+      const { call, client, ws, tools, flush, discover } = await setup();
       const work = deferred();
       const guard = vi.fn(() => true);
       const completed = vi.fn();
@@ -190,11 +207,8 @@ describe("MCP verification waits with real XState actors", () => {
         },
       });
       const actor = createActor(machine, {
-        // Preserve native session IDs; forward producer payloads without modification.
-        inspect: (event) =>
-          ws.send(
-            JSON.stringify({ ...event, sessionId: event.actorRef.sessionId }),
-          ),
+        // Preserve native session IDs and Error properties for lifecycle diagnostics.
+        inspect: nativeInspectionForwarder(ws).inspect,
       });
       onTestFinished(() => {
         if (ws.readyState === WebSocket.OPEN) actor.stop();
@@ -213,18 +227,26 @@ describe("MCP verification waits with real XState actors", () => {
       });
       actor.start();
       await flush();
+      const sessionId = await discover(actor.sessionId);
       const baseline = await call("get_actor_state", {
-        sessionId: actor.sessionId,
+        sessionId,
       });
       const resource = await client.readResource({
-        uri: `xstate://actor/${actor.sessionId}/snapshot`,
+        uri: `xstate://actor/${sessionId}/snapshot`,
       });
       const resourceContent = resource.contents[0];
       if (!("text" in resourceContent))
         throw new Error("Expected text resource");
-      expect(JSON.parse(resourceContent.text).cursor).toEqual(baseline.cursor);
+      expect(JSON.parse(resourceContent.text)).toEqual(baseline);
+      expect(baseline).toMatchObject({
+        sessionId,
+        localSessionId: actor.sessionId,
+        connectionId: expect.any(String),
+        output: null,
+        error: null,
+      });
       const history = await call("get_event_history", {
-        sessionId: actor.sessionId,
+        sessionId,
       });
       expect(history.cursor).toEqual(baseline.cursor);
       for (const name of ["wait_for_state", "wait_for_event"]) {
@@ -235,11 +257,11 @@ describe("MCP verification waits with real XState actors", () => {
       }
 
       await call("send_event", {
-        target: actor.sessionId,
+        target: sessionId,
         event: { type: "LOAD" },
       });
       const loadEvent = await call("wait_for_event", {
-        sessionId: actor.sessionId,
+        sessionId,
         eventType: "LOAD",
         after: baseline.cursor,
       });
@@ -248,29 +270,30 @@ describe("MCP verification waits with real XState actors", () => {
         event: { event: { type: "LOAD" } },
       });
       const loading = await call("wait_for_state", {
-        sessionId: actor.sessionId,
+        sessionId,
         state: "loading",
         after: baseline.cursor,
       });
       expect(loading.outcome).toBe("matched");
       const child = actor.getSnapshot().children.loader!;
+      const childSessionId = await discover(child.sessionId);
       const childBaseline = await call("get_actor_state", {
-        sessionId: child.sessionId,
+        sessionId: childSessionId,
       });
       const childStatus = outcome === "success" ? "done" : "error";
       const childWait = call("wait_for_state", {
-        sessionId: child.sessionId,
+        sessionId: childSessionId,
         status: childStatus,
         after: childBaseline.cursor,
       });
       const stateWait = call("wait_for_state", {
-        sessionId: actor.sessionId,
+        sessionId,
         state: outcome,
         status: "done",
         after: loading.cursor,
       });
       const eventWait = call("wait_for_event", {
-        sessionId: actor.sessionId,
+        sessionId,
         eventType:
           outcome === "success"
             ? "xstate.done.actor.loader"
@@ -288,6 +311,23 @@ describe("MCP verification waits with real XState actors", () => {
         outcome: "matched",
         snapshot: { status: childStatus, value: null },
       });
+      if (outcome === "failure") {
+        expect(childResult.snapshot).toMatchObject({
+          error: { name: "Error", message: "load failed" },
+        });
+        expect(
+          tools.tools.find((tool) => tool.name === "wait_for_state")
+            ?.outputSchema,
+        ).toMatchObject({
+          properties: {
+            snapshot: {
+              properties: {
+                error: { properties: { message: { type: "string" } } },
+              },
+            },
+          },
+        });
+      }
       expect(stateResult).toMatchObject({
         outcome: "matched",
         snapshot: { status: "done", value: outcome },
@@ -306,7 +346,7 @@ describe("MCP verification waits with real XState actors", () => {
   );
 
   it("returns a structured disconnect result when the actor's socket closes", async () => {
-    const { client, call, ws, flush } = await setup();
+    const { client, call, ws, flush, discover } = await setup();
     ws.send(
       JSON.stringify({
         type: "@xstate.actor",
@@ -319,8 +359,9 @@ describe("MCP verification waits with real XState actors", () => {
     onTestFinished(() => {
       spy.mockRestore();
     });
+    const sessionId = await discover("actor");
     const pending = call("wait_for_state", {
-      sessionId: "actor",
+      sessionId,
       state: "ready",
     });
     await expect.poll(() => spy.mock.calls.length).toBe(1);
@@ -387,7 +428,7 @@ describe("MCP verification waits with real XState actors", () => {
     await expect.poll(() => spy.mock.calls.length).toBe(1);
     await call("clear_actors", {});
     expect(await pending).toMatchObject({ outcome: "cleared" });
-    expect(observers.size).toBe(2);
+    expect(observers.size).toBe(1);
     await server.close();
     expect(observers.size).toBe(0);
     // Changes after MCP shutdown must not leave rejected notification promises.

@@ -55,7 +55,8 @@ result is assembled.
 
 ## Observe, act, verify
 
-1. Read `get_actor_state(sessionId)` and save its cursor.
+1. Discover the actor's public `sessionId` with `list_actors`, then read
+   `get_actor_state(sessionId)` and save its cursor.
 2. Call `send_event` once, or trigger the UI action.
 3. Call `wait_for_state` with the expected state/status and the saved cursor.
 4. Check `outcome`, inspect the matched snapshot, and verify the UI.
@@ -67,7 +68,7 @@ request (substitute the actual session ID and cursor from step 1):
 {
   "name": "wait_for_state",
   "arguments": {
-    "sessionId": "x:0",
+    "sessionId": "public-session-id-from-list-actors",
     "state": "ready",
     "after": {
       "generation": "5d2727b8-c095-4b22-946e-464b5e3f7f64",
@@ -116,11 +117,13 @@ connecting. Use a fresh server instance for a new transport after closure.
 
 ## Integration dependencies
 
-Waits reflect data accepted by ActorStore. Cross-application socket ownership
-remains [#3](https://github.com/eandualem/xstate-mcp/issues/3); complete output/error
-preservation is [#10 / PR #22](https://github.com/eandualem/xstate-mcp/pull/22).
-Merge those fixes before relying on multiple applications and full failure
-diagnostics. Disposable internal observation/notification callbacks provide wait
-cleanup here; the resource subscription protocol remains
+Waits use the same scoped actor identities and retained lifecycle data as the
+other inspection tools. Snapshot matches include received output and bounded error
+details; see [lifecycle diagnostics](lifecycle.md) for serialization limits.
+The live test forwarder preserves native Error fields from real XState 5.28.0
+actors. Complete application adapter behavior remains
+[#13](https://github.com/eandualem/xstate-mcp/issues/13).
+Disposable internal observation and notification callbacks provide wait cleanup;
+the resource subscription protocol remains
 [#4](https://github.com/eandualem/xstate-mcp/issues/4). General retained-byte and
 response budgets remain [#11](https://github.com/eandualem/xstate-mcp/issues/11).

@@ -9,6 +9,7 @@ import {
 } from "./types.js";
 import { safeStringify } from "./safe-stringify.js";
 import type { ToolResult } from "./errors.js";
+import { actorErrorSchema } from "./actor-snapshot.js";
 
 export const MAX_WAITERS = 100;
 export const MAX_WAIT_TIMEOUT_MS = 30000;
@@ -126,6 +127,7 @@ export const waitOutputSchema = {
       value: z.unknown(),
       context: z.unknown(),
       output: z.unknown().optional(),
+      error: actorErrorSchema.optional(),
     })
     .passthrough()
     .optional(),
