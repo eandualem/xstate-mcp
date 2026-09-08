@@ -49,7 +49,10 @@ Application / XState v5
 
 The process keeps data in memory. Restarting it loses history; disconnecting an
 application removes that client's actors. Per-actor ring buffers bound the number
-of entries. Actor counts, payload bytes, and pending requests have no global budget.
+of entries. Actor counts, retained bytes, and pending send commands have no global
+budget; broader retention and numeric limits remain
+[#11](https://github.com/eandualem/xstate-mcp/issues/11). Verification waits have
+their own timeout and concurrency bounds in the [wait contract](verification-waits.md).
 
 ## Contracts and limits
 
@@ -57,19 +60,42 @@ The incoming inspection types are `@xstate.actor`, `@xstate.event`, and
 `@xstate.snapshot`; `@xstate.microstep` is intentionally skipped. Normalization
 accepts top-level session identifiers or serialized actor references. A useful
 adapter must retain registration, stable identity, hierarchy, definitions, and
-snapshots through startup and reconnects. The current README adapters have known
-gaps documented in the [September review](reviews/2026-09-07.md).
+snapshots through startup and reconnects. The
+[September review](reviews/2026-09-07.md) records the original adapter failures.
+Current examples use application-specific adapters; a reusable adapter remains
+[#13](https://github.com/eandualem/xstate-mcp/issues/13). MCP callers discover
+server-scoped actor IDs while applications keep local IDs on the wire; see
+[application sessions](application-sessions.md).
 
 `send_event` emits `xstate-mcp.send` with a request ID, session ID, and event. The
-application must respond with `xstate-mcp.send.response`. A successful response
-acknowledges dispatch; guards or asynchronous work can still leave the actor in
-the same state. `can_handle_event` currently checks definition structure without
-executing guards and has additional wildcard/forbidden-transition limitations.
+application must respond with `xstate-mcp.send.response` on the owning socket.
+Writes require a successful [capability handshake](connection-health.md) and
+explicit server and adapter permission. A successful response acknowledges
+dispatch; guards or asynchronous work can still leave the actor in the same state.
+
+`can_handle_event` checks the supplied definition and stored snapshot without
+executing guards. It handles wildcard selection, forbidden transitions and
+child/ancestor precedence. Its `canHandle` result is `true` for a structural
+handler, `false` for no handler, forbidden selection or an inactive actor, and
+`null` when guards or incomplete/version-dependent evidence prevent a conclusion.
+Serialization can omit information. See [static eligibility](event-eligibility.md)
+and verify state/events after dispatch, then check the UI.
 
 The server defaults to loopback and an origin allowlist. Context and event data
 become available to the configured MCP client; that client may send them to its
-model provider. Application-side redaction and development-only instrumentation
-are planned improvements. This server has no outbound telemetry of its own.
+model provider. The browser-safe `createInspectionGuard` defaults to disabled and
+read-only; applications explicitly supply a development flag before opening an
+inspection connection. It filters inspection data before transfer and checks
+local actor/event permission immediately before dispatch. The server sanitizes
+supported inspection payload fields before retention, so tools, resources,
+prompts, histories and waits share sanitized data. This key/path filtering does
+not detect arbitrary secrets; see the [policy and redaction contract](write-controls-and-redaction.md)
+for data and metadata boundaries. This server has no outbound telemetry of its own.
+
+Resource reads and change notifications exist, but the full MCP subscription
+protocol remains [#4](https://github.com/eandualem/xstate-mcp/issues/4). Current CI
+covers quality and package checks; broader contract CI remains
+[#7](https://github.com/eandualem/xstate-mcp/issues/7).
 
 ## Historical context
 
