@@ -6,9 +6,9 @@ Read [the concepts](docs/concepts.md) and [agent instructions](AGENTS.md) first.
 
 ## Setup
 
-Use Bun with the committed `bun.lock` and a maintained Node.js LTS (Node 24 was
-used for the September 2026 review). The package still declares Node >=20;
-updating that support policy is tracked in the roadmap.
+Use the Bun version pinned in `.bun-version` with the committed `bun.lock`.
+Supported Node.js lines are 22.23.2+ within 22.x and 24.20.0+ within 24.x;
+see the [runtime policy](docs/runtime-support.md).
 
 ```bash
 bun install --frozen-lockfile
@@ -16,10 +16,10 @@ bun run check
 bun run build
 ```
 
-The suite runs locally without a browser, API key, model, backbone, or another
-repository. WebSocket tests bind loopback ports. The current suite does not
-establish compatibility with real XState applications; see the
-[review](docs/reviews/2026-09-07.md) for the integration test work.
+The root suite runs locally without a browser, API key, model, backbone, or another
+repository. WebSocket tests bind loopback ports. Real XState and Stately producer
+fixtures exercise the MCP protocol; subprocess tests verify the built and packed
+CLI, import-safe library, and shutdown behavior.
 
 `bun run dev` starts the server. Use `XSTATE_MCP_WS_PORT` to avoid another MCP
 process's port. Server stdout is reserved for JSON-RPC; read diagnostics on stderr.
@@ -42,9 +42,12 @@ tool and is not a build or runtime dependency.
 
 ## Releases
 
-Publishing is a separate maintainer operation. `make publish` currently bumps
-the npm version and publishes immediately. The September review found version
-drift across npm, the checkout, and server metadata; reconcile that provenance
-before the next release. A release should be built and tested from a known commit,
-with consistent metadata, a tag, and release notes. Do not publish incidentally
-while working on an issue.
+Run `bun run release:prepare` from a clean, committed tree to build twice,
+compare archives, and exercise an isolated npm consumer. `bun run metadata:check`
+checks package, MCP, and registry metadata consistency. These commands create
+local verification artifacts; they do not publish a package.
+
+Publication requires separate authorization and the tag/environment prerequisites
+in the [release guide](docs/releases.md). `make publish` refuses direct publishing.
+The release workflow publishes only through its explicit gated dispatch, using
+the same verified archive. Do not publish incidentally while working on an issue.

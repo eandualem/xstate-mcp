@@ -715,3 +715,11 @@ option; it is not a privacy policy. See the [redaction contract and limits](docs
 ## License
 
 MIT
+
+## Releases and package verification
+
+The repository uses an unpublished development version while revival work is
+reviewed. See [the release guide](docs/releases.md) for the historical npm 1.0.3
+provenance, reproducible candidate builds, registry metadata and the explicit
+maintainer publishing procedure. `bun run release:prepare` builds and verifies a
+clean consumer installation; it does not publish.

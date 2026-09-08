@@ -3,6 +3,7 @@ import {
   connectionHealthOutputSchema,
   MAX_HEALTH_CONNECTIONS,
 } from "./connection-health.js";
+import { version } from "./version.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -62,7 +63,7 @@ export function createMcpServer(
 ): McpServer {
   const server = new McpServer({
     name: "xstate-mcp",
-    version: "1.0.0",
+    version,
   });
   const waits = new ActorWaits(store);
 

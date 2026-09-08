@@ -1,0 +1,14 @@
+[
+  {
+    "file": "mcp-server-2025-12-11.json",
+    "url": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+    "retrieved": "2026-09-07",
+    "sha256": "3fba09590c99f61735d234822279f4223fab9e300c0a81e81c91ab62a4114de0"
+  },
+  {
+    "file": "glama-server.json",
+    "url": "https://glama.ai/mcp/schemas/server.json",
+    "retrieved": "2026-09-07",
+    "sha256": "7f652273293b658bcf9156646745c3aa9c42edcbd179ee126361e462814f1508"
+  }
+]
