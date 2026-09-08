@@ -11,6 +11,14 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { WebSocket } from "ws";
 import { createActor, createMachine } from "xstate";
+import { createInspectionGuard } from "xstate-mcp/inspection-policy";
+
+const allow = [{ actor: "*", events: ["RUN"] }];
+const secret = "release-fixture-secret";
+const guard = createInspectionGuard({
+  enabled: true,
+  writePolicy: { readOnly: false, allow },
+});
 
 const packageRoot = resolve("node_modules/xstate-mcp");
 const pkg = JSON.parse(
@@ -55,6 +63,9 @@ const child = spawn(bin, [], {
     XSTATE_MCP_WS_HOST: "127.0.0.1",
     XSTATE_MCP_LOG_LEVEL: "debug",
     XSTATE_MCP_REQUIRE_ORIGIN: "false",
+    XSTATE_MCP_READ_ONLY: "false",
+    XSTATE_MCP_WRITE_ALLOW: JSON.stringify(allow),
+    XSTATE_MCP_REDACTION: "{}",
   },
 });
 const deadline = setTimeout(() => {
@@ -115,13 +126,15 @@ try {
   assert.deepEqual(hello.commands, ["send_event"]);
   const machine = createMachine({
     id: "release-demo",
+    context: { password: secret },
     initial: "idle",
     states: { idle: { on: { RUN: "running" } }, running: {} },
   });
   actor = createActor(machine, {
     inspect(event) {
       if (!forwarding) return;
-      ws.send(
+      // Project this trusted producer's toJSON values before the inert guard.
+      const envelope = JSON.parse(
         JSON.stringify({
           ...event,
           sessionId: event.actorRef.sessionId,
@@ -130,6 +143,11 @@ try {
             : {}),
         }),
       );
+      const serialized = guard.serializeInspection(envelope);
+      if (serialized !== null) {
+        assert(!serialized.includes(secret));
+        ws.send(serialized);
+      }
     },
   });
   ws.on("message", (raw) => {
@@ -137,14 +155,13 @@ try {
     if (command.type !== "xstate-mcp.send") return;
     commandCount++;
     receivedTarget = command.sessionId;
-    const success = command.sessionId === actor.sessionId;
-    if (success) actor.send(command.event);
+    const result = guard.dispatch(actor, command);
     ws.send(
       JSON.stringify({
         type: "xstate-mcp.send.response",
         requestId: command.requestId,
         sessionId: command.sessionId,
-        success,
+        ...result,
       }),
     );
   });
@@ -164,9 +181,23 @@ try {
   assert.equal(health.connections[0].actorCount, 1);
   const before = await tool("get_actor_state", { sessionId });
   assert.equal(before.value, "idle");
+  assert.equal(before.context.password, "[REDACTED]");
+  assert.equal(before.output, null);
+  assert.equal(before.error, null);
+  const rejected = await client.callTool({
+    name: "send_event",
+    arguments: { target: sessionId, event: { type: "FORBIDDEN" } },
+  });
+  assert.equal(rejected.isError, true);
+  assert.equal(rejected.structuredContent.code, "write_not_allowed");
+  assert.equal(commandCount, 0);
   assert.equal(
-    (await tool("send_event", { target: sessionId, event: { type: "RUN" } }))
-      .success,
+    (
+      await tool("send_event", {
+        target: sessionId,
+        event: { type: "RUN", token: secret },
+      })
+    ).success,
     true,
   );
   const state = await tool("wait_for_state", {
@@ -177,6 +208,7 @@ try {
   });
   assert.equal(state.outcome, "matched");
   assert.equal(state.snapshot.value, "running");
+  assert.equal(state.snapshot.context.password, "[REDACTED]");
   const event = await tool("wait_for_event", {
     sessionId,
     eventType: "RUN",
@@ -184,6 +216,7 @@ try {
     timeoutMs: 2000,
   });
   assert.equal(event.outcome, "matched");
+  assert.equal(event.event.event.token, "[REDACTED]");
   assert.equal(commandCount, 1);
   assert.equal(receivedTarget, actor.sessionId);
   assert.equal(actor.getSnapshot().value, "running");
@@ -192,6 +225,10 @@ try {
     uri: `xstate://actor/${sessionId}/snapshot`,
   });
   assert.equal(JSON.parse(resource.contents[0].text).value, "running");
+  assert.equal(
+    JSON.parse(resource.contents[0].text).context.password,
+    "[REDACTED]",
+  );
   console.log(
     `Installed CLI initialize ${pkg.version}; negotiated real XState idle → RUN → running verified with MCP waits`,
   );
@@ -210,6 +247,10 @@ assert.deepEqual(
   exitResult,
   [0, null],
   "Installed CLI exits cleanly on stdin EOF",
+);
+assert(
+  !stdout.includes(secret),
+  "Inspection responses must redact fixture secrets",
 );
 const released = createServer();
 await new Promise((done, reject) => {
