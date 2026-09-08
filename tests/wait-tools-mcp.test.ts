@@ -1,3 +1,4 @@
+import { negotiateApplication } from "./fixtures/application-hello.js";
 import { once } from "node:events";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -54,6 +55,7 @@ async function setup() {
   if (!address || typeof address === "string") throw new Error("Missing port");
   const ws = new WebSocket(`ws://127.0.0.1:${address.port}`);
   await once(ws, "open");
+  await negotiateApplication(ws);
   onTestFinished(async () => {
     if (ws.readyState === WebSocket.CLOSED) return;
     const closed = once(ws, "close");
@@ -369,7 +371,7 @@ describe("MCP verification waits with real XState actors", () => {
     ws.close();
     await closed;
     expect(await pending).toMatchObject({ outcome: "disconnected" });
-    expect((await client.listTools()).tools).toHaveLength(11);
+    expect((await client.listTools()).tools).toHaveLength(12);
   });
 
   it("cleans up an MCP cancellation and keeps subsequent requests usable", async () => {

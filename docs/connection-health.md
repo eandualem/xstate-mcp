@@ -108,7 +108,12 @@ are at most 32 characters (letters, digits, `_`, `.`, `+`, `-`). Up to eight com
 names of at most 32 characters are accepted. Use non-secret display labels.
 Application/adapter names and versions are self-reported, not authenticated
 identity or proof of compatibility. The connection UUID belongs to the server;
-an application cannot choose it by adding a field to its hello.
+an application cannot choose it by adding a field to its hello. The same UUID is
+returned as `connectionId` by actor discovery. Actor `sessionId` values are opaque
+IDs scoped to that connection; commands on the wire use the original
+`localSessionId`. Acknowledgements are accepted only from the owning socket.
+URL `applicationName` labels and hello `application.name` are separate display
+metadata; join actors and health by `connectionId`, not by either label.
 
 A malformed or incompatible hello returns `success: false` with `code` and bounded
 remediation. Connections with `invalid` or `incompatible` negotiation cannot

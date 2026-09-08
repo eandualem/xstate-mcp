@@ -1,3 +1,4 @@
+import { negotiateApplication } from "./fixtures/application-hello.js";
 import { once } from "node:events";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -44,6 +45,7 @@ async function connectActor(
   const ws = new WebSocket(`ws://127.0.0.1:${address.port}`);
   onTestFinished(() => ws.terminate());
   await once(ws, "open");
+  await negotiateApplication(ws);
   const machine = createMachine(config, { guards: { reject: () => false } });
   const actor = createActor(machine, {
     inspect: (event) =>

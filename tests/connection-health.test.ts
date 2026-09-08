@@ -23,7 +23,7 @@ describe("connection health and capability contracts", () => {
       listener: { state: "not_started" },
       totals: { connectedClients: 1, registeredSessions: 0 },
     });
-    registry.registerSession(ws, "actor");
+    expect(registry.registerSession(ws, "actor").connectionId).toBe(id);
     registry.health.negotiate(ws, applicationHello());
     registry.clear();
     expect(registry.getHealth().connections[0]).toMatchObject({
@@ -45,9 +45,11 @@ describe("connection health and capability contracts", () => {
     async (commands) => {
       const registry = new ClientRegistry(5000, logger);
       const ws = socket();
-      registry.registerSession(ws, "actor");
+      const { sessionId } = registry.registerSession(ws, "actor");
       if (commands) registry.health.negotiate(ws, applicationHello(commands));
-      expect(await registry.sendEvent("actor", { type: "RUN" })).toMatchObject({
+      expect(
+        await registry.sendEvent(sessionId, { type: "RUN" }),
+      ).toMatchObject({
         success: false,
         code: commands
           ? "unsupported_command"

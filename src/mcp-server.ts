@@ -623,7 +623,7 @@ export function createMcpServer(
   );
 
   logger.info(
-    "MCP server created with 11 tools, 3 resources, and 3 prompts registered",
+    "MCP server created with 12 tools, 3 resources, and 3 prompts registered",
   );
   return server;
 }

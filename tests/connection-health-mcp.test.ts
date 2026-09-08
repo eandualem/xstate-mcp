@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:net";
@@ -224,6 +224,9 @@ it("negotiates a real adapter, commands a real XState actor and exposes no actor
   await flush(ws);
   const { actors } = await tool(h.client, "list_actors");
   const sessionId = actors[0].sessionId;
+  expect(actors[0].connectionId).toBe(reply.connectionId);
+  expect(actors[0].localSessionId).toBe(p.actor.sessionId);
+  expect(sessionId).not.toBe(p.actor.sessionId);
   expect(
     await tool(h.client, "send_event", {
       target: sessionId,
@@ -247,6 +250,60 @@ it("negotiates a real adapter, commands a real XState actor and exposes no actor
   expect(JSON.stringify(health)).not.toMatch(
     /actor-payload-secret|handshake-secret|token=secret/,
   );
+});
+
+it("counts wrong-socket acknowledgements without consuming the owner's pending command", async () => {
+  const h = await harness();
+  const owner = await h.connect();
+  const attacker = await h.connect();
+  const ownerHello = await hello(owner);
+  const attackerHello = await hello(attacker);
+  const producer = h.producer(owner);
+  await flush(owner);
+  // Hold the real adapter's acknowledgement so the other socket can try it first.
+  owner.removeAllListeners("message");
+  const { actors } = await tool(h.client, "list_actors");
+  const sessionId = actors[0].sessionId;
+  const command = once(owner, "message");
+  let settled = false;
+  const sent = tool(h.client, "send_event", {
+    target: sessionId,
+    event: { type: "RUN" },
+  }).then((result) => {
+    settled = true;
+    return result;
+  });
+  const frame = JSON.parse((await command)[0].toString());
+  expect(frame.sessionId).toBe(producer.actor.sessionId);
+  const ack = JSON.stringify({
+    type: "xstate-mcp.send.response",
+    requestId: frame.requestId,
+    success: true,
+  });
+  attacker.send(ack);
+  await flush(attacker);
+  expect(settled).toBe(false);
+  expect(
+    (await status(h.client, { connectionId: attackerHello.connectionId }))
+      .connections[0],
+  ).toMatchObject({
+    lastRejection: "unexpected_ack",
+    counters: { rejectedFrames: 1 },
+  });
+  expect(producer.actor.getSnapshot().value).toBe("idle");
+  producer.actor.send(frame.event);
+  owner.send(ack);
+  expect(await sent).toMatchObject({ success: true });
+  expect(await tool(h.client, "get_actor_state", { sessionId })).toMatchObject({
+    value: "running",
+  });
+  expect(
+    (await status(h.client, { connectionId: ownerHello.connectionId }))
+      .connections[0],
+  ).toMatchObject({
+    connectionId: actors[0].connectionId,
+    counters: { rejectedFrames: 0, commandTimeouts: 0 },
+  });
 });
 
 it("keeps a live endpoint after server errors and reports its eventual closure", async () => {
@@ -450,6 +507,18 @@ it("keeps negotiation through clear, but assigns a fresh identity and no capabil
     "actor_not_registered",
   );
   p.stop();
+  const replay = h.producer(ws, "after-clear");
+  await flush(ws);
+  const { actors } = await tool(h.client, "list_actors");
+  expect(actors[0].connectionId).toBe(first.connectionId);
+  expect(
+    await tool(h.client, "send_event", {
+      target: actors[0].sessionId,
+      event: { type: "RUN" },
+    }),
+  ).toMatchObject({ success: true });
+  expect(replay.actor.getSnapshot().value).toBe("running");
+  replay.stop();
   const closed = once([...h.wss().clients][0], "close");
   ws.close();
   await closed;
@@ -488,11 +557,6 @@ it("reports origin rejection and an occupied listener without reflecting URLs or
 });
 
 it("exposes health and negotiated writes through the built CLI's actual MCP stdio", async () => {
-  execFileSync(
-    process.execPath,
-    [resolve(root, "node_modules/tsup/dist/cli-default.js")],
-    { cwd: root, stdio: "pipe" },
-  );
   const reservation = createServer();
   reservation.listen(0, "127.0.0.1");
   await once(reservation, "listening");

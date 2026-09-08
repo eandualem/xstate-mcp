@@ -150,7 +150,10 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
     }
     const query = (request.url ?? "").split("?").slice(1).join("?");
     const params = new URLSearchParams(query);
-    clientRegistry.registerClient(ws, params.get("applicationName") ?? undefined);
+    clientRegistry.registerClient(
+      ws,
+      params.get("applicationName") ?? undefined,
+    );
     logger.info("Client connected");
     ws.on("pong", () => health.activity(ws));
     ws.on("ping", () => health.activity(ws));
@@ -163,9 +166,7 @@ export function createWsServer(options: WsServerOptions): WebSocketServer {
     });
 
     ws.on("close", () => {
-      if (clientRegistry) {
-        clientRegistry.removeClient(ws, store);
-      }
+      clientRegistry.removeClient(ws, store);
       logger.info("Client disconnected");
     });
 

@@ -1,3 +1,4 @@
+import { negotiateApplication } from "./fixtures/application-hello.js";
 import { spawn, execFileSync } from "node:child_process";
 import { once } from "node:events";
 import {
@@ -237,6 +238,7 @@ describe("CLI shutdown with live applications", () => {
       const { child, exited, client, port } = await runningCli();
       const ws = new WebSocket(`ws://127.0.0.1:${port}`);
       await once(ws, "open");
+      await negotiateApplication(ws);
       onTestFinished(() => ws.terminate());
       const actor = createActor(
         createMachine({
@@ -359,7 +361,7 @@ it("uses the packed library exports, type declarations, and executable", async (
     const client = new Client({ name: 'packed-scanner', version: '1' });
     const [ct, st] = InMemoryTransport.createLinkedPair();
     await Promise.all([server.connect(st), client.connect(ct)]);
-    assert.equal((await client.listTools()).tools.length, 11);
+    assert.equal((await client.listTools()).tools.length, 12);
     assert.equal((await client.listPrompts()).prompts.length, 3);
     await client.close(); await server.close();
     const bridge = createInspectionServer({ wsPort: 0, logLevel: 'error' });
@@ -410,7 +412,7 @@ it("uses the packed library exports, type declarations, and executable", async (
     port,
     client,
   } = await runningCli(executable);
-  expect((await client.listTools()).tools).toHaveLength(11);
+  expect((await client.listTools()).tools).toHaveLength(12);
   child.stdin.end();
   expect(await within(cliExited)).toMatchObject({ code: 0, signal: null });
   await assertReusable(port);
