@@ -72,9 +72,13 @@ Do not change dependencies as a side effect of a documentation task.
 
 ## Optional backbone integration
 
-Backbone is optional for contributors. When a task arrives through it, read
-`backbone help github` or `backbone help messaging` before first use. Acknowledge
-assigned issues with a leading `[from:<agent-name>]` comment. Track work in this
-repository's issues; incoming roadmap notifications do not expand the active task.
+Backbone is optional for contributors. Managed sessions receive its shared base
+brief and `project-context` policy; those own coordination and shared handoff
+guidance. Repository paths and initialization remain defined above and in
+`docs/agent-workflow.md`.
+
+The optional `xstate-architecture` skill concerns frontend application work.
+Its Next.js/React conventions do not apply to this repository's protocol server,
+CLI, transport, or library modules; preserve the architecture described above.
 
 The dated assessment and implementation order are in `docs/reviews/2026-09-07.md`.

@@ -4,5 +4,4 @@ alwaysApply: true
 ---
 
 Read and follow the repository-root `AGENTS.md`. It is the shared source of
-project instructions for every coding agent. Read `.backbone/memory/HANDOFF.md`
-when present for current work and verification.
+project instructions for every coding agent.
