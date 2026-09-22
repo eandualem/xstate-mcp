@@ -13,7 +13,8 @@ clone should be enough to understand the work without a previous agent's memory.
 - [Claude Code](https://github.com/anthropics/claude-code/tree/main/mods/agents-md)
   2.1.277+ supports native `AGENTS.md` loading when no `CLAUDE.md`,
   `.claude/CLAUDE.md`, or `CLAUDE.local.md` exists in the working directory or
-  its parents. Verify loading at session start as described below.
+  its parents. The user-level `~/.claude/CLAUDE.md` is exempt. Verify loading
+  at session start as described below.
 - [Gemini CLI](https://geminicli.com/docs/cli/gemini-md/#customize-the-context-file-name)
   reads `AGENTS.md` through `.gemini/settings.json`, which sets
   `context.fileName` to `["AGENTS.md"]`.
