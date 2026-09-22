@@ -63,7 +63,8 @@ skill preview alone does not prove a running session received that content.
 
 ## Shared local memory
 
-Use the same optional, git-ignored layout as agent-backbone:
+The canonical local memory location is `.backbone/memory/` in the primary
+checkout. It is git-ignored and does not require agent-backbone:
 
 ```text
 .backbone/memory/
@@ -74,8 +75,13 @@ Use the same optional, git-ignored layout as agent-backbone:
 
 `HANDOFF.md` records the date, active objective, branch, changed files, issue/PR
 links, verified results, known failures, running processes, and next steps. Rewrite
-it when handing off so another runtime can continue. `INDEX.md` lists durable
-notes with their dates and relevance. Record decisions with their source.
+it when handing off so another runtime can continue. Keep it focused on active
+work; preserve completed history in `notes/`. `INDEX.md` lists durable notes with
+their dates and relevance. Record decisions with their source.
+
+In a linked worktree, locate the primary checkout with `git worktree list` and
+read and update its `.backbone/memory/`. A local `.backbone/memory` symlink may
+point there; preserve any existing worktree memory there before replacing it.
 
 If these files are absent, start from the tracked docs and GitHub issues and
 create them when useful. Keep durable product decisions in tracked documentation
@@ -83,7 +89,8 @@ or issues too: local memory does not travel with a clone. Never put credentials,
 application payloads, or private conversations in the repository or memory.
 
 Memory is evidence, not authority. Recheck stale measurements and follow the
-current user request. Provider-specific private memory is only a cache.
+current user request. Managed sessions follow the shared `project-context`
+policy for memory storage and retirement of old sources.
 
 ## Optional backbone coordination
 
