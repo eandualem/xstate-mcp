@@ -7,27 +7,31 @@ clone should be enough to understand the work without a previous agent's memory.
 ## CLI entry points
 
 - Agents supporting `AGENTS.md` can read it directly, including
-  [Codex](https://learn.chatgpt.com/docs/agent-configuration/agents-md) and
+  [Codex](https://learn.chatgpt.com/docs/agent-configuration/agents-md),
+  [Cursor](https://cursor.com/docs/rules#agentsmd), and
   [OpenCode](https://opencode.ai/v2/docs/instructions).
-- [Claude Code](https://code.claude.com/docs/en/memory) imports it through
-  `CLAUDE.md` using `@AGENTS.md`.
-- [Gemini CLI](https://geminicli.com/docs/cli/gemini-md/) imports it through
-  `GEMINI.md` using `@./AGENTS.md`.
+- [Claude Code](https://github.com/anthropics/claude-code/tree/main/mods/agents-md)
+  2.1.277+ supports native `AGENTS.md` loading when no `CLAUDE.md`,
+  `.claude/CLAUDE.md`, or `CLAUDE.local.md` exists in the working directory or
+  its parents. The user-level `~/.claude/CLAUDE.md` is exempt. Verify loading
+  at session start as described below.
+- [Gemini CLI](https://geminicli.com/docs/cli/gemini-md/#customize-the-context-file-name)
+  reads `AGENTS.md` through `.gemini/settings.json`, which sets
+  `context.fileName` to `["AGENTS.md"]`.
 - [Aider](https://aider.chat/docs/config/aider_conf.html) loads it as a read-only
   file through the repository's `.aider.conf.yml`.
-- `.cursor/rules/project.mdc` points editor sessions to the same instructions.
 - For another CLI, explicitly load `AGENTS.md` as project context, then ask it
   to read the relevant tracked docs and local handoff. Do not copy the entire
   instruction file into a second independently maintained file.
 
-These files configure project context. They do not choose a model, install a
+These settings configure project context. They do not choose a model, install a
 CLI, change approval/sandbox settings, or grant MCP access. Configure this server
 in the consuming agent separately using the command/environment in `README.md`.
 Some coding CLIs can edit the repository without supporting MCP consumption.
 
 ### Validate paths separately from runtime loading
 
-Checking import syntax, rule frontmatter, and referenced paths establishes that
+Checking configuration syntax and referenced paths establishes that
 the configuration is consistent. Asking an agent to name its instructions can
 pass simply because it searches for and reads those files. Neither check proves
 automatic loading in a new runtime.
@@ -37,8 +41,8 @@ the same CLI entry points, outside the working checkout:
 
 1. Add a temporary instruction to the copy's `AGENTS.md`: “Begin your first reply
    with `LOAD-CHECK-<nonce>`.” Replace `<nonce>` with a fresh random value. Keep
-   that value only in the instruction file, never in the launch prompt or an
-   adapter; this exercises the adapter's reference to the shared file too.
+   that value only in the instruction file, never in the launch prompt or runtime
+   settings; this exercises the configured discovery of the shared file too.
 2. Start a **new conversation** in that directory with the CLI and configuration
    being tested. Do not resume/fork an old conversation or explicitly attach the
    instruction file. Use an incurious prompt such as “What is 2 + 2?” that asks
@@ -56,10 +60,11 @@ the same CLI entry points, outside the working checkout:
    Remove the disposable copy. Never commit the marker to project instructions.
 
 Test each CLI separately; one passing runtime does not establish the others.
-An explicit-read Cursor rule must be reported as such if its trace shows a file
-read. A fresh managed launch's injected shared brief and skill catalog are also
-distinct evidence from this project-file smoke check. A next-start template or
-skill preview alone does not prove a running session received that content.
+Claude Code's interactive startup receipt is
+`no CLAUDE.md found; AGENTS.md loaded: <path>`; directly loaded `AGENTS.md` is not
+listed in `/context`. A fresh managed launch's injected shared brief and skill
+catalog are also distinct evidence from this project-file smoke check. A next-start
+template or skill preview alone does not prove a running session received that content.
 
 ## Shared local memory
 
@@ -72,6 +77,9 @@ checkout. It is git-ignored and does not require agent-backbone:
   INDEX.md
   notes/
 ```
+
+`.claude/settings.json` disables Claude Code's automatic private memory with
+`autoMemoryEnabled: false`; shared handoffs stay in the location above.
 
 `HANDOFF.md` records the date, active objective, branch, changed files, issue/PR
 links, verified results, known failures, running processes, and next steps. Rewrite
@@ -97,7 +105,7 @@ policy for memory storage and retirement of old sources.
 No backbone service is required to build or test xstate-mcp. Managed sessions use
 the injected base brief for coordination and the shared `project-context` policy
 for handoff/evidence hygiene. The local memory layout and fresh-clone fallback
-above apply across runtimes. CLI adapters only point to `AGENTS.md`; they do not
+above apply across runtimes. CLI settings only point to `AGENTS.md`; they do not
 maintain separate memory or coordination procedures.
 
 The managed `xstate` skill selection is for frontend application work, not a
