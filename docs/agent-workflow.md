@@ -69,7 +69,7 @@ template or skill preview alone does not prove a running session received that c
 ## Shared local memory
 
 The canonical local memory location is `.backbone/memory/` in the primary
-checkout. It is git-ignored and does not require agent-backbone:
+checkout. It is git-ignored:
 
 ```text
 .backbone/memory/
@@ -102,7 +102,8 @@ policy for memory storage and retirement of old sources.
 
 ## Optional backbone coordination
 
-No backbone service is required to build or test xstate-mcp. Managed sessions use
+No [Backbone](https://github.com/eandualem/agent-backbone) service is required to
+build or test xstate-mcp. Managed sessions use
 the injected base brief for coordination and the shared `project-context` policy
 for handoff/evidence hygiene. The local memory layout and fresh-clone fallback
 above apply across runtimes. CLI settings only point to `AGENTS.md`; they do not
@@ -111,7 +112,3 @@ maintain separate memory or coordination procedures.
 The managed `xstate` skill selection is for frontend application work, not a
 requirement to introduce Next.js conventions into the protocol server. Generic
 user skills and runtime-owned additions are separate from backbone's selection.
-
-The previous Lovely Universe symlink tree and universal private skills are not
-dependencies. The old instructions are historical reference, reconciled in
-[the concepts document](concepts.md), rather than imported at runtime.
