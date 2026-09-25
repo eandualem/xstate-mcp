@@ -97,18 +97,9 @@ protocol remains [#4](https://github.com/eandualem/xstate-mcp/issues/4). Current
 covers quality and package checks; broader contract CI remains
 [#7](https://github.com/eandualem/xstate-mcp/issues/7).
 
-## Historical context
+## Design rationale
 
-The original consumer was the Lovely Console orchestration dashboard. The old
-configuration was kept outside this checkout in orchestration's
-`archive/config/core/code/WF/xstate-mcp/{AGENTS,CLAUDE}.md`. Those files described
-the initial four-tool, read-only version and inherited workspace instructions.
-
-This repository preserves the useful design rationale: TypeScript, stdio plus
+This repository uses TypeScript, stdio plus
 WebSocket, stderr-only logging, per-actor ring buffers, and in-memory debugging.
 The current tool count, file names, write capabilities, and known limitations
-come from the actual implementation. Claims of uniqueness, old workspace paths,
-private skills, named agent roles, and inherited branch policies are not required.
-
-The shared instruction/handoff pattern was adapted from
-[agent-backbone](https://github.com/eandualem/agent-backbone).
+come from the actual implementation.

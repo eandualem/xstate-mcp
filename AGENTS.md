@@ -3,7 +3,7 @@
 These repository-wide instructions are shared by all coding agents. Read
 `README.md` for usage, `docs/concepts.md` for the purpose and architecture,
 and `CONTRIBUTING.md` for the development workflow. Everything required to
-work here lives in this repository; no Lovely Universe workspace is needed.
+work here lives in this repository.
 
 ## Start and hand off
 
